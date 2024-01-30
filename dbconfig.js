@@ -1,4 +1,5 @@
 const mysql = require('mysql2');
+const AppError = require('./Utils/appError');
 
 const db = mysql.createConnection({
   host: process.env.DB_HOSTIP,
@@ -10,7 +11,8 @@ const db = mysql.createConnection({
 
 db.connect((err) => {
   if (err) {
-    console.error('Error connecting to MySQL:', err);
+    return new AppError("Couldn't connect to database", 500);
+    process.exit(1);
   } else {
     console.log('Connected to MySQL database');
   }

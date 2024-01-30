@@ -18,55 +18,36 @@ const createSendToken = (id) => {
 
 const organizUserData = (user) => {
   return {
-    azst_user_id: user.azst_customer_id,
-    azst_customer_name: user.azst_customer_name,
+    azst_customer_id: user.azst_customer_id,
+    azst_customer_name: `${user.azst_customer_fname} ${user.azst_customer_lname}`,
     azst_customer_mobile: user.azst_customer_mobile,
     azst_customer_email: user.azst_customer_email,
-    azst_customer_hno: user.azst_customer_hno,
-    azst_customer_area: user.azst_customer_area,
-    azst_customer_city: user.azst_customer_city,
-    azst_customer_district: user.azst_customer_district,
-    azst_customer_state: user.azst_customer_state,
-    azst_customer_country: user.azst_customer_country,
   };
 };
 
 exports.signup = catchAsync(async (req, res, next) => {
   const {
-    customerName,
+    customerFirstName,
+    customerLastName,
     customerMobileNum,
     customerEmail,
     customerPassword,
-    customerHouseNo,
-    customerArea,
-    customerCity,
-    customerDistrict,
-    customerState,
-    customerCountry,
-    customerLandmark,
   } = req.body;
 
   const today = moment().format('YYYY-MM-DD HH:mm:ss');
 
-  const registerQuery = `INSERT INTO azst_customer (azst_customer_name,azst_customer_mobile,azst_customer_email,
-                          azst_customer_pwd,azst_customer_hno,azst_customer_area,azst_customer_city,azst_customer_district,azst_customer_state,
-                          azst_customer_country,azst_customer_landmark,azst_customer_updatedon)
-                          VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`;
+  const registerQuery = `INSERT INTO azst_customer (azst_customer_fname,azst_customer_lname,azst_customer_mobile,azst_customer_email,
+                          azst_customer_pwd,azst_customer_updatedon)
+                          VALUES(?,?,?,?,?,?)`;
 
   const hashedPassword = await bcrypt.hash(customerPassword, 10);
 
   const values = [
-    customerName,
+    customerFirstName,
+    customerLastName,
     customerMobileNum,
     customerEmail.toLowerCase(),
     hashedPassword,
-    customerHouseNo,
-    customerArea,
-    customerCity,
-    customerDistrict,
-    customerState,
-    customerCountry,
-    customerLandmark,
     today,
   ];
 
@@ -79,15 +60,10 @@ exports.signup = catchAsync(async (req, res, next) => {
     res.status(201).json({
       jwtToken: token,
       user_details: {
-        azst_user_id: results.insertId,
-        azst_customer_name: customerName,
+        azst_customer_id: results.insertId,
+        azst_customer_name: `${customerFirstName} ${customerLastName}`,
         azst_customer_mobile: customerMobileNum,
         azst_customer_email: customerEmail,
-        azst_customer_area: customerArea,
-        azst_customer_city: customerCity,
-        azst_customer_district: customerDistrict,
-        azst_customer_state: customerState,
-        azst_customer_country: customerCountry,
       },
       message: 'User registered successfully!',
     });
@@ -107,14 +83,15 @@ exports.login = catchAsync(async (req, res, next) => {
       return next(new AppError('Invalid User Credentials', 404));
     }
 
-    const { azst_user_id, azst_customer_pwd } = result[0];
+    const { azst_customer_id, azst_customer_pwd } = result[0];
+
     const isPasswordMatched = await bcrypt.compare(password, azst_customer_pwd);
 
     if (!isPasswordMatched) {
       return next(new AppError('Invalid Password', 404));
     }
 
-    const token = createSendToken(azst_user_id);
+    const token = createSendToken(azst_customer_id);
 
     const user_details = organizUserData(result[0]);
 
@@ -127,14 +104,6 @@ exports.login = catchAsync(async (req, res, next) => {
     return next(new AppError(err.sqlMessage || 'Internal Server Error', 500));
   }
 });
-
-exports.logout = (req, res) => {
-  res.cookie('jwt', 'loggedout', {
-    expires: new Date(Date.now() + 10 * 1000),
-    httpOnly: true,
-  });
-  res.status(200).json({ status: 'success' });
-};
 
 exports.protect = catchAsync(async (req, res, next) => {
   let token;
@@ -154,42 +123,43 @@ exports.protect = catchAsync(async (req, res, next) => {
   }
 
   // 2) check if user is exist
-  const decoded = jwt.verify(token, process.env.JWT_SECRET);
+  jwt.verify(token, process.env.JWT_SECRET, (err, payload) => {
+    if (err) {
+      return next(
+        new AppError(
+          'The User could beloonging to this token does no longer exist. Login Again',
+          401
+        )
+      );
+    }
 
-  const currentUser = await User.findById(decoded.id);
-
-  if (!currentUser) {
-    return next(
-      new AppError(
-        'The User could beloonging to this token does no longer exist.',
-        401
-      )
-    );
-  }
-  // 3) if user changed password after the token was issued,
-  if (currentUser.changePasswordAfter(decoded.iat)) {
-    return next(
-      new AppError('User recently changed password! please Login again', 404)
-    );
-  }
-
-  // all the condition are satisfied so access the data using the token
-
-  req.user = currentUser;
-  next();
+    req.empId = payload.id;
+    next();
+  });
 });
 
-// exports.restricTo = (...roles) => {
-//   return (req, res, next) => {
-//     // roles ['admin','lead-guide]. role= 'user
-//     if (!roles.includes(req.user.role)) {
-//       return next(
-//         new AppError('You not have permission to perform this action', 403)
-//       );
-//     }
-//     next();
-//   };
-// };
+exports.resetPassword = catchAsync(async (req, res, next) => {
+  const { currentPassword, newPassword } = req.body;
+
+  const getoldPassword =
+    'SELECT azst_customer_pwd FROM azst_customer WHERE azst_customer_id= ?';
+  const queryAsync = promisify(db.query).bind(db);
+  const result = await queryAsync(getoldPassword, [req.empId]);
+
+  const isPasswordMatched = await bcrypt.compare(
+    currentPassword,
+    result[0].azst_customer_pwd
+  );
+
+  if (result[0].length === 0 || !isPasswordMatched) {
+    return next(new AppError('Invalid CurrentPassword', 404));
+  }
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+  const changePasswordAfterReset = `UPDATE azst_customer SET azst_customer_pwd = ? WHERE azst_customer_id = ?`;
+  await queryAsync(changePasswordAfterReset, [hashedPassword, req.empId]);
+  const token = createSendToken(req.empId);
+  res.status(200).json({ jwtToken: token });
+});
 
 // exports.forgotPassword = catchAsync(async (req, res, next) => {
 //   //1) get user based on email address
@@ -228,36 +198,6 @@ exports.protect = catchAsync(async (req, res, next) => {
 //     );
 //   }
 // });
-
-exports.resetPassword = catchAsync(async (req, res, next) => {
-  // 1)get user based on token reset token
-
-  const hasedtoken = crypto
-    .createHash('sha256')
-    .update(req.params.token)
-    .digest('hex');
-  const user = await User.findOne({
-    passwordResetToken: hasedtoken,
-    passwordResetExpires: { $gt: Date.now() },
-  });
-
-  // 2) if token is Invalid and there is nouser, send error
-  if (!user) {
-    return next(new AppError('Token is Invalid or has Expired', 400));
-  }
-
-  // 3)if user find then update changepasswordAt poperty for the user
-  (user.password = req.body.password),
-    (user.passwordConfirm = req.body.passwordConfirm),
-    (user.passwordChangedAt = Date.now());
-  user.passwordResetToken = undefined;
-  user.passwordResetExpires = undefined;
-  await user.save();
-
-  // 4) log the user and send jwt token
-
-  createSendToken(user, 200, req, res);
-});
 
 // exports.updatepassword = catchAsync(async (req, res, next) => {
 //   // 1) get user form collection
@@ -303,3 +243,22 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
 
 //   next();
 // });
+
+// exports.restricTo = (...roles) => {
+//   return (req, res, next) => {
+//     // roles ['admin','lead-guide]. role= 'user
+//     if (!roles.includes(req.user.role)) {
+//       return next(
+//         new AppError('You not have permission to perform this action', 403)
+//       );
+//     }
+//     next();
+//   };
+// };
+// exports.logout = (req, res) => {
+//   res.cookie('jwt', 'loggedout', {
+//     expires: new Date(Date.now() + 10 * 1000),
+//     httpOnly: true,
+//   });
+//   res.status(200).json({ status: 'success' });
+// };

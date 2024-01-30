@@ -2,8 +2,11 @@ const Joi = require('joi');
 const AppError = require('../../Utils/appError');
 
 const registerSchema = Joi.object({
-  customerName: Joi.string().min(3).max(20).required().messages({
-    'string.pattern.base': 'Customer Name is required',
+  customerFirstName: Joi.string().min(3).max(20).required().messages({
+    'string.pattern.base': 'Customer FirstName is required',
+  }),
+  customerLastName: Joi.string().min(3).max(20).required().messages({
+    'string.pattern.base': 'Customer LastName is required',
   }),
   customerMobileNum: Joi.string()
     .pattern(/^[6-9]\d{9}$/)
@@ -21,13 +24,6 @@ const registerSchema = Joi.object({
       'string.pattern.base':
         'Password must have at least 8 characters, one uppercase letter, one lowercase letter, one digit, and one special character.',
     }),
-  customerHouseNo: Joi.string().min(3).max(20).required(),
-  customerArea: Joi.string().min(3).max(20).required(),
-  customerCity: Joi.string().min(3).max(20).required(),
-  customerDistrict: Joi.string().min(3).max(20).required(),
-  customerState: Joi.string().min(3).max(20).required(),
-  customerCountry: Joi.string().min(3).max(20).required(),
-  customerLandmark: Joi.string().min(3).max(20).required(),
 });
 
 const userValidation = async (req, res, next) => {

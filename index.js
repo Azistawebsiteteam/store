@@ -7,9 +7,10 @@ const compression = require('compression');
 require('dotenv').config();
 require('./dbconfig');
 
-const globalErrorHandler = require('./controllers/errorcontroller');
+const globalErrorHandler = require('./controllers/errorController');
 
 const authRoute = require('./routes/authRoutes');
+const AppError = require('./Utils/appError');
 
 const app = express();
 
@@ -29,6 +30,6 @@ app.all('*', (req, res, next) => {
 });
 app.use(globalErrorHandler);
 
-app.listen(PORT, () => {
+app.listen(PORT, '192.168.212.138', () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
