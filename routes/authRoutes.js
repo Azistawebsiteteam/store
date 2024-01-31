@@ -1,5 +1,7 @@
 const express = require('express');
 
+const registerCtrl = require('../controllers/Authentication/RegistrationCtrl');
+const loginCtrl = require('../controllers/Authentication/LoginCtrl');
 const authControllers = require('../controllers/authController');
 
 const registerSchema = require('../Middlewares/auth/Register');
@@ -8,19 +10,15 @@ const resetPasswordSchema = require('../Middlewares/auth/ResetPassword');
 
 const router = express.Router();
 
-router.post('/register', registerSchema, authControllers.signup);
-router.post('/login', loginSchema, authControllers.login);
+router.post('/register', registerSchema, registerCtrl.signup);
+router.post('/login', loginSchema, loginCtrl.login);
+
+router.use(authControllers.protect);
 
 router.post(
   '/reset-password',
   resetPasswordSchema,
-  authControllers.protect,
   authControllers.resetPassword
 );
-
-// // test route to verify if our middleware is working
-// router.get('/test', auth, (req, res) => {
-//   res.send('request passed');
-// });
 
 module.exports = router;

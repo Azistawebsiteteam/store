@@ -11,99 +11,49 @@ const catchAsync = require('../Utils/catchAsync');
 const AppError = require('../Utils/appError');
 //const Email = require('./../Utils/email');
 
-const createSendToken = (id) => {
-  const token = jwt.sign({ id }, process.env.JWT_SECRET);
-  return token;
-};
+// const organizUserData = (user) => {
+//   return {
+//     azst_customer_id: user.azst_customer_id,
+//     azst_customer_name: `${user.azst_customer_fname} ${user.azst_customer_lname}`,
+//     azst_customer_mobile: user.azst_customer_mobile,
+//     azst_customer_email: user.azst_customer_email,
+//   };
+// };
 
-const organizUserData = (user) => {
-  return {
-    azst_customer_id: user.azst_customer_id,
-    azst_customer_name: `${user.azst_customer_fname} ${user.azst_customer_lname}`,
-    azst_customer_mobile: user.azst_customer_mobile,
-    azst_customer_email: user.azst_customer_email,
-  };
-};
+// exports.login = catchAsync(async (req, res, next) => {
+//   const { mailOrMobile, password } = req.body;
+//   const loginQuery =
+//     'SELECT * FROM azst_customer WHERE azst_customer_mobile = ? OR azst_customer_email = ?';
 
-exports.signup = catchAsync(async (req, res, next) => {
-  const {
-    customerFirstName,
-    customerLastName,
-    customerMobileNum,
-    customerEmail,
-    customerPassword,
-  } = req.body;
+//   try {
+//     const queryAsync = promisify(db.query).bind(db);
+//     const result = await queryAsync(loginQuery, [mailOrMobile, mailOrMobile]);
 
-  const today = moment().format('YYYY-MM-DD HH:mm:ss');
+//     if (result.length === 0) {
+//       return next(new AppError('Invalid User Credentials', 400));
+//     }
 
-  const registerQuery = `INSERT INTO azst_customer (azst_customer_fname,azst_customer_lname,azst_customer_mobile,azst_customer_email,
-                          azst_customer_pwd,azst_customer_updatedon)
-                          VALUES(?,?,?,?,?,?)`;
+//     const { azst_customer_id, azst_customer_pwd } = result[0];
 
-  const hashedPassword = await bcrypt.hash(customerPassword, 10);
+//     const isPasswordMatched = await bcrypt.compare(password, azst_customer_pwd);
 
-  const values = [
-    customerFirstName,
-    customerLastName,
-    customerMobileNum,
-    customerEmail.toLowerCase(),
-    hashedPassword,
-    today,
-  ];
+//     if (!isPasswordMatched) {
+//       return next(new AppError('Invalid Password', 400));
+//     }
 
-  db.query(registerQuery, values, (err, results) => {
-    if (err) {
-      return next(new AppError(err.sqlMessage, 400));
-    }
-    // Add any further logic or response handling here
-    const token = createSendToken(results.insertId);
-    res.status(201).json({
-      jwtToken: token,
-      user_details: {
-        azst_customer_id: results.insertId,
-        azst_customer_name: `${customerFirstName} ${customerLastName}`,
-        azst_customer_mobile: customerMobileNum,
-        azst_customer_email: customerEmail,
-      },
-      message: 'User registered successfully!',
-    });
-  });
-});
+//     const token = createSendToken(azst_customer_id);
 
-exports.login = catchAsync(async (req, res, next) => {
-  const { mailOrMobile, password } = req.body;
-  const loginQuery =
-    'SELECT * FROM azst_customer WHERE azst_customer_mobile = ? OR azst_customer_email = ?';
+//     const user_details = organizUserData(result[0]);
 
-  try {
-    const queryAsync = promisify(db.query).bind(db);
-    const result = await queryAsync(loginQuery, [mailOrMobile, mailOrMobile]);
-
-    if (result.length === 0) {
-      return next(new AppError('Invalid User Credentials', 400));
-    }
-
-    const { azst_customer_id, azst_customer_pwd } = result[0];
-
-    const isPasswordMatched = await bcrypt.compare(password, azst_customer_pwd);
-
-    if (!isPasswordMatched) {
-      return next(new AppError('Invalid Password', 400));
-    }
-
-    const token = createSendToken(azst_customer_id);
-
-    const user_details = organizUserData(result[0]);
-
-    res.status(200).json({
-      jwtToken: token,
-      user_details,
-      message: 'User logged in successfully!',
-    });
-  } catch (err) {
-    return next(new AppError(err.sqlMessage || 'Internal Server Error', 500));
-  }
-});
+//     res.status(200).json({
+//       jwtToken: token,
+//       user_details,
+//       message: 'User logged in successfully!',
+//     });
+//   } catch (err) {
+//     return next(new AppError(err.sqlMessage || 'Internal Server Error', 500));
+//   }
+// });
 
 exports.protect = catchAsync(async (req, res, next) => {
   let token;
