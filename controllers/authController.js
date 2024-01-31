@@ -9,6 +9,7 @@ const { promisify } = require('util');
 
 const catchAsync = require('../Utils/catchAsync');
 const AppError = require('../Utils/appError');
+const createSendToken = require('../Utils/jwtToken');
 //const Email = require('./../Utils/email');
 
 // const organizUserData = (user) => {
