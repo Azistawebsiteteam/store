@@ -30,6 +30,6 @@ app.all('*', (req, res, next) => {
 });
 app.use(globalErrorHandler);
 
-app.listen(PORT, '192.168.212.138', () => {
+app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });

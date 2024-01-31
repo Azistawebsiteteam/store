@@ -10,7 +10,7 @@ const generateOTP = () => {
 
 exports.sendOtp = catchasync(async (req, res, next) => {
   const { empId } = req.body;
-  const getEmployee = `SELECT emp_id ,mobile_num FROM employees_tbl WHERE emp_id = '${empId}'`;
+  const getEmployee = ``;
 
   db.query(getEmployee, (err, result) => {
     if (err) {

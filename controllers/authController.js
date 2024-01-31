@@ -80,7 +80,7 @@ exports.login = catchAsync(async (req, res, next) => {
     const result = await queryAsync(loginQuery, [mailOrMobile, mailOrMobile]);
 
     if (result.length === 0) {
-      return next(new AppError('Invalid User Credentials', 404));
+      return next(new AppError('Invalid User Credentials', 400));
     }
 
     const { azst_customer_id, azst_customer_pwd } = result[0];
@@ -88,7 +88,7 @@ exports.login = catchAsync(async (req, res, next) => {
     const isPasswordMatched = await bcrypt.compare(password, azst_customer_pwd);
 
     if (!isPasswordMatched) {
-      return next(new AppError('Invalid Password', 404));
+      return next(new AppError('Invalid Password', 400));
     }
 
     const token = createSendToken(azst_customer_id);
