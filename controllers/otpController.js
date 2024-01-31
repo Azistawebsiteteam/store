@@ -9,9 +9,6 @@ const generateOTP = () => {
 };
 
 exports.sendOtp = catchasync(async (req, res, next) => {
-  const { empId } = req.body;
-  const getEmployee = ``;
-
   db.query(getEmployee, (err, result) => {
     if (err) {
       return next(new AppError(err.sqlMessage, 400));

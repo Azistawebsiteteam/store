@@ -49,3 +49,5 @@ exports.signup = catchAsync(async (req, res, next) => {
     });
   });
 });
+
+exports.mobileSignup = catchAsync(async (req, res, next) => {});
