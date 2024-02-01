@@ -20,17 +20,32 @@ router.post(
 router.post(
   '/register/otp',
   registerCtrl.checkExistingUser,
-  registerCtrl.mobileSignup
+  registerCtrl.mobileSignup,
+  otpCtrl.sendOtp
 );
 router.post(
   '/register/verify-otp',
-
-  registerCtrl.mobileSignupVerification,
+  otpCtrl.checkOtpExisting,
   otpCtrl.verifyOTP,
-  registerCtrl.mobileSignupInsert
+  registerCtrl.mobileSignupInsert,
+  otpCtrl.updateOtpDetails
 );
 
-router.post('/login', loginSchema, loginCtrl.login);
+router.post('/login', loginSchema, loginCtrl.isUserExist, loginCtrl.login);
+router.post(
+  '/login/otp',
+  loginCtrl.isUserExist,
+  loginCtrl.otpLogin,
+  otpCtrl.sendOtp
+);
+
+router.post(
+  '/login/verify-otp',
+  loginCtrl.isUserExist,
+  otpCtrl.checkOtpExisting,
+  otpCtrl.verifyOTP,
+  otpCtrl.updateOtpDetails
+);
 
 router.use(authControllers.protect);
 
