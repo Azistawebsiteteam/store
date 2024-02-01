@@ -47,6 +47,20 @@ router.post(
   otpCtrl.updateOtpDetails
 );
 
+router.post(
+  '/forgot-password',
+  loginCtrl.isUserExist,
+  loginCtrl.forgotPassword,
+  otpCtrl.sendOtp
+);
+router.post(
+  '/forgot-password/verifyotp',
+  loginCtrl.isUserExist,
+  otpCtrl.checkOtpExisting,
+  otpCtrl.verifyOTP,
+  authControllers.forgotPassword
+);
+
 router.use(authControllers.protect);
 
 router.post(
@@ -54,5 +68,7 @@ router.post(
   resetPasswordSchema,
   authControllers.resetPassword
 );
+
+router.post('/logout', loginCtrl.logout);
 
 module.exports = router;

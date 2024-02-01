@@ -4,6 +4,7 @@ const moment = require('moment');
 const catchAsync = require('../Utils/catchAsync');
 const AppError = require('../Utils/appError');
 const createSendToken = require('../Utils/jwtToken');
+const enterLoginLogs = require('./Authentication/logsCtrl');
 
 const generateOTP = () => {
   // Generate a random 4-digit number
@@ -55,7 +56,7 @@ exports.checkOtpExisting = catchAsync(async (req, res, next) => {
     return next(new AppError('Invalid Mobile Number or Email', 400));
   }
 
-  const getOtpQuery = `SELECT azst_otp_verification_id, azst_otp_verification_value , 
+  const getOtpQuery = `SELECT azst_otp_verification_id, azst_otp_verification_value , azst_otp_verification_reason,
                         DATE_FORMAT(azst_otp_verification_createdon, '%Y-%m-%d %H:%i:%s') AS createdTime
                          FROM azst_otp_verification
                          WHERE azst_otp_verification_mobile=? AND azst_otp_verification_status= 1 
@@ -72,11 +73,13 @@ exports.checkOtpExisting = catchAsync(async (req, res, next) => {
       azst_otp_verification_id,
       azst_otp_verification_value,
       createdTime,
+      azst_otp_verification_reason,
     } = result[0];
     req.otpDetails = {
       verificationId: azst_otp_verification_id,
       requestOtp: otp,
       databaseOTp: azst_otp_verification_value,
+      reason: azst_otp_verification_reason,
       createdTime,
     };
     next();
@@ -103,7 +106,7 @@ exports.verifyOTP = catchAsync(async (req, res, next) => {
 });
 
 exports.updateOtpDetails = catchAsync(async (req, res, next) => {
-  const { verificationId } = req.otpDetails;
+  const { verificationId, reason } = req.otpDetails;
 
   const { azst_customer_id } = req.userDetails;
 
@@ -118,6 +121,10 @@ exports.updateOtpDetails = catchAsync(async (req, res, next) => {
       return next(new AppError(err.sqlMessage, 400));
     }
     const jwtToken = createSendToken(azst_customer_id);
+
+    if (reason === 'Login') {
+      enterLoginLogs(azst_customer_id, jwtToken);
+    }
 
     res.status(200).json({ jwtToken, message: 'OTP verification successful' });
   });
