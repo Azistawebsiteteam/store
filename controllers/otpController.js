@@ -22,7 +22,7 @@ const varifyInput = (otpMedium) => {
 exports.sendOtp = catchAsync(async (req, res, next) => {
   const { otpMedium } = req.body;
   const otpReason = req.reason;
-  const customerId = req.userDetails.azst_customer_id || 0;
+  const customerId = req.userDetails?.azst_customer_id || 0;
 
   const notvalidate = varifyInput(otpMedium);
   if (notvalidate) {
