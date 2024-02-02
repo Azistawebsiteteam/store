@@ -6,9 +6,9 @@ const AppError = require('../../Utils/appError');
 const createSendToken = require('../../Utils/jwtToken');
 
 exports.checkExistingUser = catchAsync(async (req, res, next) => {
-  const { customerMobileNum, customerEmail, otpMedium } = req.body;
-  const mobileNum = customerMobileNum || otpMedium;
-  const email = customerEmail || otpMedium;
+  const { customerMobileNum, customerEmail, mailOrMobile } = req.body;
+  const mobileNum = customerMobileNum || mailOrMobile;
+  const email = customerEmail || mailOrMobile;
   const checkQuery =
     'SELECT azst_customer_id FROM  azst_customer  WHERE azst_customer_mobile = ? OR azst_customer_email = ? ';
 
@@ -74,7 +74,7 @@ exports.mobileSignup = catchAsync(async (req, res, next) => {
 });
 
 exports.mobileSignupInsert = catchAsync(async (req, res, next) => {
-  const { otpMedium } = req.body;
+  const { mailOrMobile } = req.body;
 
   const today = moment().format('YYYY-MM-DD HH:mm:ss');
 
@@ -82,11 +82,11 @@ exports.mobileSignupInsert = catchAsync(async (req, res, next) => {
                           VALUES(?,?,?)`;
 
   let values = [];
-  const isMobileNumber = /^[6-9]\d{9}$/.test(otpMedium);
+  const isMobileNumber = /^[6-9]\d{9}$/.test(mailOrMobile);
   if (isMobileNumber) {
-    values = [otpMedium, '', today];
+    values = [mailOrMobile, '', today];
   } else {
-    values = ['', otpMedium, today];
+    values = ['', mailOrMobile, today];
   }
 
   db.query(registerQuery, values, (err, result) => {

@@ -1,13 +1,13 @@
 {
   "name": "azista-ecom",
   "version": "1.0.0",
-  "description": "",
+  "description": "E-commerce we site to sell products",
   "main": "index.js",
   "scripts": {
     "start": "nodemon index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
+  "author": "Rajender Cheerneni",
   "license": "ISC",
   "dependencies": {
     "bcrypt": "^5.1.1",

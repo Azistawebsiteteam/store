@@ -13,19 +13,19 @@ const generateOTP = () => {
   return String(otp).padStart(6, '0');
 };
 
-const varifyInput = (otpMedium) => {
-  const isMobileNumber = /^[6-9]\d{9}$/.test(otpMedium);
-  const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(otpMedium);
+const varifyInput = (mailOrMobile) => {
+  const isMobileNumber = /^[6-9]\d{9}$/.test(mailOrMobile);
+  const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mailOrMobile);
 
   return !isMobileNumber && !isEmail;
 };
 
 exports.sendOtp = catchAsync(async (req, res, next) => {
-  const { otpMedium } = req.body;
+  const { mailOrMobile } = req.body;
   const otpReason = req.reason;
   const customerId = req.userDetails?.azst_customer_id || 0;
 
-  const notvalidate = varifyInput(otpMedium);
+  const notvalidate = varifyInput(mailOrMobile);
   if (notvalidate) {
     return next(new AppError('Invalid Mobile Number or Email', 400));
   }
@@ -37,7 +37,7 @@ exports.sendOtp = catchAsync(async (req, res, next) => {
                             VALUES(?,?,?,?,?)`;
 
   const today = moment().format('YYYY-MM-DD HH:mm:ss');
-  const values = [otpReason, otpMedium, otp, customerId, today];
+  const values = [otpReason, mailOrMobile, otp, customerId, today];
 
   db.query(insertOtp, values, (err, result) => {
     if (err) {
@@ -48,9 +48,9 @@ exports.sendOtp = catchAsync(async (req, res, next) => {
 });
 
 exports.checkOtpExisting = catchAsync(async (req, res, next) => {
-  const { otpMedium, otp } = req.body;
+  const { mailOrMobile, otp } = req.body;
 
-  const notvalidate = varifyInput(otpMedium);
+  const notvalidate = varifyInput(mailOrMobile);
 
   if (notvalidate) {
     return next(new AppError('Invalid Mobile Number or Email', 400));
@@ -62,7 +62,7 @@ exports.checkOtpExisting = catchAsync(async (req, res, next) => {
                          WHERE azst_otp_verification_mobile=? AND azst_otp_verification_status= 1 
                          ORDER BY azst_otp_verification_createdon DESC LIMIT 1`;
 
-  db.query(getOtpQuery, [otpMedium], (err, result) => {
+  db.query(getOtpQuery, [mailOrMobile], (err, result) => {
     if (err) {
       return next(new AppError(err.sqlMessage || 'Error otp verifying', 400));
     }

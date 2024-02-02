@@ -10,9 +10,9 @@ const organizUserData = require('../../Utils/userDateMadifier');
 const enterLoginLogs = require('./logsCtrl');
 
 exports.isUserExist = catchAsync(async (req, res, next) => {
-  const { mailOrMobile, otpMedium } = req.body;
+  const { mailOrMobile } = req.body;
 
-  const userMailOrMobile = mailOrMobile || otpMedium;
+  const userMailOrMobile = mailOrMobile;
 
   const loginQuery =
     'SELECT * FROM azst_customer WHERE azst_customer_mobile = ? OR azst_customer_email = ?';
