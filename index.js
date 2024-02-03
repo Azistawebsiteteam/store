@@ -8,9 +8,10 @@ require('dotenv').config();
 require('./dbconfig');
 
 const globalErrorHandler = require('./controllers/errorController');
+const AppError = require('./Utils/appError');
 
 const authRoute = require('./routes/authRoutes');
-const AppError = require('./Utils/appError');
+const adderessRoute = require('./routes/adderessRoutes');
 
 const app = express();
 
@@ -24,6 +25,7 @@ app.use(xss());
 app.use(compression());
 
 app.use('/api/v1/auth', authRoute);
+app.use('/api/v1/address', adderessRoute);
 
 app.all('*', (req, res, next) => {
   next(new AppError(`Cant't find ${req.originalUrl} on This Server`, 404));

@@ -2,6 +2,7 @@
 const db = require('../dbconfig');
 const bcrypt = require('bcrypt');
 const { promisify } = require('util');
+const jwt = require('jsonwebtoken');
 
 const catchAsync = require('../Utils/catchAsync');
 const AppError = require('../Utils/appError');
