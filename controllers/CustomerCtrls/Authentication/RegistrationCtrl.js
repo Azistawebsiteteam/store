@@ -97,3 +97,11 @@ exports.mobileSignupInsert = catchAsync(async (req, res, next) => {
     next();
   });
 });
+
+exports.deleteAccount = catchAsync(async (req, res, next) => {
+  const deleteQuery = `UPDATE azst_customer SET azst_customer_status = 0 WHERE azst_customer_id = ?`;
+  db.query(deleteQuery, [req.empId], (err, result) => {
+    if (err) return next(new AppError(err.sqlMessage, 400));
+    res.status(200).json({ message: 'Your account has been deleted' });
+  });
+});

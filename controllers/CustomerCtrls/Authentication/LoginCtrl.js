@@ -14,8 +14,9 @@ exports.isUserExist = catchAsync(async (req, res, next) => {
 
   const userMailOrMobile = mailOrMobile;
 
-  const loginQuery =
-    'SELECT * FROM azst_customer WHERE azst_customer_mobile = ? OR azst_customer_email = ?';
+  const loginQuery = `SELECT * FROM azst_customer 
+                      WHERE azst_customer_mobile = ? OR azst_customer_email = ?
+                      AND azst_customer_status = 1`;
   const [result] = await db
     .promise()
     .query(loginQuery, [userMailOrMobile, userMailOrMobile]);

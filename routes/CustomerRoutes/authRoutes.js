@@ -69,6 +69,8 @@ router.post(
   authControllers.resetPassword
 );
 
+router.post('/delete/account', registerCtrl.deleteAccount);
+
 router.post('/logout', loginCtrl.logout);
 
 module.exports = router;
