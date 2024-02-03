@@ -4,7 +4,7 @@ const moment = require('moment');
 const catchAsync = require('../Utils/catchAsync');
 const AppError = require('../Utils/appError');
 const createSendToken = require('../Utils/jwtToken');
-const enterLoginLogs = require('./Authentication/logsCtrl');
+const enterLoginLogs = require('./CustomerCtrls/Authentication/logsCtrl');
 
 const generateOTP = () => {
   // Generate a random 4-digit number

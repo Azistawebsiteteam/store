@@ -10,8 +10,8 @@ require('./dbconfig');
 const globalErrorHandler = require('./controllers/errorController');
 const AppError = require('./Utils/appError');
 
-const authRoute = require('./routes/authRoutes');
-const adderessRoute = require('./routes/adderessRoutes');
+const authRoute = require('./routes/CustomerRoutes/authRoutes');
+const adderessRoute = require('./routes/CustomerRoutes/adderessRoutes');
 
 const app = express();
 

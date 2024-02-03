@@ -1,8 +1,8 @@
-const db = require('../dbconfig');
+const db = require('../../dbconfig');
 const moment = require('moment');
 
-const AppError = require('../Utils/appError');
-const catchAsync = require('../Utils/catchAsync');
+const AppError = require('../../Utils/appError');
+const catchAsync = require('../../Utils/catchAsync');
 
 exports.isAddressExit = catchAsync(async (req, res, next) => {
   const { addressId } = req.body;

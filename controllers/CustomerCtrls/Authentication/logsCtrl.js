@@ -1,4 +1,4 @@
-const db = require('../../dbconfig');
+const db = require('../../../dbconfig');
 const moment = require('moment');
 
 const enterLoginLogs = (customerId, token) => {

@@ -1,13 +1,13 @@
 const express = require('express');
 
-const registerCtrl = require('../controllers/Authentication/RegistrationCtrl');
-const loginCtrl = require('../controllers/Authentication/LoginCtrl');
-const authControllers = require('../controllers/authController');
-const otpCtrl = require('../controllers/otpController');
+const registerCtrl = require('../../controllers/CustomerCtrls/Authentication/RegistrationCtrl');
+const loginCtrl = require('../../controllers/CustomerCtrls/Authentication/LoginCtrl');
+const authControllers = require('../../controllers/authController');
+const otpCtrl = require('../../controllers/otpController');
 
-const registerSchema = require('../Middlewares/auth/Register');
-const loginSchema = require('../Middlewares/auth/Login');
-const resetPasswordSchema = require('../Middlewares/auth/ResetPassword');
+const registerSchema = require('../../Middlewares/auth/Register');
+const loginSchema = require('../../Middlewares/auth/Login');
+const resetPasswordSchema = require('../../Middlewares/auth/ResetPassword');
 
 const router = express.Router();
 

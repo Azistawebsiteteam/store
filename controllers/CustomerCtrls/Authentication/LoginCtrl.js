@@ -1,12 +1,12 @@
-const db = require('../../dbconfig');
+const db = require('../../../dbconfig');
 const bcrypt = require('bcrypt');
 const { promisify } = require('util');
 const moment = require('moment');
 
-const catchAsync = require('../../Utils/catchAsync');
-const AppError = require('../../Utils/appError');
-const createSendToken = require('../../Utils/jwtToken');
-const organizUserData = require('../../Utils/userDateMadifier');
+const catchAsync = require('../../../Utils/catchAsync');
+const AppError = require('../../../Utils/appError');
+const createSendToken = require('../../../Utils/jwtToken');
+const organizUserData = require('../../../Utils/userDateMadifier');
 const enterLoginLogs = require('./logsCtrl');
 
 exports.isUserExist = catchAsync(async (req, res, next) => {

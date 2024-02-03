@@ -1,9 +1,9 @@
 const express = require('express');
 
-const authCtrl = require('../controllers/authController');
-const addressCtrl = require('../controllers/adderessController');
+const authCtrl = require('../../controllers/authController');
+const addressCtrl = require('../../controllers/CustomerCtrls/adderessController');
 
-const addressValidation = require('../Middlewares/validations/address');
+const addressValidation = require('../../Middlewares/validations/address');
 
 const router = express.Router();
 

@@ -1,9 +1,9 @@
-const db = require('../../dbconfig');
+const db = require('../../../dbconfig');
 const bcrypt = require('bcrypt');
 const moment = require('moment');
-const catchAsync = require('../../Utils/catchAsync');
-const AppError = require('../../Utils/appError');
-const createSendToken = require('../../Utils/jwtToken');
+const catchAsync = require('../../../Utils/catchAsync');
+const AppError = require('../../../Utils/appError');
+const createSendToken = require('../../../Utils/jwtToken');
 
 exports.checkExistingUser = catchAsync(async (req, res, next) => {
   const { customerMobileNum, customerEmail, mailOrMobile } = req.body;
