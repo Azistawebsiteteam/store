@@ -9,7 +9,7 @@ const createSendToken = require('../../../Utils/jwtToken');
 const organizUserData = require('../../../Utils/userDateMadifier');
 const enterLoginLogs = require('./logsCtrl');
 
-exports.isUserExist = catchAsync(async (req, res, next) => {
+exports.isUserExisit = catchAsync(async (req, res, next) => {
   const { mailOrMobile } = req.body;
 
   const userMailOrMobile = mailOrMobile;

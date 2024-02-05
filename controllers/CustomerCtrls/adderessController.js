@@ -4,7 +4,7 @@ const moment = require('moment');
 const AppError = require('../../Utils/appError');
 const catchAsync = require('../../Utils/catchAsync');
 
-exports.isAddressExit = catchAsync(async (req, res, next) => {
+exports.isAddressExisit = catchAsync(async (req, res, next) => {
   const { addressId } = req.body;
 
   const getDefaultAddress = `SELECT azst_customer_adressbook_default 

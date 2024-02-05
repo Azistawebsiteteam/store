@@ -13,10 +13,10 @@ router.post('/add/newaddress', addressValidation, addressCtrl.createNewAddress);
 router.post('/myaddresses', addressCtrl.getMyAddresses);
 router.post(
   '/make/default-address',
-  addressCtrl.isAddressExit,
+  addressCtrl.isAddressExisit,
   addressCtrl.makeAddressDefault
 );
 
-router.post('/delete', addressCtrl.isAddressExit, addressCtrl.deleteAddress);
+router.post('/delete', addressCtrl.isAddressExisit, addressCtrl.deleteAddress);
 
 module.exports = router;

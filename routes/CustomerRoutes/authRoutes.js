@@ -31,17 +31,17 @@ router.post(
   otpCtrl.updateOtpDetails
 );
 
-router.post('/login', loginSchema, loginCtrl.isUserExist, loginCtrl.login);
+router.post('/login', loginSchema, loginCtrl.isUserExisit, loginCtrl.login);
 router.post(
   '/login/otp',
-  loginCtrl.isUserExist,
+  loginCtrl.isUserExisit,
   loginCtrl.otpLogin,
   otpCtrl.sendOtp
 );
 
 router.post(
   '/login/verify-otp',
-  loginCtrl.isUserExist,
+  loginCtrl.isUserExisit,
   otpCtrl.checkOtpExisting,
   otpCtrl.verifyOTP,
   otpCtrl.updateOtpDetails
@@ -49,13 +49,13 @@ router.post(
 
 router.post(
   '/forgot-password',
-  loginCtrl.isUserExist,
+  loginCtrl.isUserExisit,
   loginCtrl.forgotPassword,
   otpCtrl.sendOtp
 );
 router.post(
   '/forgot-password/verifyotp',
-  loginCtrl.isUserExist,
+  loginCtrl.isUserExisit,
   otpCtrl.checkOtpExisting,
   otpCtrl.verifyOTP,
   authControllers.forgotPassword

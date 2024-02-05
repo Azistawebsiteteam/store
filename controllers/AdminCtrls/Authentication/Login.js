@@ -4,7 +4,7 @@ const AppError = require('../../../Utils/appError');
 const catchAsync = require('../../../Utils/catchAsync');
 const createSendToken = require('../../../Utils/jwtToken');
 
-exports.isAdminExist = catchAsync(async (req, res, next) => {
+exports.isAdminExisit = catchAsync(async (req, res, next) => {
   const { username } = req.body;
 
   const loginQuery = `SELECT * FROM azst_admin_details 
