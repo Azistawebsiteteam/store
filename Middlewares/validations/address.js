@@ -2,6 +2,7 @@ const Joi = require('joi');
 const AppError = require('../../Utils/appError');
 
 const addressSchema = Joi.object({
+  addressId: Joi.number().allow(''),
   customerFirstName: Joi.string().min(3).max(20).required().messages({
     'string.pattern.base': 'Customer FirstName is required',
   }),

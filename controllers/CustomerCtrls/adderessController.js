@@ -7,7 +7,7 @@ const catchAsync = require('../../Utils/catchAsync');
 exports.isAddressExisit = catchAsync(async (req, res, next) => {
   const { addressId } = req.body;
 
-  const getDefaultAddress = `SELECT azst_customer_adressbook_default 
+  const getDefaultAddress = `SELECT *
                                 FROM azst_customer_adressbook
                                 WHERE azst_customer_adressbook_customer_id = ? AND
                                 azst_customer_adressbook_id = ? AND
@@ -20,6 +20,7 @@ exports.isAddressExisit = catchAsync(async (req, res, next) => {
   if (result.length === 0) {
     return res.status(404).json({ message: 'No address found in AddressBook' });
   }
+  req.address = result[0];
   req.isDefaultAddress = result[0].azst_customer_adressbook_default;
   next();
 });
@@ -53,6 +54,28 @@ const updateDefaultAddress = (customerId) => {
       reject(error);
     }
   });
+};
+
+const modifyAddress = (address) => {
+  return {
+    address_id: address.azst_customer_adressbook_id,
+    address_first_name: address.azst_customer_adressbook_fname,
+    address_last_name: address.azst_customer_adressbook_lname,
+    address_mobile: address.azst_customer_adressbook_mobile,
+    address_email: address.azst_customer_adressbook_email,
+    address_house_no: address.azst_customer_adressbook_hno,
+    address_area: address.azst_customer_adressbook_area,
+    address_city: address.azst_customer_adressbook_city,
+    address_district: address.azst_customer_adressbook_district,
+    address_state: address.azst_customer_adressbook_state,
+    address_country: address.azst_customer_adressbook_country,
+    address_zipcode: address.azst_customer_adressbook_zip,
+    address_address1: address.azst_customer_adressbook_address1,
+    address_address2: address.azst_customer_adressbook_address2,
+    address_landemark: address.azst_customer_adressbook_landemark,
+    address_defaultStatus: address.azst_customer_adressbook_default,
+    address_available_time: address.azst_customer_adressbook_available_time,
+  };
 };
 
 exports.createNewAddress = catchAsync(async (req, res, next) => {
@@ -137,6 +160,95 @@ exports.createNewAddress = catchAsync(async (req, res, next) => {
   });
 });
 
+exports.updateAddress = catchAsync(async (req, res, next) => {
+  const {
+    addressId,
+    customerFirstName,
+    customerLastName,
+    customerMobileNum,
+    customerEmail,
+    housenumber,
+    area,
+    city,
+    district,
+    state,
+    country,
+    zipCode,
+    landmark,
+    homeOrCompany,
+    address1,
+    address2,
+    avalableTime,
+  } = req.body;
+
+  const customerId = req.empId;
+
+  const updateAddressQ = `UPDATE azst_customer_adressbook 
+                          SET azst_customer_adressbook_customer_id = ?, azst_customer_adressbook_fname = ?,
+                              azst_customer_adressbook_lname = ?, azst_customer_adressbook_mobile = ?,
+                              azst_customer_adressbook_email = ?, azst_customer_adressbook_hno = ?,
+                              azst_customer_adressbook_area = ?,azst_customer_adressbook_city = ?,
+                              azst_customer_adressbook_district = ?,azst_customer_adressbook_state = ?,
+                              azst_customer_adressbook_country = ?,azst_customer_adressbook_zip = ?,
+                              azst_customer_adressbook_home_company = ?,azst_customer_adressbook_address1 = ?,
+                              azst_customer_adressbook_address2 = ?,azst_customer_adressbook_landmark = ?,
+                              azst_customer_adressbook_available_time = ?
+                          WHERE azst_customer_adressbook_id = ?;`;
+
+  const addAddressValues = [
+    customerId,
+    customerFirstName,
+    customerLastName,
+    customerMobileNum,
+    customerEmail,
+    housenumber,
+    area,
+    city,
+    district,
+    state,
+    country,
+    zipCode,
+    homeOrCompany,
+    address1,
+    address2,
+    landmark,
+    avalableTime,
+    addressId,
+  ];
+
+  db.query(updateAddressQ, addAddressValues, (err, result) => {
+    if (err) {
+      return next(new AppError(err.sqlMessage, 400));
+    }
+
+    const address = {
+      address_id: addressId,
+      address_first_name: customerFirstName,
+      address_last_name: customerLastName,
+      address_mobile: customerMobileNum,
+      address_email: customerEmail,
+      address_house_no: housenumber,
+      address_area: area,
+      address_city: city,
+      address_district: district,
+      address_state: state,
+      address_country: country,
+      address_zipcode: zipCode,
+      address_address1: address1,
+      address_address2: address2,
+      address_landemark: landmark,
+      address_defaultStatus: req.isDefaultAddress,
+      address_available_time: avalableTime,
+    };
+    res.status(200).json({ address, messages: 'Address Updated successfully' });
+  });
+});
+
+exports.getAddressDetails = catchAsync(async (req, res, next) => {
+  const address = modifyAddress(req.address);
+  res.status(200).json({ address, messages: 'success' });
+});
+
 exports.getMyAddresses = catchAsync(async (req, res, next) => {
   const myAddresses = `SELECT * FROM azst_customer_adressbook 
                             WHERE azst_customer_adressbook_customer_id = ? AND
@@ -148,25 +260,7 @@ exports.getMyAddresses = catchAsync(async (req, res, next) => {
       return next(new AppError(err.sqlMessage, 400));
     }
 
-    const addressesData = result.map((address) => ({
-      address_id: address.azst_customer_adressbook_id,
-      address_first_name: address.azst_customer_adressbook_fname,
-      address_last_name: address.azst_customer_adressbook_lname,
-      address_mobile: address.azst_customer_adressbook_mobile,
-      address_email: address.azst_customer_adressbook_email,
-      address_house_no: address.azst_customer_adressbook_hno,
-      address_area: address.azst_customer_adressbook_area,
-      address_city: address.azst_customer_adressbook_city,
-      address_district: address.azst_customer_adressbook_district,
-      address_state: address.azst_customer_adressbook_state,
-      address_country: address.azst_customer_adressbook_country,
-      address_zipcode: address.azst_customer_adressbook_zip,
-      address_address1: address.azst_customer_adressbook_address1,
-      address_address2: address.azst_customer_adressbook_address2,
-      address_landemark: address.azst_customer_adressbook_landemark,
-      address_defaultStatus: address.azst_customer_adressbook_default,
-      address_available_time: address.azst_customer_adressbook_available_time,
-    }));
+    const addressesData = result.map((address) => modifyAddress(address));
     res.status(200).json(addressesData);
   });
 });

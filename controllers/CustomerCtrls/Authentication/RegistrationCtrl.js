@@ -105,3 +105,5 @@ exports.deleteAccount = catchAsync(async (req, res, next) => {
     res.status(200).json({ message: 'Your account has been deleted' });
   });
 });
+
+exports.updateDetails = catchAsync(async (req, res, next) => {});
