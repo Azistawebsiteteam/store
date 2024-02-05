@@ -35,11 +35,8 @@ const addressValidation = async (req, res, next) => {
   const payload = req.body;
 
   const { error } = addressSchema.validate(payload);
-  if (error) {
-    return next(new AppError(error.message, 400));
-  } else {
-    next();
-  }
+  if (error) return next(new AppError(error.message, 400));
+  next();
 };
 
 module.exports = addressValidation;

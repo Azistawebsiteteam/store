@@ -11,6 +11,7 @@ const globalErrorHandler = require('./controllers/errorController');
 const AppError = require('./Utils/appError');
 
 const authRoute = require('./routes/CustomerRoutes/authRoutes');
+const profileRoute = require('./routes/CustomerRoutes/profileRoutes');
 const adderessRoute = require('./routes/CustomerRoutes/adderessRoutes');
 
 const adminAuthRoute = require('./routes/AdminRoutes/authRoutes');
@@ -28,7 +29,7 @@ app.use(compression());
 
 app.use('/api/v1/auth', authRoute);
 app.use('/api/v1/address', adderessRoute);
-
+app.use('/api/v1/profile', profileRoute);
 app.use('/api/v1/adminauth', adminAuthRoute);
 
 app.all('*', (req, res, next) => {
