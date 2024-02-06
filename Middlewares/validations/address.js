@@ -27,7 +27,7 @@ const addressSchema = Joi.object({
   homeOrCompany: Joi.string().min(3).max(20),
   address1: Joi.string().min(5),
   address2: Joi.string().min(5).allow(''), // address2 is not required, so allow an empty string
-  avalableTime: Joi.string().min(5),
+  avalableTime: Joi.string().min(5).allow(''),
   isDefault: Joi.boolean(),
 });
 
