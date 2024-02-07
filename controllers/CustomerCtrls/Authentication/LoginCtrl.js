@@ -6,7 +6,7 @@ const moment = require('moment');
 const catchAsync = require('../../../Utils/catchAsync');
 const AppError = require('../../../Utils/appError');
 const createSendToken = require('../../../Utils/jwtToken');
-const organizUserData = require('../../../Utils/userDateMadifier');
+const organizeUserData = require('../../../Utils/userDateMadifier');
 const enterLoginLogs = require('./logsCtrl');
 
 exports.isUserExisit = catchAsync(async (req, res, next) => {
@@ -41,7 +41,7 @@ exports.login = catchAsync(async (req, res, next) => {
 
   const token = createSendToken(azst_customer_id);
 
-  const user_details = organizUserData(req.userDetails);
+  const user_details = organizeUserData(req.userDetails);
   enterLoginLogs(azst_customer_id, token);
   res.status(200).json({
     jwtToken: token,

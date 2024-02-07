@@ -1,4 +1,4 @@
-const organizUserData = (user) => {
+const organizeUserData = (user) => {
   return {
     azst_customer_id: user.azst_customer_id,
     azst_customer_name: `${user.azst_customer_fname} ${user.azst_customer_lname}`,
@@ -7,4 +7,4 @@ const organizUserData = (user) => {
   };
 };
 
-module.exports = organizUserData;
+module.exports = organizeUserData;
