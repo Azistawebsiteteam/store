@@ -72,6 +72,7 @@ const modifyAddress = (address) => {
     address_address1: address.azst_customer_adressbook_address1,
     address_address2: address.azst_customer_adressbook_address2,
     address_landemark: address.azst_customer_adressbook_landemark,
+    address_home_company: address.azst_customer_adressbook_home_company,
     address_defaultStatus: address.azst_customer_adressbook_default,
     address_available_time: address.azst_customer_adressbook_available_time,
   };

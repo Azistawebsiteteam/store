@@ -24,7 +24,7 @@ const addressSchema = Joi.object({
   country: Joi.string().min(3).max(20).required(),
   zipCode: Joi.number().integer().min(100000).max(999999), // Zip code as number and length as 6
   landmark: Joi.string().min(3),
-  homeOrCompany: Joi.string().min(3).max(20),
+  homeOrCompany: Joi.string().min(3).max(20).valid('Home', 'Company'),
   address1: Joi.string().min(5),
   address2: Joi.string().min(5).allow(''), // address2 is not required, so allow an empty string
   avalableTime: Joi.string().min(5).allow(''),
