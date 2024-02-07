@@ -50,7 +50,6 @@ const updateDefaultAddress = (customerId) => {
       await db.promise().query(makeAddressUnDefault, [today, addressId]);
       resolve();
     } catch (error) {
-      console.error('update unde', error);
       reject(error);
     }
   });
