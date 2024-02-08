@@ -48,7 +48,7 @@ const organizCustomerData = (customer) => {
 
 exports.getCustomer = catchAsync(async (req, res, next) => {
   const customerData = organizCustomerData(req.userDetails);
-  res.send(customerData);
+  res.status(200).json({ customerData });
 });
 
 exports.updateProfile = catchAsync(async (req, res, next) => {

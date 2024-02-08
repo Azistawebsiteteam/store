@@ -16,7 +16,7 @@ const addressSchema = Joi.object({
       'string.pattern.base': 'Invalid Mobile Number',
     }),
   customerEmail: Joi.string().trim().email().required(),
-  housenumber: Joi.string(),
+  housenumber: Joi.string().allow(''),
   area: Joi.string().min(3).max(20).required(),
   city: Joi.string().min(3).max(20).required(),
   district: Joi.string().min(3).max(20).required(),

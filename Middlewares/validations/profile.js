@@ -23,13 +23,13 @@ const profileSchema = Joi.object({
   country: Joi.string().trim().required(),
   zipCode: Joi.number().required(),
   landmark: Joi.string().trim().allow(''),
-  acceeptEmailMarketing: Joi.string().valid('true', 'false').trim(),
+  acceeptEmailMarketing: Joi.string().valid('Yes', 'No').trim(),
   company: Joi.string().trim().allow(''),
   address1: Joi.string().trim().allow(''),
   address2: Joi.string().trim().allow(''),
-  marketingSmsAccept: Joi.string().valid('true', 'false').trim(),
+  marketingSmsAccept: Joi.string().valid('Yes', 'No').trim(),
   customerNote: Joi.string().trim().allow(''),
-  taxExempts: Joi.string().valid('true', 'false').trim(),
+  taxExempts: Joi.string().valid('Yes', 'No').trim(),
   tags: Joi.string().trim().allow(''),
 });
 
