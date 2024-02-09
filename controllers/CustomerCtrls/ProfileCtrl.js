@@ -90,7 +90,7 @@ exports.updateProfile = catchAsync(async (req, res, next) => {
     firstName,
     lastName,
     mobileNum,
-    email,
+    email.toLowerCase(),
     houseNumber,
     area,
     city,
