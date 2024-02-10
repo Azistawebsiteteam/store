@@ -7,6 +7,8 @@ const catchAsync = require('../../Utils/catchAsync');
 
 exports.isCollectionExit = catchAsync(async (req, res, next) => {
   const { collectionId } = req.body;
+  if (!collectionId)
+    return next(new AppError('Collection Id is Required', 400));
   const getCollection = `SELECT * FROM azst_collections_tbl WHERE  azst_collection_id = ${collectionId} AND azst_collection_status = 1`;
   db.query(getCollection, (err, collection) => {
     if (err) return next(new AppError(err.sqlMessage, 400));

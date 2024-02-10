@@ -10,6 +10,7 @@ const catchAsync = require('../../Utils/catchAsync');
 
 exports.isBrandExit = catchAsync(async (req, res, next) => {
   const { brandId } = req.body;
+  if (!brandId) return next(new AppError('Brand Id is Required', 400));
 
   const getbrand = `SELECT * FROM azst_brands_tbl WHERE  azst_brands_id = ${brandId} AND status = 1`;
 
