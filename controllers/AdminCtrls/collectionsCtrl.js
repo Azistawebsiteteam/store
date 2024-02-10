@@ -18,10 +18,10 @@ exports.isCollectionExit = catchAsync(async (req, res, next) => {
 });
 
 exports.collections = catchAsync(async (req, res, next) => {
-  const vednorQuery =
-    'SELECT * FROM azst_collections_tbl WHERE azst_collection_status = 1';
+  const collectiosrQuery = `SELECT azst_collection_id,azst_collection_name 
+                       FROM azst_collections_tbl WHERE azst_collection_status = 1`;
 
-  db.query(vednorQuery, (err, collections) => {
+  db.query(collectiosrQuery, (err, collections) => {
     if (err) return next(new AppError(err.sqlMessage, 400));
     res.status(200).json(collections);
   });

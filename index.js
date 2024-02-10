@@ -17,6 +17,7 @@ const adderessRoute = require('./routes/CustomerRoutes/adderessRoutes');
 const adminAuthRoute = require('./routes/AdminRoutes/authRoutes');
 const vendorRoute = require('./routes/AdminRoutes/vendorRoutes');
 const collectionsRoute = require('./routes/AdminRoutes/collectionRoutes');
+const brandRoute = require('./routes/AdminRoutes/brandRoutes');
 
 const app = express();
 
@@ -29,6 +30,8 @@ app.use(cors());
 app.use(xss());
 app.use(compression());
 
+app.use('/brand/logs', express.static('Uploads/brandlogos'));
+
 app.use('/api/v1/auth', authRoute);
 app.use('/api/v1/address', adderessRoute);
 app.use('/api/v1/profile', profileRoute);
@@ -36,6 +39,7 @@ app.use('/api/v1/profile', profileRoute);
 app.use('/api/v1/adminauth', adminAuthRoute);
 app.use('/api/v1/vendors', vendorRoute);
 app.use('/api/v1/collections', collectionsRoute);
+app.use('/api/v1/brands', brandRoute);
 
 app.all('*', (req, res, next) => {
   next(new AppError(`Cant't find ${req.originalUrl} on This Server`, 404));
