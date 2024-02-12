@@ -19,6 +19,7 @@ const vendorRoute = require('./routes/AdminRoutes/vendorRoutes');
 const collectionsRoute = require('./routes/AdminRoutes/collectionRoutes');
 const brandRoute = require('./routes/AdminRoutes/brandRoutes');
 const categoryRoute = require('./routes/AdminRoutes/categoryRoutes');
+const tagRoute = require('./routes/AdminRoutes/tagsRoutes');
 
 const app = express();
 
@@ -42,6 +43,7 @@ app.use('/api/v1/vendors', vendorRoute);
 app.use('/api/v1/collections', collectionsRoute);
 app.use('/api/v1/brands', brandRoute);
 app.use('/api/v1/category', categoryRoute);
+app.use('/api/v1/tags', tagRoute);
 
 app.all('*', (req, res, next) => {
   next(new AppError(`Cant't find ${req.originalUrl} on This Server`, 404));
