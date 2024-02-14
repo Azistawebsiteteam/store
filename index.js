@@ -21,6 +21,8 @@ const brandRoute = require('./routes/AdminRoutes/brandRoutes');
 const categoryRoute = require('./routes/AdminRoutes/categoryRoutes');
 const tagRoute = require('./routes/AdminRoutes/tagsRoutes');
 
+const productsRoute = require('./routes/Products/ProductsRoute');
+
 const app = express();
 
 const PORT = process.env.PORT || 5018;
@@ -33,6 +35,10 @@ app.use(xss());
 app.use(compression());
 
 app.use('/brand/logs', express.static('Uploads/brandlogos'));
+app.use('/product/thumbnail', express.static('Uploads/productImage'));
+app.use('/product/image', express.static('Uploads/productImages'));
+app.use('/product/variantimage', express.static('Uploads/variantImage'));
+app.use('/product/barcode/image', express.static('Uploads/variantbarcode'));
 
 app.use('/api/v1/auth', authRoute);
 app.use('/api/v1/address', adderessRoute);
@@ -45,9 +51,12 @@ app.use('/api/v1/brands', brandRoute);
 app.use('/api/v1/category', categoryRoute);
 app.use('/api/v1/tags', tagRoute);
 
+app.use('/api/v1/product', productsRoute);
+
 app.all('*', (req, res, next) => {
   next(new AppError(`Cant't find ${req.originalUrl} on This Server`, 404));
 });
+
 app.use(globalErrorHandler);
 
 app.listen(PORT, () => {
