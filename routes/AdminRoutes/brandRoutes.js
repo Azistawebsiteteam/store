@@ -3,9 +3,8 @@ const router = require('express').Router();
 const brandCtrl = require('../../controllers/AdminCtrls/brandsCtrl');
 const authCtrl = require('../../controllers/authController');
 
-router.use(authCtrl.protect);
-
 router.get('/data', brandCtrl.getbrands);
+router.use(authCtrl.protect);
 router.post(
   '/add',
   brandCtrl.uploadImage,

@@ -27,7 +27,7 @@ exports.uploadImage = upload.fields([
   { name: 'productImage', maxCount: 1 },
   { name: 'variantImage', maxCount: 1 },
   { name: 'variantbarcode', maxCount: 1 },
-  { name: 'productImages', maxCount: 5 }, // Assuming you want to allow multiple images
+  { name: 'productImages', maxCount: 8 }, // Assuming you want to allow multiple images
 ]);
 
 exports.storeImage = catchAsync(async (req, res, next) => {
@@ -65,13 +65,6 @@ exports.storeImage = catchAsync(async (req, res, next) => {
     }
   }
   next();
-});
-
-exports.getProducts = catchAsync(async (req, res, next) => {
-  const productquery = '';
-  db.query(productquery, (err, products) => {
-    if (err) return next(new AppError(err.sqlMessage, 400));
-  });
 });
 
 exports.addProduct = catchAsync(async (req, res, next) => {

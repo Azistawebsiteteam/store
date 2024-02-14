@@ -3,9 +3,8 @@ const router = require('express').Router();
 const categoryCtrl = require('../../controllers/AdminCtrls/categoryCtrl');
 const authCtrl = require('../../controllers/authController');
 
-router.use(authCtrl.protect);
-
 router.get('/data', categoryCtrl.getcategories);
+router.use(authCtrl.protect);
 router.post('/add', categoryCtrl.addcategory);
 
 router.use(categoryCtrl.isCategoryExit);
