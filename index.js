@@ -36,9 +36,9 @@ app.use(compression());
 
 app.use('/brand/logs', express.static('Uploads/brandlogos'));
 app.use('/product/thumbnail', express.static('Uploads/productImage'));
-app.use('/product/image', express.static('Uploads/productImages'));
+app.use('/product/images', express.static('Uploads/productImages'));
 app.use('/product/variantimage', express.static('Uploads/variantImage'));
-app.use('/product/barcode/image', express.static('Uploads/variantbarcode'));
+app.use('/variant/barcode/image', express.static('Uploads/variantbarcode'));
 
 app.use('/api/v1/auth', authRoute);
 app.use('/api/v1/address', adderessRoute);

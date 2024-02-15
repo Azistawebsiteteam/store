@@ -77,37 +77,29 @@ exports.addProduct = catchAsync(async (req, res, next) => {
     option1,
     option2,
     option3,
-    variantSku,
-    variantGrams,
-    variantInventoryTracking,
-    variantInventoryPolicy,
-    variantFulfilmentService,
-    varitentPrice,
-    varientCompaireAtPrice,
-    varientRequiresShipping,
-    varitentTaxable,
-    variantbarcode,
+    displayName,
+    shortName,
+    productName,
     productImage,
+    productImages,
     productImagePosition,
     productImageAlt,
     gitCard,
     seoTitle,
     seoDescription,
-    variantImage,
-    variantWeightForUnit,
-    variantHsCode,
     costPerItem,
     priceInIndia,
   } = req.body;
 
-  const productquery = `INSERT INTO azst_products ( vendor,product_category,type,tags,published,
-                        option1,option2,option3,variant_sku,variant_grams,variant_inventory_tracker,
-                        variant_inventory_policy,variant_fulfillment_service, variant_price,variant_compare_at_price,
-                        variant_requires_shipping,variant_taxable,variant_barcode,image_src,image_position,
-                        image_alt_text,gift_card,seo_title,seo_description,variant_image,variant_weight_unit,
-                        variant_HS_code,cost_per_item,price_india)
-                        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
+  const productquery = `INSERT INTO azst_products (display_name, short_name, product_name, vendor_id, 
+                        product_category, type, tags, published, option1, option2, option3, image_src,
+                        product_images, image_position, image_alt_text, gift_card, seo_title,
+                        seo_description, cost_per_item, price_india)
+                        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
   const values = [
+    displayName,
+    shortName,
+    productName,
     vendorId,
     categoryId,
     productType,
@@ -116,25 +108,13 @@ exports.addProduct = catchAsync(async (req, res, next) => {
     option1,
     option2,
     option3,
-    variantSku,
-    variantGrams,
-    variantInventoryTracking,
-    variantInventoryPolicy,
-    variantFulfilmentService,
-    varitentPrice,
-    varientCompaireAtPrice,
-    varientRequiresShipping,
-    varitentTaxable,
-    variantbarcode,
     productImage,
+    JSON.stringify(productImages),
     productImagePosition,
     productImageAlt,
     gitCard,
     seoTitle,
     seoDescription,
-    variantImage,
-    variantWeightForUnit,
-    variantHsCode,
     costPerItem,
     priceInIndia,
   ];
@@ -142,51 +122,6 @@ exports.addProduct = catchAsync(async (req, res, next) => {
   db.query(productquery, values, (err, products) => {
     if (err) return next(new AppError(err.sqlMessage, 400));
     req.productDetails = { productId: products.insertId };
-    next();
-  });
-});
-
-exports.uploadProductImages = catchAsync(async (req, res, next) => {
-  const { productImages } = req.body;
-  const { productId } = req.productDetails;
-  const insert_images = `INSERT INTO azst_product_images (images, product_id) VALUES (?,?)`;
-
-  db.query(insert_images, [`[${productImages}]`, productId], (err, results) => {
-    if (err) return next(new AppError(err.sqlMessage, 400));
-    next();
-  });
-});
-
-exports.skuvarientsProduct = catchAsync(async (req, res, next) => {
-  const {
-    displayName,
-    shortName,
-    productName,
-    size,
-    actualPrice,
-    offerPrice,
-    offerPercentage,
-  } = req.body;
-
-  const { productId } = req.productDetails;
-
-  const insert_product_varients = `INSERT INTO azst_sku_variant_info (display_name,short_name,product_name,
-                                      product_id,size,actual_price,offer_price,offer_percentage)
-                                    VALUES(?,?,?,?,?,?,?,?)`;
-  const values = [
-    displayName,
-    shortName,
-    productName,
-    productId,
-    size,
-    actualPrice,
-    offerPrice,
-    offerPercentage,
-  ];
-
-  db.query(insert_product_varients, values, (err, result) => {
-    if (err) return next(new AppError(err.sqlMessage, 400));
-    req.productDetails = { ...req.productDetails, skuId: result.insertId };
     next();
   });
 });
@@ -201,15 +136,14 @@ exports.productDetails = catchAsync(async (req, res, next) => {
     productSpecifications,
   } = req.body;
 
-  const { productId, skuId } = req.productDetails;
+  const { productId } = req.productDetails;
 
-  const prduct_details = `INSERT INTO azst_product_details (product_id,sku_id,
+  const prduct_details = `INSERT INTO azst_product_details (product_id,
                                   product_description,product_highlights,product_ingredients,
                                   product_benefits,product_how_to_use,product_specifications)
-                                  VALUES(?,?,?,?,?,?,?,?)`;
+                                  VALUES(?,?,?,?,?,?,?)`;
   const values = [
     productId,
-    skuId,
     productDescription,
     productHighlights,
     productIngredients,
@@ -221,5 +155,69 @@ exports.productDetails = catchAsync(async (req, res, next) => {
   db.query(prduct_details, values, (err, result) => {
     if (err) return next(new AppError(err.sqlMessage, 400));
     res.status(200).json({ meassge: 'product added to store successfully ' });
+  });
+});
+
+// exports.uploadProductImages = catchAsync(async (req, res, next) => {
+//   const { productImages } = req.body;
+//   const { productId } = req.productDetails;
+//   const insert_images = `INSERT INTO azst_product_images (images, product_id) VALUES (?,?)`;
+
+//   db.query(insert_images, [`[${productImages}]`, productId], (err, results) => {
+//     if (err) return next(new AppError(err.sqlMessage, 400));
+//     next();
+//   });
+// });
+
+exports.skuvarientsProduct = catchAsync(async (req, res, next) => {
+  const {
+    productId,
+    variantImage,
+    variantWeightForUnit,
+    variantHsCode,
+    variantbarcode,
+    variantSku,
+    variantGrams,
+    variantInventoryTracking,
+    variantInventoryPolicy,
+    variantFulfilmentService,
+    varientRequiresShipping,
+    varitentTaxable,
+    color,
+    size,
+    actualPrice,
+    offerPrice,
+    offerPercentage,
+  } = req.body;
+
+  const insert_product_varients = `INSERT INTO azst_sku_variant_info (product_id, variant_image, 
+                                    variant_weight_unit, variant_HS_code, variant_barcode, variant_sku,
+                                    variant_grams, variant_inventory_tracker, variant_inventory_policy,
+                                    variant_fulfillment_service, variant_requires_shipping, variant_taxable,
+                                    color, size, actual_price, offer_price, offer_percentage)
+                                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
+  const values = [
+    productId,
+    variantImage,
+    variantWeightForUnit,
+    variantHsCode,
+    variantbarcode,
+    variantSku,
+    variantGrams,
+    variantInventoryTracking,
+    variantInventoryPolicy,
+    variantFulfilmentService,
+    varientRequiresShipping,
+    varitentTaxable,
+    color,
+    size,
+    actualPrice,
+    offerPrice,
+    offerPercentage,
+  ];
+
+  db.query(insert_product_varients, values, (err, result) => {
+    if (err) return next(new AppError(err.sqlMessage, 400));
+    res.status(200).json({ message: 'Product varients inserted successfully' });
   });
 });

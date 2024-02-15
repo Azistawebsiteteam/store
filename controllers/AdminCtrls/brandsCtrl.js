@@ -48,10 +48,7 @@ exports.storeImage = catchAsync(async (req, res, next) => {
   }
 
   const imageName = `${Date.now()}-${req.file.originalname}`;
-  await sharp(req.file.buffer)
-    .toFormat('jpeg')
-    .jpeg({ quality: 50 })
-    .toFile(`Uploads/brandlogos/${imageName}`);
+  await sharp(req.file.buffer).toFile(`Uploads/brandlogos/${imageName}`);
 
   req.body.image = imageName;
   next();
@@ -63,15 +60,11 @@ exports.updateImage = catchAsync(async (req, res, next) => {
     return next();
   }
   const imagePath = `Uploads/brandlogos/${req.brand.azst_brand_logo}`;
-  fs.unlink(imagePath, (err) => {
-    if (err) return next(new AppError('Error in Update Logo', 400));
-  });
-  const imageName = `${Date.now()}-${req.file.originalname}`;
-  await sharp(req.file.buffer)
-    .toFormat('jpeg')
-    .jpeg({ quality: 50 })
-    .toFile(`Uploads/brandlogos/${imageName}`);
 
+  fs.unlink(imagePath, (err) => {});
+
+  const imageName = `${Date.now()}-${req.file.originalname}`;
+  await sharp(req.file.buffer).toFile(`Uploads/brandlogos/${imageName}`);
   req.body.image = imageName;
   next();
 });

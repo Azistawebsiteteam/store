@@ -1,3 +1,4 @@
+const axios = require('axios');
 const db = require('../dbconfig');
 const moment = require('moment');
 
@@ -20,6 +21,21 @@ const varifyInput = (mailOrMobile) => {
   return !isMobileNumber && !isEmail;
 };
 
+const sendingOTPMobile = async (mailOrMobile, otp) => {
+  try {
+    const smsContent = `Hello, We have Successfully Generated OTP ${otp} on login and registration request. Azista`;
+    const url = `http://push.smsc.co.in/api/mt/SendSMS?APIkey=2CyBp16zC02hDjkhGU17lA&senderid=AZISTA&channel=2&DCS=0&flashsms=0&number=91${mailOrMobile}&text=${smsContent}&route=47&DLTTemplateId=1307170781544556090&PEID=1301160653725283732`;
+    const response = await axios.post(url);
+    if (response.status === 200) {
+      return Promise.resolve();
+    } else {
+      return Promise.reject(new Error('Failed to send SMS'));
+    }
+  } catch (error) {
+    return Promise.reject(error);
+  }
+};
+
 exports.sendOtp = catchAsync(async (req, res, next) => {
   const { mailOrMobile } = req.body;
   const otpReason = req.reason;
@@ -31,6 +47,12 @@ exports.sendOtp = catchAsync(async (req, res, next) => {
   }
   const otp = generateOTP();
 
+  try {
+    await sendingOTPMobile(mailOrMobile, otp);
+  } catch (error) {
+    return next(new AppError('Error Occurred OTP Sending', 400));
+  }
+
   const insertOtp = `INSERT INTO azst_otp_verification 
                             (azst_otp_verification_reason, azst_otp_verification_mobile, 
                             azst_otp_verification_value,azst_otp_verification_userid, azst_otp_verification_createdon)
@@ -41,9 +63,11 @@ exports.sendOtp = catchAsync(async (req, res, next) => {
 
   db.query(insertOtp, values, (err, result) => {
     if (err) {
-      return next(new AppError(err.sqlMessage || 'error in sending otp', 400));
+      return next(new AppError(err.sqlMessage || 'Error in sending OTP', 400));
     }
-    res.status(200).json({ otp });
+    res
+      .status(200)
+      .json({ message: 'OTP sent to your registered mobile number' });
   });
 });
 
