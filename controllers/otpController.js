@@ -8,10 +8,10 @@ const createSendToken = require('../Utils/jwtToken');
 const enterLoginLogs = require('./CustomerCtrls/Authentication/logsCtrl');
 
 const generateOTP = () => {
-  // Generate a random 4-digit number
-  const otp = Math.floor(1000 + Math.random() * 9000);
-  // Ensure the generated number is exactly 4 digits
-  return String(otp).padStart(6, '0');
+  // Generate a random 6-digit number
+  const otp = Math.floor(100000 + Math.random() * 900000);
+  // Ensure the generated number is exactly 6 digits
+  return String(otp).substring(0, 6);
 };
 
 const varifyInput = (mailOrMobile) => {
@@ -23,8 +23,15 @@ const varifyInput = (mailOrMobile) => {
 
 const sendingOTPMobile = async (mailOrMobile, otp) => {
   try {
+    const apiKey = process.env.SMS_API_KEY;
+    const sender_id = process.env.SMS_SENDER_ID;
+    const templated_id = process.env.SMS_TEMPLATE_ID;
+    const peid = process.env.SMS_PEID;
+    const route = process.env.SMS_ROUTE;
+
     const smsContent = `Hello, We have Successfully Generated OTP ${otp} on login and registration request. Azista`;
-    const url = `http://push.smsc.co.in/api/mt/SendSMS?APIkey=2CyBp16zC02hDjkhGU17lA&senderid=AZISTA&channel=2&DCS=0&flashsms=0&number=91${mailOrMobile}&text=${smsContent}&route=47&DLTTemplateId=1307170781544556090&PEID=1301160653725283732`;
+    const url = `http://push.smsc.co.in/api/mt/SendSMS?APIkey=${apiKey}&senderid=${sender_id}&channel=2&DCS=0&flashsms=0&number=91${mailOrMobile}&text=${smsContent}&route=${route}&DLTTemplateId=${templated_id}&PEID=${peid}`;
+
     const response = await axios.post(url);
     if (response.status === 200) {
       return Promise.resolve();

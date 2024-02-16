@@ -117,11 +117,10 @@ exports.getProductDetalis = catchAsync(async (req, res, next) => {
             JOIN azst_vendor_details ON azst_products.vendor_id = azst_vendor_details.azst_vendor_id
           WHERE azst_products.id = ? AND azst_products.status = 1`;
 
-  //  azst_sku_variant_info.id as varient_id,
-  //           azst_sku_variant_info.color,
-  //           azst_sku_variant_info.size, JOIN azst_sku_variant_info ON azst_products.id = azst_sku_variant_info.product_id
-
-  const getVariants = `SELECT azst_sku_variant_info.id as varient_id, azst_sku_variant_info.color,azst_sku_variant_info.size
+  const getVariants = `SELECT azst_sku_variant_info.id as varient_id,variant_image, variant_weight_unit, 
+                       variant_HS_code, variant_barcode, variant_sku, variant_grams, variant_inventory_tracker,
+                       variant_inventory_policy, variant_fulfillment_service, variant_requires_shipping,
+                       variant_taxable, color, size, actual_price, offer_price, offer_percentage
                       FROM  azst_sku_variant_info WHERE product_id = ? AND status = 1`;
 
   db.query(getproductDetails, [productId], (err, results) => {
@@ -143,6 +142,7 @@ exports.getProductDetalis = catchAsync(async (req, res, next) => {
 
     db.query(getVariants, [productId], (err, result) => {
       if (err) return next(new AppError(err.sqlMessage, 400));
+
       res.status(200).json({
         productDetails,
         variants: result,
