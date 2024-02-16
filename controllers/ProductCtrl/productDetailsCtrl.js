@@ -135,17 +135,26 @@ exports.getProductDetalis = catchAsync(async (req, res, next) => {
     const productDetails = {
       ...product,
       product_images: JSON.parse(product.product_images).map(
-        (variant_image) =>
-          `${req.protocol}://${req.get('host')}/product/images/${variant_image}`
+        (product_image) =>
+          `${req.protocol}://${req.get('host')}/product/images/${product_image}`
       ),
     };
 
     db.query(getVariants, [productId], (err, result) => {
       if (err) return next(new AppError(err.sqlMessage, 400));
 
+      const variants = result.map((variant) => ({
+        ...variant,
+        variant_image: `${req.protocol}://${req.get(
+          'host'
+        )}/product/variantimage/${variant.variant_image}`,
+        variant_barcode: `${req.protocol}://${req.get(
+          'host'
+        )}/variant/barcode/image/${variant.variant_barcode}`,
+      }));
       res.status(200).json({
         productDetails,
-        variants: result,
+        variants,
         message: 'Data retrieved successfully.',
       });
     });
