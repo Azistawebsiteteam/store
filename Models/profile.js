@@ -1,5 +1,5 @@
 const Joi = require('joi');
-const AppError = require('../../Utils/appError');
+const AppError = require('../Utils/appError');
 
 const profileSchema = Joi.object({
   firstName: Joi.string().min(3).max(20).required().messages({

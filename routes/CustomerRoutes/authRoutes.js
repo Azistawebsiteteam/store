@@ -5,9 +5,9 @@ const loginCtrl = require('../../controllers/CustomerCtrls/Authentication/LoginC
 const authControllers = require('../../controllers/authController');
 const otpCtrl = require('../../controllers/otpController');
 
-const registerSchema = require('../../Middlewares/auth/Register');
-const loginSchema = require('../../Middlewares/auth/Login');
-const resetPasswordSchema = require('../../Middlewares/auth/ResetPassword');
+const registerSchema = require('../../Models/Register');
+const loginSchema = require('../../Models/Login');
+const resetPasswordSchema = require('../../Models/ResetPassword');
 
 const router = express.Router();
 

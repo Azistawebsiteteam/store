@@ -4,6 +4,13 @@ const productCtrl = require('../../controllers/ProductCtrl/productaddCtrl');
 const productDataCtrl = require('../../controllers/ProductCtrl/productDetailsCtrl');
 const authCtrl = require('../../controllers/authController');
 
+const {
+  isExistInWl,
+  addToWl,
+  removeFromWl,
+  getWhishlist,
+} = require('../../controllers/wishLIstCtrl');
+
 router.post('/collection-products', productDataCtrl.getCollectionProducts);
 
 router.post('/details', productDataCtrl.getProductDetalis);
@@ -26,5 +33,9 @@ router.post(
   productCtrl.storeImage,
   productCtrl.skuvarientsProduct
 );
+
+router.post('/whish-list', getWhishlist);
+router.post('/add-wl', isExistInWl, addToWl);
+router.post('/remove-wl', removeFromWl);
 
 module.exports = router;

@@ -1,6 +1,6 @@
 const router = require('express').Router();
 
-const profileValidation = require('../../Middlewares/validations/profile');
+const profileValidation = require('../../Models/profile');
 
 const authController = require('../../controllers/authController');
 const profileCtrl = require('../../controllers/CustomerCtrls/ProfileCtrl');

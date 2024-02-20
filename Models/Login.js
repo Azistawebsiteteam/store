@@ -1,5 +1,5 @@
 const Joi = require('joi');
-const AppError = require('../../Utils/appError');
+const AppError = require('../Utils/appError');
 
 const loginSchema = Joi.object({
   password: Joi.string().min(6).max(12).required(),

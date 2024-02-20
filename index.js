@@ -22,8 +22,14 @@ const categoryRoute = require('./routes/AdminRoutes/categoryRoutes');
 const tagRoute = require('./routes/AdminRoutes/tagsRoutes');
 
 const productsRoute = require('./routes/Products/ProductsRoute');
+const cartRoute = require('./routes/Products/cartRoute');
 
 const app = express();
+
+process.on('uncaughtException', (err) => {
+  console.log('uncaughtException shutting down server');
+  process.exit(1);
+});
 
 const PORT = process.env.PORT || 5018;
 
@@ -52,6 +58,7 @@ app.use('/api/v1/category', categoryRoute);
 app.use('/api/v1/tags', tagRoute);
 
 app.use('/api/v1/product', productsRoute);
+app.use('/api/v1/cart', cartRoute);
 
 app.all('*', (req, res, next) => {
   next(new AppError(`Cant't find ${req.originalUrl} on This Server`, 404));
@@ -59,6 +66,18 @@ app.all('*', (req, res, next) => {
 
 app.use(globalErrorHandler);
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
+});
+
+process.on('unhandledRejection', (err) => {
+  server.close(() => {
+    process.exit(1);
+  });
+});
+
+process.on('SIGTERM', () => {
+  server.close(() => {
+    console.log('process Terminated ');
+  });
 });

@@ -1,5 +1,5 @@
 const Joi = require('joi');
-const AppError = require('../../Utils/appError');
+const AppError = require('../Utils/appError');
 
 const addressSchema = Joi.object({
   addressId: Joi.number().allow(''),
