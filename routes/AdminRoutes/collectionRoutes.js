@@ -8,7 +8,7 @@ router.get('/data', collectionCtrl.collections);
 router.use(authCtrl.protect);
 router.post('/add', collectionCtrl.Addcollection);
 
-router.use(collectionCtrl.isCollectionExit);
+router.use(collectionCtrl.isCollectionExist);
 router
   .route('/')
   .post(collectionCtrl.getcollection)

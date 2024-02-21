@@ -51,7 +51,6 @@ const addpRoductToCart = catchAsync(async (req, res, next) => {
         await addProductToCart(values);
       }
     } catch (err) {
-      console.log(err);
       return next(new AppError(err.sqlMessage ? err.sqlMessage : '', 400));
     }
   }

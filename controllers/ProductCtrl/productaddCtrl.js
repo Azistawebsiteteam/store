@@ -158,17 +158,6 @@ exports.productDetails = catchAsync(async (req, res, next) => {
   });
 });
 
-// exports.uploadProductImages = catchAsync(async (req, res, next) => {
-//   const { productImages } = req.body;
-//   const { productId } = req.productDetails;
-//   const insert_images = `INSERT INTO azst_product_images (images, product_id) VALUES (?,?)`;
-
-//   db.query(insert_images, [`[${productImages}]`, productId], (err, results) => {
-//     if (err) return next(new AppError(err.sqlMessage, 400));
-//     next();
-//   });
-// });
-
 exports.skuvarientsProduct = catchAsync(async (req, res, next) => {
   const {
     productId,

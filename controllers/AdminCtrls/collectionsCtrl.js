@@ -5,7 +5,7 @@ const db = require('../../dbconfig');
 const AppError = require('../../Utils/appError');
 const catchAsync = require('../../Utils/catchAsync');
 
-exports.isCollectionExit = catchAsync(async (req, res, next) => {
+exports.isCollectionExist = catchAsync(async (req, res, next) => {
   const { collectionId } = req.body;
   if (!collectionId)
     return next(new AppError('Collection Id is Required', 400));

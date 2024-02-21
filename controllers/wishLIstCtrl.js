@@ -52,14 +52,6 @@ const removeFromWl = catchAsync(async (req, res, next) => {
   res.status(200).json({ message: 'Product removed successfully' });
 });
 
-// azst_wishlist_id,
-//   azst_product_id,
-//   azst_variant_id,
-//   azst_customer_id,
-//   status,
-//   createdon,
-//   updateon;
-
 const getWhishlist = catchAsync(async (req, res, next) => {
   const query = `SELECT azst_wishlist_id,variant_image,size,actual_price , offer_price,offer_percentage
                     FROM azst_wishlist

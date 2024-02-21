@@ -46,19 +46,21 @@ app.use('/product/images', express.static('Uploads/productImages'));
 app.use('/product/variantimage', express.static('Uploads/variantImage'));
 app.use('/variant/barcode/image', express.static('Uploads/variantbarcode'));
 
-app.use('/api/v1/auth', authRoute);
-app.use('/api/v1/address', adderessRoute);
-app.use('/api/v1/profile', profileRoute);
+const api = process.env.APP_API;
 
-app.use('/api/v1/adminauth', adminAuthRoute);
-app.use('/api/v1/vendors', vendorRoute);
-app.use('/api/v1/collections', collectionsRoute);
-app.use('/api/v1/brands', brandRoute);
-app.use('/api/v1/category', categoryRoute);
-app.use('/api/v1/tags', tagRoute);
+app.use(`${api}/auth`, authRoute);
+app.use(`${api}/address`, adderessRoute);
+app.use(`${api}/profile`, profileRoute);
 
-app.use('/api/v1/product', productsRoute);
-app.use('/api/v1/cart', cartRoute);
+app.use(`${api}/adminauth`, adminAuthRoute);
+app.use(`${api}/vendors`, vendorRoute);
+app.use(`${api}/collections`, collectionsRoute);
+app.use(`${api}/brands`, brandRoute);
+app.use(`${api}/category`, categoryRoute);
+app.use(`${api}/tags`, tagRoute);
+
+app.use(`${api}/product`, productsRoute);
+app.use(`${api}/cart`, cartRoute);
 
 app.all('*', (req, res, next) => {
   next(new AppError(`Cant't find ${req.originalUrl} on This Server`, 404));
