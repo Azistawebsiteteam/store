@@ -19,7 +19,7 @@
     "joi": "^17.12.0",
     "moment": "^2.30.1",
     "mysql2": "^3.9.0",
-    "nodemailer": "^6.9.8",
+    "nodemailer": "^6.9.9",
     "nodemon": "^3.0.3",
     "xss-clean": "^0.1.4"
   }

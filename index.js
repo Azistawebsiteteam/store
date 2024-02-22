@@ -20,6 +20,7 @@ const collectionsRoute = require('./routes/AdminRoutes/collectionRoutes');
 const brandRoute = require('./routes/AdminRoutes/brandRoutes');
 const categoryRoute = require('./routes/AdminRoutes/categoryRoutes');
 const tagRoute = require('./routes/AdminRoutes/tagsRoutes');
+const bannerRoute = require('./routes/AdminRoutes/bannersRoutes');
 
 const productsRoute = require('./routes/Products/ProductsRoute');
 const cartRoute = require('./routes/Products/cartRoute');
@@ -45,6 +46,7 @@ app.use('/product/thumbnail', express.static('Uploads/productImage'));
 app.use('/product/images', express.static('Uploads/productImages'));
 app.use('/product/variantimage', express.static('Uploads/variantImage'));
 app.use('/variant/barcode/image', express.static('Uploads/variantbarcode'));
+app.use('/banners', express.static('Uploads/bannerImages'));
 
 const api = process.env.APP_API;
 
@@ -58,9 +60,12 @@ app.use(`${api}/collections`, collectionsRoute);
 app.use(`${api}/brands`, brandRoute);
 app.use(`${api}/category`, categoryRoute);
 app.use(`${api}/tags`, tagRoute);
+app.use(`${api}/banners`, bannerRoute);
 
 app.use(`${api}/product`, productsRoute);
 app.use(`${api}/cart`, cartRoute);
+
+app.get('/favicon.ico', (req, res) => res.status(204));
 
 app.all('*', (req, res, next) => {
   next(new AppError(`Cant't find ${req.originalUrl} on This Server`, 404));
