@@ -54,7 +54,8 @@ exports.signup = catchAsync(async (req, res, next) => {
       return next(new AppError(err.sqlMessage, 400));
     }
     // Add any further logic or response handling here
-    const token = createSendToken(results.insertId);
+    const key = process.env.JWT_SECRET;
+    const token = createSendToken(results.insertId, key);
     res.status(201).json({
       jwtToken: token,
       user_details: {

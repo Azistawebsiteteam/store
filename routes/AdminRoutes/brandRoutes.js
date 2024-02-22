@@ -4,7 +4,11 @@ const brandCtrl = require('../../controllers/AdminCtrls/brandsCtrl');
 const authCtrl = require('../../controllers/authController');
 
 router.get('/data', brandCtrl.getbrands);
-router.use(authCtrl.protect);
+
+const key = process.env.JWT_SECRET_ADMIN;
+
+router.use(authCtrl.protect(key));
+
 router.post(
   '/add',
   brandCtrl.uploadImage,

@@ -5,7 +5,9 @@ const authCtrl = require('../../controllers/authController');
 
 router.get('/data', collectionCtrl.collections);
 
-router.use(authCtrl.protect);
+const key = process.env.JWT_SECRET_ADMIN;
+
+router.use(authCtrl.protect(key));
 router.post('/add', collectionCtrl.Addcollection);
 
 router.use(collectionCtrl.isCollectionExist);

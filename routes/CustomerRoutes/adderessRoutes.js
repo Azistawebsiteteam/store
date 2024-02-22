@@ -7,7 +7,9 @@ const addressValidation = require('../../Models/address');
 
 const router = express.Router();
 
-router.use(authCtrl.protect);
+const key = process.env.JWT_SECRET;
+
+router.use(authCtrl.protect(key));
 
 router.post('/add/newaddress', addressValidation, addressCtrl.createNewAddress);
 router.post('/myaddresses', addressCtrl.getMyAddresses);

@@ -5,7 +5,9 @@ const getCartData = require('../../controllers/Cart/getProducts');
 
 const addToCart = require('../../controllers/Cart/addProducts');
 
-router.use(authCtrl.protect);
+const key = process.env.JWT_SECRET;
+
+router.use(authCtrl.protect(key));
 
 router.get('/data', getCartData);
 

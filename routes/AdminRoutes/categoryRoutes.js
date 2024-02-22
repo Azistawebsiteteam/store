@@ -4,7 +4,10 @@ const categoryCtrl = require('../../controllers/AdminCtrls/categoryCtrl');
 const authCtrl = require('../../controllers/authController');
 
 router.get('/data', categoryCtrl.getcategories);
-router.use(authCtrl.protect);
+
+const key = process.env.JWT_SECRET_ADMIN;
+
+router.use(authCtrl.protect(key));
 router.post('/add', categoryCtrl.addcategory);
 
 router.use(categoryCtrl.isCategoryExit);

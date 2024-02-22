@@ -15,7 +15,9 @@ router.post('/collection-products', productDataCtrl.getCollectionProducts);
 
 router.post('/details', productDataCtrl.getProductDetalis);
 
-router.use(authCtrl.protect);
+const key = process.env.JWT_SECRET;
+
+router.use(authCtrl.protect(key));
 
 //  productCtrl.uploadProductImages,
 

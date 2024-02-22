@@ -42,9 +42,9 @@ exports.addVendor = catchAsync(async (req, res, next) => {
   const { vendorName } = req.body;
   const { error } = vendorSchema.validate({ vendorName });
   if (error) return next(new AppError(error.message, 400));
-  const query = `INSERT INTO azst_vendor_details (azst_vendor_name ,azst_vendor_createdon) VALUES(?,?)`;
+  const query = `INSERT INTO azst_vendor_details (azst_vendor_name ,azst_vendor_createdon ,azst_updated_by) VALUES(?,?,?)`;
   const today = moment().format('YYYY-MM-DD HH:mm:ss');
-  const values = [vendorName, today];
+  const values = [vendorName, today, req.empId];
   const result = await queryAsync(query, values);
 
   res.status(200).json({
@@ -57,14 +57,16 @@ exports.updateVendor = catchAsync(async (req, res, next) => {
   const { vendorId, vendorName } = req.body;
   const { error } = vendorSchema.validate({ vendorName });
   if (error) return next(new AppError(error.message, 400));
-  const query = `UPDATE azst_vendor_details SET azst_vendor_name = ? WHERE azst_vendor_id=?`;
-  await queryAsync(query, [vendorName, vendorId]);
+  const query = `UPDATE azst_vendor_details SET azst_vendor_name = ? , azst_updated_by=?
+                 WHERE azst_vendor_id=?`;
+  await queryAsync(query, [vendorName, req.empId, vendorId]);
   res.status(200).send({ message: 'Details updated successfully' });
 });
 
 exports.removeVendor = catchAsync(async (req, res, next) => {
   const { vendorId } = req.body;
-  const query = `UPDATE azst_vendor_details SET azst_vendor_status = 0 WHERE azst_vendor_id=?`;
-  await queryAsync(query, [vendorId]);
+  const query = `UPDATE azst_vendor_details SET azst_vendor_status = 0 , azst_updated_by=? 
+                  WHERE azst_vendor_id=?`;
+  await queryAsync(query, [req.empId, vendorId]);
   res.status(200).send({ message: 'Deleted successfully' });
 });

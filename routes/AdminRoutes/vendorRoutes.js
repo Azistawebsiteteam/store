@@ -3,7 +3,9 @@ const router = require('express').Router();
 const vendorCtrl = require('../../controllers/AdminCtrls/vendorsCtrl');
 const authCtrl = require('../../controllers/authController');
 
-router.use(authCtrl.protect);
+const key = process.env.JWT_SECRET_ADMIN;
+
+router.use(authCtrl.protect(key));
 
 router.get('/details', vendorCtrl.getVendors);
 

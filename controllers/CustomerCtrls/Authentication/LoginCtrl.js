@@ -1,6 +1,5 @@
 const db = require('../../../dbconfig');
 const bcrypt = require('bcrypt');
-const { promisify } = require('util');
 const moment = require('moment');
 
 const catchAsync = require('../../../Utils/catchAsync');
@@ -38,8 +37,8 @@ exports.login = catchAsync(async (req, res, next) => {
   if (!isPasswordMatched) {
     return next(new AppError('Invalid username or password', 400));
   }
-
-  const token = createSendToken(azst_customer_id);
+  const key = process.env.JWT_SECRET;
+  const token = createSendToken(azst_customer_id, key);
 
   const user_details = organizeUserData(req.userDetails);
   enterLoginLogs(azst_customer_id, token);

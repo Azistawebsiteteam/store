@@ -61,7 +61,9 @@ router.post(
   authControllers.forgotPassword
 );
 
-router.use(authControllers.protect);
+const key = process.env.JWT_SECRET;
+
+router.use(authControllers.protect(key));
 
 router.post(
   '/reset-password',

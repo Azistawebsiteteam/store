@@ -151,7 +151,8 @@ exports.updateOtpDetails = catchAsync(async (req, res, next) => {
     if (err) {
       return next(new AppError(err.sqlMessage, 400));
     }
-    const jwtToken = createSendToken(azst_customer_id);
+    const key = process.env.JWT_SECRET;
+    const jwtToken = createSendToken(azst_customer_id, key);
 
     if (reason === 'Login') {
       enterLoginLogs(azst_customer_id, jwtToken);

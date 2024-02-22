@@ -4,7 +4,9 @@ const tagsCtrl = require('../../controllers/AdminCtrls/tagsCtrl');
 const authCtrl = require('../../controllers/authController');
 
 router.get('/data', tagsCtrl.gettags);
-router.use(authCtrl.protect);
+
+const key = process.env.JWT_SECRET_ADMIN;
+router.use(authCtrl.protect(key));
 
 router.post('/add', tagsCtrl.addtag);
 

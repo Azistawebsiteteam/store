@@ -33,7 +33,10 @@ exports.login = catchAsync(async (req, res, next) => {
     return next(new AppError('Invalid username or password', 400));
   }
 
-  const token = createSendToken(azst_admin_details_admin_id);
+  const key = process.env.JWT_SECRET_ADMIN;
+
+  const token = createSendToken(azst_admin_details_admin_id, key);
+
   const admin = req.adminDetails;
   const admin_details = {
     admin_id: admin.azst_admin_details_admin_id,
