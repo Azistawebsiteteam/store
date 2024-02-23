@@ -1,8 +1,11 @@
 const AppError = require('../Utils/appError');
 
-const handleDatabaseError = (message) => {
-  return new AppError(message, 400);
-};
+const handleDatabaseError = (message) => new AppError(message, 400);
+
+const handleJsonWebTokenError = (message) =>
+  new AppError(`${message} Please Login again`, 401);
+const handleTokenExpiredError = () =>
+  new AppError('your Token Expired Please login again!', 401);
 
 const sendErrDev = (err, res) => {
   res.status(err.statusCode).json({
@@ -30,11 +33,14 @@ const sendErrPord = (err, res) => {
 module.exports = (err, req, res, next) => {
   err.statusCode = err.statusCode || 500;
   err.status = err.status || 'error';
-  console.error(err);
+
   if (process.env.NODE_ENV === 'development') {
     sendErrDev(err, res);
   } else if (process.env.NODE_ENV === 'production') {
     if (err.sqlState) err = handleDatabaseError(err.sqlMessage);
+    if (err.name === 'JsonWebTokenError')
+      err = handleJsonWebTokenError(err.message);
+    if (err.name === 'TokenExpiredError') err = handleTokenExpiredError();
     sendErrPord(err, res);
   }
 };

@@ -21,25 +21,38 @@ exports.protect = (token_key) => {
       token = req.headers.authorization.split(' ')[1];
     }
 
-    // 1) Getting Token and Check the Token IS valid OR NOT
+    // 1) Getting Token and Check is there or not available
     if (!token) {
       return next(
         new AppError('You are not logged in! Please log in to get access.', 401)
       );
     }
-    // 2) check if user exists
-    jwt.verify(token, token_key, (err, payload) => {
-      if (err) {
-        return next(
-          new AppError(
-            'The user belonging to this token no longer exists. Login again.',
-            401
-          )
-        );
-      }
-      req.empId = payload.id;
-      next();
-    });
+    // 2) check if is valid token or not
+    const payload = await jwt.verify(token, token_key);
+    const { id } = payload;
+
+    // 3) check user active or not dleted account
+    let result = [];
+    if (token_key === process.env.JWT_SECRET) {
+      const query = `SELECT * FROM azst_customer 
+                      WHERE azst_customer_id = ? AND azst_customer_status = 1`;
+      result = await db(query, [id]);
+    } else {
+      const query = `SELECT * FROM azst_admin_details 
+                      WHERE azst_admin_details_admin_id = ? AND azst_admin_details_status = 1`;
+      result = await db(query, [id]);
+    }
+
+    if (result.length <= 0)
+      return next(
+        new AppError(
+          'The user belonging to this token no longer exists. Login again.',
+          401
+        )
+      );
+    req.userDetails = result[0];
+    req.empId = payload.id;
+    next();
   });
 };
 
