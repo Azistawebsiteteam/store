@@ -7,13 +7,11 @@ const catchAsync = require('../../Utils/catchAsync');
 exports.isUserExist = catchAsync(async (req, res, next) => {
   const getUser =
     'Select *  from azst_customer where azst_customer_id  = ? AND azst_customer_status = 1';
-  db.query(getUser, [req.empId], (err, result) => {
-    if (err) return next(new AppError(err.sqlMessage, 400));
-    if (result.length === 0)
-      return next(new AppError('No such customer was found', 404));
-    req.userDetails = result[0];
-    next();
-  });
+  const result = await db(getUser, [req.empId]);
+  if (result.length === 0)
+    return next(new AppError('No such customer was found', 404));
+  req.userDetails = result[0];
+  next();
 });
 
 const organizCustomerData = (customer) => {
@@ -111,8 +109,6 @@ exports.updateProfile = catchAsync(async (req, res, next) => {
     req.empId,
   ];
 
-  db.query(profile, values, (err, result) => {
-    if (err) return next(new AppError(err.sqlMessage, 400));
-    res.status(200).send({ message: 'Profile updated successfully' });
-  });
+  await db(profile, values);
+  res.status(200).send({ message: 'Profile updated successfully' });
 });

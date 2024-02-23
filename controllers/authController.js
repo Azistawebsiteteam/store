@@ -1,7 +1,7 @@
 //const {promisify} = require('util');
 const db = require('../dbconfig');
 const bcrypt = require('bcrypt');
-const { promisify } = require('util');
+
 const jwt = require('jsonwebtoken');
 
 const catchAsync = require('../Utils/catchAsync');
@@ -48,8 +48,8 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
 
   const getoldPassword =
     'SELECT azst_customer_pwd FROM azst_customer WHERE azst_customer_id= ?';
-  const queryAsync = promisify(db.query).bind(db);
-  const result = await queryAsync(getoldPassword, [req.empId]);
+
+  const result = await db(getoldPassword, [req.empId]);
 
   const isPasswordMatched = await bcrypt.compare(
     currentPassword,
@@ -61,7 +61,7 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
   }
   const hashedPassword = await bcrypt.hash(newPassword, 10);
   const changePasswordAfterReset = `UPDATE azst_customer SET azst_customer_pwd = ? WHERE azst_customer_id = ?`;
-  await queryAsync(changePasswordAfterReset, [hashedPassword, req.empId]);
+  await db(changePasswordAfterReset, [hashedPassword, req.empId]);
   const key = process.env.JWT_SECRET;
   const token = createSendToken(req.empId, key);
   res.status(200).json({ jwtToken: token });
@@ -73,18 +73,14 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
   const hashedPassword = await bcrypt.hash(newPassword, 10);
   const changePasswordAfterReset = `UPDATE azst_customer SET azst_customer_pwd = ? WHERE azst_customer_id = ?`;
   const values = [hashedPassword, req.userDetails.azst_customer_id];
-  db.query(changePasswordAfterReset, values, (err, result) => {
-    if (err) {
-      return next(new AppError(err.sqlMessage, 400));
-    }
-    const key = process.env.JWT_SECRET;
-    const token = createSendToken(req.empId, key);
-    const user_details = organizUserData(req.userDetails);
-    res.status(200).json({
-      jwtToken: token,
-      user_details,
-      message: 'Password Changed successfully!',
-    });
+  await db(changePasswordAfterReset, values);
+  const key = process.env.JWT_SECRET;
+  const token = createSendToken(req.empId, key);
+  const user_details = organizUserData(req.userDetails);
+  res.status(200).json({
+    jwtToken: token,
+    user_details,
+    message: 'Password Changed successfully!',
   });
 });
 

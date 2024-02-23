@@ -68,14 +68,10 @@ exports.sendOtp = catchAsync(async (req, res, next) => {
   const today = moment().format('YYYY-MM-DD HH:mm:ss');
   const values = [otpReason, mailOrMobile, otp, customerId, today];
 
-  db.query(insertOtp, values, (err, result) => {
-    if (err) {
-      return next(new AppError(err.sqlMessage || 'Error in sending OTP', 400));
-    }
-    res
-      .status(200)
-      .json({ message: 'OTP sent to your registered mobile number' });
-  });
+  await db(insertOtp, values);
+  res
+    .status(200)
+    .json({ message: 'OTP sent to your registered mobile number' });
 });
 
 exports.checkOtpExisting = catchAsync(async (req, res, next) => {
@@ -93,28 +89,24 @@ exports.checkOtpExisting = catchAsync(async (req, res, next) => {
                          WHERE azst_otp_verification_mobile=? AND azst_otp_verification_status= 1 
                          ORDER BY azst_otp_verification_createdon DESC LIMIT 1`;
 
-  db.query(getOtpQuery, [mailOrMobile], (err, result) => {
-    if (err) {
-      return next(new AppError(err.sqlMessage || 'Error otp verifying', 400));
-    }
-    if (result.length === 0) {
-      return next(new AppError('OTP expired or does not exist', 400));
-    }
-    const {
-      azst_otp_verification_id,
-      azst_otp_verification_value,
-      createdTime,
-      azst_otp_verification_reason,
-    } = result[0];
-    req.otpDetails = {
-      verificationId: azst_otp_verification_id,
-      requestOtp: otp,
-      databaseOTp: azst_otp_verification_value,
-      reason: azst_otp_verification_reason,
-      createdTime,
-    };
-    next();
-  });
+  const result = await db(getOtpQuery, [mailOrMobile]);
+  if (result.length === 0) {
+    return next(new AppError('OTP expired or does not exist', 400));
+  }
+  const {
+    azst_otp_verification_id,
+    azst_otp_verification_value,
+    createdTime,
+    azst_otp_verification_reason,
+  } = result[0];
+  req.otpDetails = {
+    verificationId: azst_otp_verification_id,
+    requestOtp: otp,
+    databaseOTp: azst_otp_verification_value,
+    reason: azst_otp_verification_reason,
+    createdTime,
+  };
+  next();
 });
 
 exports.verifyOTP = catchAsync(async (req, res, next) => {
@@ -147,17 +139,13 @@ exports.updateOtpDetails = catchAsync(async (req, res, next) => {
 
   const otpValues = [azst_customer_id, 0, verificationId];
 
-  db.query(updateOtpSDetais, otpValues, (err, result) => {
-    if (err) {
-      return next(new AppError(err.sqlMessage, 400));
-    }
-    const key = process.env.JWT_SECRET;
-    const jwtToken = createSendToken(azst_customer_id, key);
+  await db(updateOtpSDetais, otpValues);
+  const key = process.env.JWT_SECRET;
+  const jwtToken = createSendToken(azst_customer_id, key);
 
-    if (reason === 'Login') {
-      enterLoginLogs(azst_customer_id, jwtToken);
-    }
+  if (reason === 'Login') {
+    enterLoginLogs(azst_customer_id, jwtToken);
+  }
 
-    res.status(200).json({ jwtToken, message: 'OTP verification successful' });
-  });
+  res.status(200).json({ jwtToken, message: 'OTP verification successful' });
 });

@@ -1,29 +1,27 @@
 const moment = require('moment');
-const util = require('util');
+
 const db = require('../../dbconfig');
 
 const AppError = require('../../Utils/appError');
 const catchAsync = require('../../Utils/catchAsync');
 
-const queryAsync = util.promisify(db.query).bind(db);
-
 const getProductFromCart = async (empId, variantId) => {
   const query =
     'SELECT azst_quantity FROM azst_cart WHERE azst_customer_id=? AND azst_variant_id=?';
-  const result = await queryAsync(query, [empId, variantId]);
+  const result = await db(query, [empId, variantId]);
   return { isExist: result.length > 0, quantity: result[0]?.azst_quantity };
 };
 
 const updateProductQuantity = async (values) => {
   const query =
     'UPDATE azst_cart SET azst_quantity=? WHERE azst_customer_id=? AND azst_variant_id=?';
-  await queryAsync(query, values);
+  await db(query, values);
 };
 
 const addProductToCart = async (values) => {
   const query =
     'INSERT INTO azst_cart (azst_product_id, azst_variant_id, azst_quantity, azst_customer_id, createdon) VALUES (?, ?, ?, ?, ?)';
-  await queryAsync(query, values);
+  await db(query, values);
 };
 
 const addpRoductToCart = catchAsync(async (req, res, next) => {

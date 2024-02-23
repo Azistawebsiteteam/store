@@ -10,14 +10,12 @@ exports.isAdminExisit = catchAsync(async (req, res, next) => {
   const loginQuery = `SELECT * FROM azst_admin_details 
                       WHERE azst_admin_details_admin_id = ? AND azst_admin_details_status = 1`;
 
-  const [result] = await db.promise().query(loginQuery, [username]);
+  const result = await db(loginQuery, [username]);
 
   if (result.length === 0) {
     return next(new AppError('You dont have an account ? Please Register'));
   }
-
   req.adminDetails = result[0];
-
   next();
 });
 

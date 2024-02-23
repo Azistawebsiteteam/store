@@ -13,9 +13,7 @@ exports.isAddressExisit = catchAsync(async (req, res, next) => {
                                 azst_customer_adressbook_id = ? AND
                                 azst_customer_adressbook_status = 1 `;
 
-  const [result] = await db
-    .promise()
-    .query(getDefaultAddress, [req.empId, addressId]);
+  const result = await db(getDefaultAddress, [req.empId, addressId]);
 
   if (result.length === 0) {
     return res.status(404).json({ message: 'No address found in AddressBook' });
@@ -33,9 +31,7 @@ const updateDefaultAddress = (customerId) => {
                                 WHERE azst_customer_adressbook_customer_id = ? AND
                                 azst_customer_adressbook_default = 1 AND
                                 azst_customer_adressbook_status = 1 `;
-      const [result] = await db
-        .promise()
-        .query(getDefaultAddress, [customerId]);
+      const result = await db(getDefaultAddress, [customerId]);
 
       if (result.length === 0) {
         resolve();
@@ -47,7 +43,7 @@ const updateDefaultAddress = (customerId) => {
       const makeAddressUnDefault = `UPDATE azst_customer_adressbook SET azst_customer_adressbook_default = 0 ,
                                         azst_customer_adressbook_updatedon = ?
                                       WHERE azst_customer_adressbook_id = ?`;
-      await db.promise().query(makeAddressUnDefault, [today, addressId]);
+      await db(makeAddressUnDefault, [today, addressId]);
       resolve();
     } catch (error) {
       reject(error);
@@ -132,32 +128,27 @@ exports.createNewAddress = catchAsync(async (req, res, next) => {
     defaultStatus,
     avalableTime,
   ];
-  db.query(insertAddress, addAddressValues, (err, result) => {
-    if (err) {
-      return next(new AppError(err.sqlMessage, 400));
-    }
-
-    const address = {
-      address_id: result.insertId,
-      address_first_name: customerFirstName,
-      address_last_name: customerLastName,
-      address_mobile: customerMobileNum,
-      address_email: customerEmail,
-      address_house_no: housenumber,
-      address_area: area,
-      address_city: city,
-      address_district: district,
-      address_state: state,
-      address_country: country,
-      address_zipcode: zipCode,
-      address_address1: address1,
-      address_address2: address2,
-      address_landemark: landmark,
-      address_defaultStatus: defaultStatus,
-      address_available_time: avalableTime,
-    };
-    res.status(201).json({ address, messages: 'Address added successfully' });
-  });
+  const result = await db(insertAddress, addAddressValues);
+  const address = {
+    address_id: result.insertId,
+    address_first_name: customerFirstName,
+    address_last_name: customerLastName,
+    address_mobile: customerMobileNum,
+    address_email: customerEmail,
+    address_house_no: housenumber,
+    address_area: area,
+    address_city: city,
+    address_district: district,
+    address_state: state,
+    address_country: country,
+    address_zipcode: zipCode,
+    address_address1: address1,
+    address_address2: address2,
+    address_landemark: landmark,
+    address_defaultStatus: defaultStatus,
+    address_available_time: avalableTime,
+  };
+  res.status(201).json({ address, messages: 'Address added successfully' });
 });
 
 exports.updateAddress = catchAsync(async (req, res, next) => {
@@ -216,32 +207,27 @@ exports.updateAddress = catchAsync(async (req, res, next) => {
     addressId,
   ];
 
-  db.query(updateAddressQ, addAddressValues, (err, result) => {
-    if (err) {
-      return next(new AppError(err.sqlMessage, 400));
-    }
-
-    const address = {
-      address_id: addressId,
-      address_first_name: customerFirstName,
-      address_last_name: customerLastName,
-      address_mobile: customerMobileNum,
-      address_email: customerEmail,
-      address_house_no: housenumber,
-      address_area: area,
-      address_city: city,
-      address_district: district,
-      address_state: state,
-      address_country: country,
-      address_zipcode: zipCode,
-      address_address1: address1,
-      address_address2: address2,
-      address_landemark: landmark,
-      address_defaultStatus: req.isDefaultAddress,
-      address_available_time: avalableTime,
-    };
-    res.status(200).json({ address, messages: 'Address Updated successfully' });
-  });
+  await db(updateAddressQ, addAddressValues);
+  const address = {
+    address_id: addressId,
+    address_first_name: customerFirstName,
+    address_last_name: customerLastName,
+    address_mobile: customerMobileNum,
+    address_email: customerEmail,
+    address_house_no: housenumber,
+    address_area: area,
+    address_city: city,
+    address_district: district,
+    address_state: state,
+    address_country: country,
+    address_zipcode: zipCode,
+    address_address1: address1,
+    address_address2: address2,
+    address_landemark: landmark,
+    address_defaultStatus: req.isDefaultAddress,
+    address_available_time: avalableTime,
+  };
+  res.status(200).json({ address, messages: 'Address Updated successfully' });
 });
 
 exports.getAddressDetails = catchAsync(async (req, res, next) => {
@@ -255,14 +241,9 @@ exports.getMyAddresses = catchAsync(async (req, res, next) => {
                             azst_customer_adressbook_status = 1
                             ORDER BY azst_customer_adressbook_default DESC ,azst_customer_adressbook_createdon DESC ;`;
 
-  db.query(myAddresses, [req.empId], (err, result) => {
-    if (err) {
-      return next(new AppError(err.sqlMessage, 400));
-    }
-
-    const addressesData = result.map((address) => modifyAddress(address));
-    res.status(200).json(addressesData);
-  });
+  const result = await db(myAddresses, [req.empId]);
+  const addressesData = result.map((address) => modifyAddress(address));
+  res.status(200).json(addressesData);
 });
 
 exports.makeAddressDefault = catchAsync(async (req, res, next) => {
@@ -276,13 +257,10 @@ exports.makeAddressDefault = catchAsync(async (req, res, next) => {
   const makeAddressDefault = `UPDATE azst_customer_adressbook 
                                 SET azst_customer_adressbook_default = 1 ,azst_customer_adressbook_updatedon = ?
                                 WHERE azst_customer_adressbook_id = ?`;
+
   const today = moment().format('YYYY-MM-DD HH:mm:ss');
-  db.query(makeAddressDefault, [today, addressId], (err, result) => {
-    if (err) {
-      return next(new AppError(err.sqlMessage, 400));
-    }
-    res.status(200).json({ message: 'Successfully maked ad Default Address' });
-  });
+  await db(makeAddressDefault, [today, addressId]);
+  res.status(200).json({ message: 'Successfully maked ad Default Address' });
 });
 
 exports.deleteAddress = catchAsync(async (req, res, next) => {
@@ -298,10 +276,6 @@ exports.deleteAddress = catchAsync(async (req, res, next) => {
 
   const today = moment().format('YYYY-MM-DD HH:mm:ss');
 
-  db.query(deleteAddress, [today, addressId], (err, result) => {
-    if (err) {
-      return next(new AppError(err.sqlMessage, 400));
-    }
-    res.status(200).json({ message: 'Adderess Deleted Successfuly' });
-  });
+  await db(deleteAddress, [today, addressId]);
+  res.status(200).json({ message: 'Adderess Deleted Successfuly' });
 });

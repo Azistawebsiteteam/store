@@ -16,9 +16,7 @@ exports.isUserExisit = catchAsync(async (req, res, next) => {
   const loginQuery = `SELECT * FROM azst_customer 
                       WHERE azst_customer_mobile = ? OR azst_customer_email = ?
                       AND azst_customer_status = 1`;
-  const [result] = await db
-    .promise()
-    .query(loginQuery, [userMailOrMobile, userMailOrMobile]);
+  const result = await db(loginQuery, [userMailOrMobile, userMailOrMobile]);
   if (result.length === 0) {
     return next(new AppError('You dont have an account ? Please Register'));
   }
@@ -62,13 +60,8 @@ exports.logout = catchAsync(async (req, res, next) => {
 
   const today = moment().format('YYYY-MM-DD HH:mm:ss');
   const values = [today, 'end', token];
-  db.query(logoutQuery, values, (err, results) => {
-    if (err) {
-      return next(new AppError(err.sqlMessage, 400));
-    }
-
-    res.status(200).json({ message: 'Logged out successfully' });
-  });
+  await db(logoutQuery, values);
+  res.status(200).json({ message: 'Logged out successfully' });
 });
 
 exports.forgotPassword = catchAsync(async (req, res, next) => {

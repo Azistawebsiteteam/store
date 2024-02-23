@@ -1,6 +1,7 @@
-const db = require('../../../dbconfig');
 const bcrypt = require('bcrypt');
 const moment = require('moment');
+
+const db = require('../../../dbconfig');
 const catchAsync = require('../../../Utils/catchAsync');
 const AppError = require('../../../Utils/appError');
 const createSendToken = require('../../../Utils/jwtToken');
@@ -12,15 +13,10 @@ exports.checkExistingUser = catchAsync(async (req, res, next) => {
   const checkQuery =
     'SELECT azst_customer_id FROM  azst_customer  WHERE azst_customer_mobile = ? OR azst_customer_email = ? ';
 
-  db.query(checkQuery, [mobileNum, email], (err, result) => {
-    if (err) {
-      return next(new AppError(err.sqlMessage || 'Internal server error', 400));
-    }
-    if (result.length > 0) {
-      return next(new AppError('You have already an account', 400));
-    }
-    next();
-  });
+  const result = await db(checkQuery, [mobileNum, email]);
+  if (result.length > 0)
+    return next(new AppError('You have already an account', 400));
+  next();
 });
 
 exports.signup = catchAsync(async (req, res, next) => {
@@ -49,23 +45,19 @@ exports.signup = catchAsync(async (req, res, next) => {
     today,
   ];
 
-  db.query(registerQuery, values, (err, results) => {
-    if (err) {
-      return next(new AppError(err.sqlMessage, 400));
-    }
-    // Add any further logic or response handling here
-    const key = process.env.JWT_SECRET;
-    const token = createSendToken(results.insertId, key);
-    res.status(201).json({
-      jwtToken: token,
-      user_details: {
-        azst_customer_id: results.insertId,
-        azst_customer_name: `${customerFirstName} ${customerLastName}`,
-        azst_customer_mobile: customerMobileNum,
-        azst_customer_email: customerEmail,
-      },
-      message: 'User registered successfully!',
-    });
+  const results = await db(registerQuery, values);
+  // Add any further logic or response handling here
+  const key = process.env.JWT_SECRET;
+  const token = createSendToken(results.insertId, key);
+  res.status(201).json({
+    jwtToken: token,
+    user_details: {
+      azst_customer_id: results.insertId,
+      azst_customer_name: `${customerFirstName} ${customerLastName}`,
+      azst_customer_mobile: customerMobileNum,
+      azst_customer_email: customerEmail,
+    },
+    message: 'User registered successfully!',
   });
 });
 
@@ -90,21 +82,15 @@ exports.mobileSignupInsert = catchAsync(async (req, res, next) => {
     values = ['', mailOrMobile, today];
   }
 
-  db.query(registerQuery, values, (err, result) => {
-    if (err) {
-      return next(new AppError(err.sqlMessage, 400));
-    }
-    req.userDetails = { azst_customer_id: result.insertId };
-    next();
-  });
+  const result = await db(registerQuery, values);
+  req.userDetails = { azst_customer_id: result.insertId };
+  next();
 });
 
 exports.deleteAccount = catchAsync(async (req, res, next) => {
   const deleteQuery = `UPDATE azst_customer SET azst_customer_status = 0 WHERE azst_customer_id = ?`;
-  db.query(deleteQuery, [req.empId], (err, result) => {
-    if (err) return next(new AppError(err.sqlMessage, 400));
-    res.status(200).json({ message: 'Your account has been deleted' });
-  });
+  await db(deleteQuery, [req.empId]);
+  res.status(200).json({ message: 'Your account has been deleted' });
 });
 
 exports.updateDetails = catchAsync(async (req, res, next) => {});

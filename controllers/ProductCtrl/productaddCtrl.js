@@ -119,11 +119,9 @@ exports.addProduct = catchAsync(async (req, res, next) => {
     priceInIndia,
   ];
 
-  db.query(productquery, values, (err, products) => {
-    if (err) return next(new AppError(err.sqlMessage, 400));
-    req.productDetails = { productId: products.insertId };
-    next();
-  });
+  const product = await db(productquery, values);
+  req.productDetails = { productId: product.insertId };
+  next();
 });
 
 exports.productDetails = catchAsync(async (req, res, next) => {
@@ -138,7 +136,7 @@ exports.productDetails = catchAsync(async (req, res, next) => {
 
   const { productId } = req.productDetails;
 
-  const prduct_details = `INSERT INTO azst_product_details (product_id,
+  const product_details = `INSERT INTO azst_product_details (product_id,
                                   product_description,product_highlights,product_ingredients,
                                   product_benefits,product_how_to_use,product_specifications)
                                   VALUES(?,?,?,?,?,?,?)`;
@@ -152,10 +150,8 @@ exports.productDetails = catchAsync(async (req, res, next) => {
     productSpecifications,
   ];
 
-  db.query(prduct_details, values, (err, result) => {
-    if (err) return next(new AppError(err.sqlMessage, 400));
-    res.status(200).json({ meassge: 'product added to store successfully ' });
-  });
+  await db(product_details, values);
+  res.status(200).json({ meassge: 'product added to store successfully ' });
 });
 
 exports.skuvarientsProduct = catchAsync(async (req, res, next) => {
@@ -205,8 +201,6 @@ exports.skuvarientsProduct = catchAsync(async (req, res, next) => {
     offerPercentage,
   ];
 
-  db.query(insert_product_varients, values, (err, result) => {
-    if (err) return next(new AppError(err.sqlMessage, 400));
-    res.status(200).json({ message: 'Product varients inserted successfully' });
-  });
+  await db(insert_product_varients, values);
+  res.status(200).json({ message: 'Product varients inserted successfully' });
 });

@@ -1,6 +1,5 @@
 const db = require('../../dbconfig');
 
-const AppError = require('../../Utils/appError');
 const catchAsync = require('../../Utils/catchAsync');
 
 exports.getCollectionProducts = catchAsync(async (req, res, next) => {
@@ -12,22 +11,24 @@ exports.getCollectionProducts = catchAsync(async (req, res, next) => {
                        FROM azst_products
                        WHERE product_category ->> '$[*]' LIKE CONCAT('%', ?, '%')  AND azst_products.status = 1`;
 
-  db.query(getProducts, [collectionId], (err, results) => {
-    if (err) return next(new AppError(err.sqlMessage, 400));
-    if (results.length === 0)
-      return res
-        .status(200)
-        .json({ products: [], message: 'No product found' });
+  const results = await db(getProducts, [collectionId]);
 
-    const products = results.map((product) => ({
-      ...product,
-      image_src: `${req.protocol}://${req.get('host')}/product/thumbnail/${
-        product.image_src
-      }`,
-    }));
-    res.status(200).json({ products, message: 'Data retrieved successfully.' });
-  });
+  if (results.length === 0)
+    return res.status(200).json({ products: [], message: 'No product found' });
+
+  const products = results.map((product) => ({
+    ...product,
+    image_src: `${req.protocol}://${req.get('host')}/product/thumbnail/${
+      product.image_src
+    }`,
+  }));
+  res.status(200).json({ products, message: 'Data retrieved successfully.' });
 });
+
+// azst_vendor_details.azst_vendor_name;
+
+//  JOIN azst_product_details ON azst_products.id = azst_product_details.product_id
+//             JOIN azst_vendor_details ON azst_products.vendor_id = azst_vendor_details.azst_vendor_id
 
 exports.getProductDetalis = catchAsync(async (req, res, next) => {
   const { productId } = req.body;
@@ -47,9 +48,10 @@ exports.getProductDetalis = catchAsync(async (req, res, next) => {
             azst_product_details.product_how_to_use,
             azst_product_details.product_specifications,
             azst_vendor_details.azst_vendor_name
+            
           FROM azst_products
-            JOIN azst_product_details ON azst_products.id = azst_product_details.product_id
-            JOIN azst_vendor_details ON azst_products.vendor_id = azst_vendor_details.azst_vendor_id
+          LEFT JOIN azst_product_details ON azst_products.id = azst_product_details.product_id
+          LEFT JOIN azst_vendor_details ON azst_products.vendor_id = azst_vendor_details.azst_vendor_id
           WHERE azst_products.id = ? AND azst_products.status = 1`;
 
   const getVariants = `SELECT azst_sku_variant_info.id as varient_id,variant_image, variant_weight_unit, 
@@ -58,40 +60,36 @@ exports.getProductDetalis = catchAsync(async (req, res, next) => {
                        variant_taxable, color, size, actual_price, offer_price, offer_percentage
                       FROM  azst_sku_variant_info WHERE product_id = ? AND status = 1`;
 
-  db.query(getproductDetails, [productId], (err, results) => {
-    if (err) return next(new AppError(err.sqlMessage, 400));
-    if (results.length === 0)
-      return res
-        .status(200)
-        .json({ productDetails: {}, message: 'No product found' });
+  const results = await db(getproductDetails, [productId]);
 
-    const product = results[0];
+  if (results.length === 0)
+    return res
+      .status(200)
+      .json({ productDetails: {}, message: 'No product found' });
 
-    const productDetails = {
-      ...product,
-      product_images: JSON.parse(product.product_images).map(
-        (product_image) =>
-          `${req.protocol}://${req.get('host')}/product/images/${product_image}`
-      ),
-    };
+  const product = results[0];
 
-    db.query(getVariants, [productId], (err, result) => {
-      if (err) return next(new AppError(err.sqlMessage, 400));
+  const productDetails = {
+    ...product,
+    product_images: JSON.parse(product.product_images).map(
+      (product_image) =>
+        `${req.protocol}://${req.get('host')}/product/images/${product_image}`
+    ),
+  };
 
-      const variants = result.map((variant) => ({
-        ...variant,
-        variant_image: `${req.protocol}://${req.get(
-          'host'
-        )}/product/variantimage/${variant.variant_image}`,
-        variant_barcode: `${req.protocol}://${req.get(
-          'host'
-        )}/variant/barcode/image/${variant.variant_barcode}`,
-      }));
-      res.status(200).json({
-        productDetails,
-        variants,
-        message: 'Data retrieved successfully.',
-      });
-    });
+  const result = await db(getVariants, [productId]);
+  const variants = result.map((variant) => ({
+    ...variant,
+    variant_image: `${req.protocol}://${req.get('host')}/product/variantimage/${
+      variant.variant_image
+    }`,
+    variant_barcode: `${req.protocol}://${req.get(
+      'host'
+    )}/variant/barcode/image/${variant.variant_barcode}`,
+  }));
+  res.status(200).json({
+    productDetails,
+    variants,
+    message: 'Data retrieved successfully.',
   });
 });

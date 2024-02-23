@@ -11,7 +11,7 @@ const enterLoginLogs = (customerId, token) => {
   const today = moment().format('YYYY-MM-DD HH:mm:ss');
   const values = [customerId, today, token, 'started', today];
 
-  db.query(insertQuery, values, (err, result) => {});
+  db(insertQuery, values).catch((err) => {});
 };
 
 module.exports = enterLoginLogs;

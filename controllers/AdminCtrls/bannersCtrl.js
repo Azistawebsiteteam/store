@@ -1,19 +1,17 @@
 const momemt = require('moment');
 const multer = require('multer');
 const sharp = require('sharp');
-const util = require('util');
+const Joi = require('joi');
 const fs = require('fs').promises; // Import the promises-based version of the fs module
 
 const db = require('../../dbconfig');
 const catchAsync = require('../../Utils/catchAsync');
 const AppError = require('../../Utils/appError');
 
-const queryAsync = util.promisify(db.query).bind(db);
-
 const multerStorage = multer.memoryStorage();
 
 const multerFilter = (req, file, cb) => {
-  if (file.mimeis_.startsWith('image')) {
+  if (file.mimetype.startsWith('image')) {
     cb(null, true);
   } else {
     cb(
@@ -58,10 +56,10 @@ exports.getbanners = catchAsync(async (req, res, next) => {
   const defaultsQuery = `SELECT banner_id,azst_web_image,azst_mobile_image,azst_background_url
                           FROM azst_banners_tbl WHERE status = 1 AND is_default = 1 `;
 
-  let result = await queryAsync(query);
+  let result = await db(query);
 
   if (result.length === 0) {
-    result = await queryAsync(defaultsQuery);
+    result = await db(defaultsQuery);
   }
   const banners = result.map((b) => ({
     ...b,
@@ -75,12 +73,23 @@ exports.getbanners = catchAsync(async (req, res, next) => {
   res.status(200).json(banners);
 });
 
+const bannerSchema = Joi.object({
+  webBanner: Joi.string().min(3).required(),
+  mobileBanner: Joi.string().min(3).required(),
+  backgroundUrl: Joi.string().min(3).required(),
+  startTime: Joi.string().min(3).required(),
+  endTime: Joi.string().min(3).required(),
+});
+
 exports.addBanner = catchAsync(async (req, res, next) => {
   const { webBanner, mobileBanner, backgroundUrl, startTime, endTime } =
     req.body;
+
+  const { error } = bannerSchema.validate(req.body);
+  if (error) return next(new AppError(error.message, 400));
   const rowquery = `SELECT COUNT(*) as row_count FROM azst_banners_tbl`;
   const query = `INSERT INTO azst_banners_tbl (azst_web_image,azst_mobile_image,azst_background_url,
-                        azst_start_time,azst_end_time,azst_updatedby) VALUES(?,?,?,?,?,?)`;
+                        azst_start_time,azst_end_time,azst_updatedby,azst_createdby) VALUES(?,?,?,?,?,?,?)`;
   const values = [
     webBanner,
     mobileBanner,
@@ -88,11 +97,12 @@ exports.addBanner = catchAsync(async (req, res, next) => {
     startTime,
     endTime,
     req.empId,
+    req.empId,
   ];
-  const resultRows = await queryAsync(rowquery);
+  const resultRows = await db(rowquery);
   if (resultRows[0].row_count > 20)
     return next(new AppError('maximum banner count exceeded.', 400));
-  const result = await queryAsync(query, values);
+  const result = await db(query, values);
   res
     .status(200)
     .send({ banner_id: result.insertId, message: 'banner added successfully' });
@@ -103,7 +113,7 @@ exports.isBannerExist = catchAsync(async (req, res, next) => {
   if (!bannerId) return next(new AppError('banner Id required', 400));
   const query = `SELECT banner_id,azst_web_image,azst_mobile_image,azst_background_url
                  FROM azst_banners_tbl WHERE status = 1 AND banner_id = ? `;
-  const result = await queryAsync(query, [bannerId]);
+  const result = await db(query, [bannerId]);
   if (result.length <= 0) return next(new AppError('banner not found', 404));
   req.banner = result[0];
   next();
@@ -117,9 +127,15 @@ exports.getbanner = catchAsync(async (req, res, next) => {
 
 exports.hideBanner = catchAsync(async (req, res, next) => {
   const { bannerId, isHide } = req.body;
+
+  const { error } = Joi.object({
+    isHide: Joi.boolean(),
+  }).validate({ isHide });
+
+  if (error) return next(new AppError(error.message, 400));
   const status = isHide ? 0 : 1;
   const query = `UPDATE azst_banners_tbl SET status=${status} WHERE banner_id=${bannerId}`;
-  await queryAsync(query);
+  await db(query);
   res.status(200).send({ message: 'Banner visibility updated successfully.' });
 });
 
@@ -127,7 +143,7 @@ exports.deleteBanner = catchAsync(async (req, res, next) => {
   const { bannerId } = req.body;
 
   const query = 'DELETE FROM azst_banners_tbl WHERE banner_id = ?';
-  await queryAsync(query, [bannerId]);
+  await db(query, [bannerId]);
 
   // Use path.join for handling file paths in a platform-independent way
   const webImagePath = `uploads/bannerImages/${req.banner.azst_web_image}`;

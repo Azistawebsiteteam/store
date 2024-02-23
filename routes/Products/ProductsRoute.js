@@ -15,7 +15,7 @@ router.post('/collection-products', productDataCtrl.getCollectionProducts);
 
 router.post('/details', productDataCtrl.getProductDetalis);
 
-const key = process.env.JWT_SECRET;
+const key = process.env.JWT_SECRET_ADMIN;
 
 router.use(authCtrl.protect(key));
 

@@ -13,13 +13,10 @@ exports.isBrandExit = catchAsync(async (req, res, next) => {
   if (!brandId) return next(new AppError('Brand Id is Required', 400));
 
   const getbrand = `SELECT * FROM azst_brands_tbl WHERE  azst_brands_id = ${brandId} AND status = 1`;
-
-  db.query(getbrand, (err, brand) => {
-    if (err) return next(new AppError(err.sqlMessage, 400));
-    if (brand.length === 0) return next(new AppError('No brand found', 404));
-    req.brand = brand[0];
-    next();
-  });
+  const brand = await db(getbrand);
+  if (brand.length === 0) return next(new AppError('No brand found', 404));
+  req.brand = brand[0];
+  next();
 });
 
 const multerStorage = multer.memoryStorage();
@@ -81,11 +78,9 @@ exports.getbrands = catchAsync(async (req, res, next) => {
   const brandsQuery = `SELECT azst_brands_id,azst_brand_name,azst_brand_logo
                         FROM azst_brands_tbl WHERE status = 1`;
 
-  db.query(brandsQuery, (err, result) => {
-    if (err) return next(new AppError(err.sqlMessage, 400));
-    const brands = result.map((brand) => modifyBrandData(req, brand));
-    res.status(200).json(brands);
-  });
+  const result = await db(brandsQuery);
+  const brands = result.map((brand) => modifyBrandData(req, brand));
+  res.status(200).json(brands);
 });
 
 exports.getbrand = catchAsync(async (req, res, next) => {
@@ -105,9 +100,10 @@ exports.addBrnad = catchAsync(async (req, res, next) => {
 
   const values = [brandName, image, today, req.empId];
 
-  db.query(imnsertQuery, values, (err, result) => {
-    if (err) return next(new AppError(err.sqlMessage, 400));
-    res.status(200).json({ azst_brands_id: result.insertId });
+  const result = await db(imnsertQuery, values);
+  res.status(200).json({
+    azst_brands_id: result.insertId,
+    message: 'Brands added successfully',
   });
 });
 
@@ -126,10 +122,8 @@ exports.updateBrand = catchAsync(async (req, res, next) => {
     values = [brandName, req.empId, brandId];
   }
 
-  db.query(updateQuery, values, (err, result) => {
-    if (err) return next(new AppError(err.sqlMessage, 400));
-    res.status(200).json({ message: 'Updated brand ' + brandName });
-  });
+  await db(updateQuery, values);
+  res.status(200).json({ message: 'Updated brand ' + brandName });
 });
 
 exports.deleteBrand = catchAsync(async (req, res, next) => {
@@ -138,8 +132,6 @@ exports.deleteBrand = catchAsync(async (req, res, next) => {
     'UPDATE azst_brands_tbl SET status = 0, updatedby=? where azst_brands_id = ? ';
   const values = [req.empId, brandId];
 
-  db.query(deletecollection, values, (err, result) => {
-    if (err) return next(new AppError(err.sqlMessage, 400));
-    res.status(200).json({ message: 'brand deleted Successfully ' });
-  });
+  await db(deletecollection, values);
+  res.status(200).json({ message: 'brand deleted Successfully ' });
 });

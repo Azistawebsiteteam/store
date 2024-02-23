@@ -28,6 +28,7 @@ const cartRoute = require('./routes/Products/cartRoute');
 const app = express();
 
 process.on('uncaughtException', (err) => {
+  console.log(err);
   console.log('uncaughtException shutting down server');
   process.exit(1);
 });
