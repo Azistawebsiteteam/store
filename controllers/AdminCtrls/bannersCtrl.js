@@ -13,7 +13,7 @@ const queryAsync = util.promisify(db.query).bind(db);
 const multerStorage = multer.memoryStorage();
 
 const multerFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image')) {
+  if (file.mimeis_.startsWith('image')) {
     cb(null, true);
   } else {
     cb(
@@ -52,11 +52,11 @@ exports.storebanner = catchAsync(async (req, res, next) => {
 exports.getbanners = catchAsync(async (req, res, next) => {
   const date = momemt().format('YYYY-MM-DD');
   const query = `SELECT banner_id,azst_web_image,azst_mobile_image,azst_background_url
-                 FROM azst_banners_tbl WHERE status = 1 AND type = 0 AND
+                 FROM azst_banners_tbl WHERE status = 1 AND is_default = 0 AND
                   '${date}' >= azst_start_time AND '${date}' <= azst_end_time`;
 
   const defaultsQuery = `SELECT banner_id,azst_web_image,azst_mobile_image,azst_background_url
-                 FROM azst_banners_tbl WHERE status = 1 AND type = 1 `;
+                          FROM azst_banners_tbl WHERE status = 1 AND is_default = 1 `;
 
   let result = await queryAsync(query);
 
