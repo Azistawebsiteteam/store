@@ -24,6 +24,7 @@ const bannerRoute = require('./routes/AdminRoutes/bannersRoutes');
 
 const productsRoute = require('./routes/Products/ProductsRoute');
 const cartRoute = require('./routes/Products/cartRoute');
+const whishListRoute = require('./routes/Products/whishlist');
 
 const app = express();
 
@@ -64,6 +65,7 @@ app.use(`${api}/tags`, tagRoute);
 app.use(`${api}/banners`, bannerRoute);
 
 app.use(`${api}/product`, productsRoute);
+app.use(`${api}/whish-list`, whishListRoute);
 app.use(`${api}/cart`, cartRoute);
 
 app.get('/favicon.ico', (req, res) => res.status(204));

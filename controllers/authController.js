@@ -27,22 +27,21 @@ exports.protect = (token_key) => {
         new AppError('You are not logged in! Please log in to get access.', 401)
       );
     }
+
     // 2) check if is valid token or not
     const payload = await jwt.verify(token, token_key);
     const { id } = payload;
 
     // 3) check user active or not dleted account
-    let result = [];
+    let query = '';
     if (token_key === process.env.JWT_SECRET) {
-      const query = `SELECT * FROM azst_customer 
+      query = `SELECT * FROM azst_customer 
                       WHERE azst_customer_id = ? AND azst_customer_status = 1`;
-      result = await db(query, [id]);
     } else {
-      const query = `SELECT * FROM azst_admin_details 
+      query = `SELECT * FROM azst_admin_details 
                       WHERE azst_admin_details_admin_id = ? AND azst_admin_details_status = 1`;
-      result = await db(query, [id]);
     }
-
+    const result = await db(query, [id]);
     if (result.length <= 0)
       return next(
         new AppError(
@@ -50,8 +49,29 @@ exports.protect = (token_key) => {
           401
         )
       );
-    req.userDetails = result[0];
+    const user = result[0];
+
+    const userDetails = {
+      user_id: user.azst_customer_id || user.azst_admin_details_admin_id,
+      user_frist_name:
+        user.azst_customer_fname || user.azst_admin_details_fname,
+      user_last_name: user.azst_customer_lname || user.azst_admin_details_lname,
+      user_mobile: user.azst_customer_mobile || user.azst_admin_details_mobile,
+      user_email: user.azst_customer_email || user.azst_admin_details_email,
+      user_hno: user.azst_customer_hno || null,
+      user_area: user.azst_customer_area || null,
+      user_city: user.azst_customer_city || null,
+      user_district: user.azst_customer_district || null,
+      user_state: user.azst_customer_state || null,
+      user_country: user.azst_customer_country || null,
+      user_zip: user.azst_customer_zip || null,
+      user_role: user.azst_admin_details_type || null,
+    };
+
+    req.userDetails = userDetails;
+
     req.empId = payload.id;
+
     next();
   });
 };
