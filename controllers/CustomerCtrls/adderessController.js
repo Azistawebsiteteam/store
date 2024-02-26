@@ -271,8 +271,8 @@ exports.deleteAddress = catchAsync(async (req, res, next) => {
   }
 
   const deleteAddress = `UPDATE azst_customer_adressbook 
-                                SET azst_customer_adressbook_status = 0 ,azst_customer_adressbook_updatedon = ?
-                                WHERE azst_customer_adressbook_id = ?`;
+                          SET azst_customer_adressbook_status = 0, azst_customer_adressbook_updatedon = ?
+                          WHERE azst_customer_adressbook_id = ?`;
 
   const today = moment().format('YYYY-MM-DD HH:mm:ss');
 

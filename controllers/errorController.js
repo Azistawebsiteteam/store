@@ -25,13 +25,12 @@ const sendErrPord = (err, res) => {
   } else {
     res.status(500).json({
       status: 'error',
-      message: 'Something Went Wrong',
+      message: 'Internal Server Error',
     });
   }
 };
 
 module.exports = (err, req, res, next) => {
-  console.log(err);
   err.statusCode = err.statusCode || 500;
   err.status = err.status || 'error';
 

@@ -1,59 +1,61 @@
-class APIFeatures{
-    constructor(query, queryStr) {
-        this.query = query;
-        this.queryStr = queryStr;
-    }
+class APIFeatures {
+  constructor(query, queryStr) {
+    this.query = query;
+    this.queryStr = queryStr;
+  }
 
-    filter() {
-        const queryObj = { ...this.queryStr }
-        const excludedFields = ['page', 'sort', 'limit', 'fields']
-        excludedFields.forEach(el => delete queryObj[el]);
+  filter() {
+    const queryObj = { ...this.queryStr };
+    const excludedFields = ['page', 'sort', 'limit', 'fields'];
+    excludedFields.forEach((el) => delete queryObj[el]);
 
-        let queryStr = JSON.stringify(queryObj);
-        queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, match => `$${match}`);
-       
-        this.query.find(JSON.parse(queryStr))
-        // let query = Tour.find(JSON.parse(queryStr));
-        return this;
-    }
+    let queryStr = Object.entries(queryObj)
+      .map(([key, value]) => `\`${key}\` = '${value}'`)
+      .join(' AND ');
 
-    sort() {
-        if (this.queryStr.sort) {
-            const sortBy = this.queryStr.sort.split(',').join(' ');
-            this.query = this.query.sort(sortBy);
-        } else {
-            this.query = this.query.sort("-createdAt");
-        }
-        return this;
-    }
-
-    limitsFields() {
-    if (this.queryStr.fields) {
-            const fields = this.queryStr.fields.split(',').join(' ');;
-            this.query = this.query.select(fields)
-        } else {
-            this.query = this.query.select("-__v")
-        }
+    this.query = this.query.where(queryStr);
 
     return this;
-}
+  }
 
-    paginate() {
-        
-        const page = this.queryStr.page  * 1 //|| 1;
-        const limit = this.queryStr.limit * 1 //|| 2
-        const skip = (page - 1) * limit ;
-    
-        this.query = this.query.skip(skip).limit(limit)
-        
-        // if (this.queryStr.page) {
-        //     const numTours = await Tour.countDocuments();
-        //     if (skip >= numTours) throw new Error('This Page Doest Not Exists');
-        // }S
-
-        return this;
+  sort() {
+    if (this.queryStr.sort) {
+      const sortBy = this.queryStr.sort
+        .split(',')
+        .map((field) => `\`${field.trim()}\``)
+        .join(', ');
+      this.query = this.query.orderBy(sortBy);
+    } else {
+      this.query = this.query.orderBy('createdAt', 'desc');
     }
 
+    return this;
+  }
+
+  limitsFields() {
+    if (this.queryStr.fields) {
+      const fields = this.queryStr.fields
+        .split(',')
+        .map((field) => `\`${field.trim()}\``)
+        .join(', ');
+      this.query = this.query.select(fields);
+    } else {
+      // If no fields specified, select all
+      this.query = this.query.select('*');
+    }
+
+    return this;
+  }
+
+  paginate() {
+    const page = this.queryStr.page || 1;
+    const limit = this.queryStr.limit || 10;
+    const offset = (page - 1) * limit;
+
+    this.query = this.query.limit(limit).offset(offset);
+
+    return this;
+  }
 }
 
-module.exports = APIFeatures
+module.exports = APIFeatures;
