@@ -2,6 +2,13 @@ const db = require('../../dbconfig');
 
 const catchAsync = require('../../Utils/catchAsync');
 
+const getProductImageLink = (req, product) => ({
+  ...product,
+  image_src: `${req.protocol}://${req.get('host')}/product/thumbnail/${
+    product.image_src
+  }`,
+});
+
 exports.getCollectionProducts = catchAsync(async (req, res, next) => {
   const { collectionId } = req.body; // Assuming collectionId is a single value
 
@@ -12,6 +19,28 @@ exports.getCollectionProducts = catchAsync(async (req, res, next) => {
                        WHERE product_category ->> '$[*]' LIKE CONCAT('%', ?, '%')  AND azst_products.status = 1`;
 
   const results = await db(getProducts, [collectionId]);
+
+  if (results.length === 0)
+    return res.status(200).json({ products: [], message: 'No product found' });
+
+  const products = results.map((product) => getProductImageLink(req, product));
+  res.status(200).json({ products, message: 'Data retrieved successfully.' });
+});
+
+exports.getProductsSerach = catchAsync(async (req, res, next) => {
+  const { searchText } = req.body; // Assuming collectionId is a single value
+
+  const getProducts = `SELECT id as product_id, display_name, short_name, product_name, vendor_id, 
+                          type, tags, DATE_FORMAT(published, '%d-%m-%Y') AS published_date, 
+                          image_src, image_position, image_alt_text, cost_per_item, price_india
+                        FROM azst_products
+                        WHERE (display_name LIKE '%${searchText}%' OR 
+                          short_name LIKE '%${searchText}%' OR 
+                          product_name LIKE '%${searchText}%' OR
+                          tags LIKE '%${searchText}%')
+                          AND azst_products.status = 1;`;
+
+  const results = await db(getProducts);
 
   if (results.length === 0)
     return res.status(200).json({ products: [], message: 'No product found' });

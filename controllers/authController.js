@@ -1,4 +1,3 @@
-//const {promisify} = require('util');
 const db = require('../dbconfig');
 const bcrypt = require('bcrypt');
 
@@ -6,6 +5,7 @@ const jwt = require('jsonwebtoken');
 
 const catchAsync = require('../Utils/catchAsync');
 const AppError = require('../Utils/appError');
+
 const createSendToken = require('../Utils/jwtToken');
 const organizUserData = require('../Utils/userDateMadifier');
 
@@ -28,11 +28,11 @@ exports.protect = (token_key) => {
       );
     }
 
-    // 2) check if is valid token or not
+    // 2) check it is valid token or not
     const payload = await jwt.verify(token, token_key);
     const { id } = payload;
 
-    // 3) check user active or not dleted account
+    // 3) check user active or not  or dleted account
     let query = '';
     if (token_key === process.env.JWT_SECRET) {
       query = `SELECT * FROM azst_customer 

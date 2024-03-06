@@ -11,6 +11,8 @@ const {
   getWhishlist,
 } = require('../../controllers/wishLIstCtrl');
 
+router.post('/search', productDataCtrl.getProductsSerach);
+
 router.post('/collection-products', productDataCtrl.getCollectionProducts);
 
 router.post('/details', productDataCtrl.getProductDetalis);
