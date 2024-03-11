@@ -23,10 +23,11 @@ const upload = multer({
   fileFilter: multerFilter,
 });
 
+// { name: 'productImage', maxCount: 1 },
+// { name: 'variantImage', maxCount: 1 },
+// { name: 'variantbarcode', maxCount: 1 },
+
 exports.uploadImage = upload.fields([
-  { name: 'productImage', maxCount: 1 },
-  { name: 'variantImage', maxCount: 1 },
-  { name: 'variantbarcode', maxCount: 1 },
   { name: 'productImages', maxCount: 8 }, // Assuming you want to allow multiple images
 ]);
 

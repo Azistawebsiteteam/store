@@ -76,6 +76,62 @@ app.all('*', (req, res, next) => {
 
 app.use(globalErrorHandler);
 
+// Function to create variant rows in the MySQL table
+// async function createVariantRows(variants) {
+//   const variantKeys = Object.keys(variants);
+//   const variantValues = variantKeys.map((key) => variants[key]);
+
+//   // Generate all possible combinations of variant values
+//   const allCombinations = cartesianProduct(variantValues);
+
+//   // Insert each combination into the MySQL table
+//   for (const combination of allCombinations) {
+//     const insertQuery =
+//       'INSERT INTO variant_table (size, color, material, style) VALUES (?, ?, ?, ?)';
+//     const insertValues = combination;
+
+//     //console.log(combination);
+
+//     // try {
+//     //   await connection.promise().execute(insertQuery, insertValues);
+//     //   console.log('Variant row inserted:', insertValues);
+//     // } catch (error) {
+//     //   console.error('Error inserting variant row:', error);
+//     // }
+//   }
+
+//   // Close the database connection after all inserts
+//   connection.end();
+// }
+
+// // Function to generate all possible combinations using nested loops
+// function cartesianProduct(arrays) {
+//   console.log(arrays);
+//   return arrays.reduce(
+//     (acc, curr) => {
+//       const result = [];
+//       acc.forEach((x) =>
+//         curr.forEach((y) => {
+//           result.push([...x, y]);
+//         })
+//       );
+//       return result;
+//     },
+//     [[]]
+//   );
+// }
+
+// // Example variants object
+// const variants = {
+//   size: [1, 2, 4, 5],
+//   color: ['red', 'white', 'black', 'green'],
+//   material: ['iron', 'steel', 'rubber'],
+//   style: ['bend', 'straight'],
+// };
+
+// // Call the function to create variant rows
+// createVariantRows(variants);
+
 const server = app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });

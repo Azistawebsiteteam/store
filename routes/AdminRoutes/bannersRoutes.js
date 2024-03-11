@@ -15,7 +15,7 @@ router.post(
   bannerCtrl.storebanner,
   bannerCtrl.addBanner
 );
-
+router.get('/', bannerCtrl.getAllBanners);
 router.use(bannerCtrl.isBannerExist);
 
 router
