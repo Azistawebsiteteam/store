@@ -30,6 +30,7 @@ exports.uploadbanner = upload.fields([
   { name: 'webBanner', maxCount: 1 },
   { name: 'mobileBanner', maxCount: 1 },
 ]);
+
 const bannerSchema = Joi.object({
   title: Joi.string().min(3).allow(''),
   description: Joi.string().min(3).allow(''),
@@ -50,7 +51,10 @@ exports.storebanner = catchAsync(async (req, res, next) => {
   }
   for (const fieldName in req.files) {
     const imageField = req.files[fieldName][0];
-    const imageName = `${Date.now()}-${imageField.originalname}`;
+    const imageName = `${Date.now()}-${imageField.originalname.replace(
+      / /g,
+      '-'
+    )}`;
     // Specify the folder based on the image field name
     const folder = `uploads/bannerImages/`; // Corrected folder path
     await sharp(imageField.buffer).toFile(`${folder}${imageName}`);

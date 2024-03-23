@@ -12,6 +12,10 @@ const organizUserData = require('../Utils/userDateMadifier');
 exports.protect = (token_key) => {
   return catchAsync(async (req, res, next) => {
     // Ensure to return the result of catchAsync
+
+    if (!token_key) {
+      return next('please provide a token key', 500);
+    }
     let token;
 
     if (
@@ -29,7 +33,7 @@ exports.protect = (token_key) => {
     }
 
     // 2) check it is valid token or not
-    const payload = await jwt.verify(token, token_key);
+    const payload = jwt.verify(token, token_key);
     const { id } = payload;
 
     // 3) check user active or not  or dleted account
@@ -84,12 +88,17 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
 
   const result = await db(getoldPassword, [req.empId]);
 
+  if (result[0].length === 0) {
+    return next(
+      new AppError('User no longer exists. Please verify the username.', 404)
+    );
+  }
   const isPasswordMatched = await bcrypt.compare(
     currentPassword,
     result[0].azst_customer_pwd
   );
 
-  if (result[0].length === 0 || !isPasswordMatched) {
+  if (!isPasswordMatched) {
     return next(new AppError('Invalid CurrentPassword', 404));
   }
   const hashedPassword = await bcrypt.hash(newPassword, 10);

@@ -11,10 +11,7 @@ const multerFilter = (req, file, cb) => {
   if (file.mimetype.startsWith('image')) {
     cb(null, true);
   } else {
-    cb(
-      new AppError('file is Not an Image! please upload only image', 400),
-      false
-    );
+    cb(new Error('File is not an image! Please upload only images.'), false);
   }
 };
 
@@ -23,46 +20,85 @@ const upload = multer({
   fileFilter: multerFilter,
 });
 
-// { name: 'productImage', maxCount: 1 },
-// { name: 'variantImage', maxCount: 1 },
-// { name: 'variantbarcode', maxCount: 1 },
-
 exports.uploadImage = upload.fields([
-  { name: 'productImages', maxCount: 8 }, // Assuming you want to allow multiple images
+  { name: 'productImages', maxCount: 8 },
+  { name: 'variantImage', maxCount: 100 }, // Assuming you want to allow multiple images
 ]);
 
-exports.storeImage = catchAsync(async (req, res, next) => {
-  if (!req.files || Object.keys(req.files).length === 0) {
-    return next(new AppError('Upload images is required', 400));
-  }
+const getvariantImgName = async (file, folderName) => {
+  const fileName = `${Date.now()}-${file.originalname.replace(/ /g, '-')}`;
+  await sharp(file.buffer)
+    .toFormat('jpeg')
+    .jpeg({ quality: 100 })
+    .toFile(`uploads/${folderName}/${fileName}`);
+  return fileName;
+};
 
+exports.storeImage = catchAsync(async (req, res, next) => {
+  if (req.files.productImages.length <= 0) {
+    return next(new AppError('Upload Product Images'));
+  }
   for (const fieldName in req.files) {
     if (fieldName === 'productImages') {
       req.body.productImages = [];
       await Promise.all(
         req.files.productImages.map(async (file, i) => {
-          const fileName = `${Date.now()}-${file.originalname}`;
-          await sharp(file.buffer)
-            .toFormat('jpeg')
-            .jpeg({ quality: 100 })
-            .toFile(`uploads/productImages/${fileName}`);
+          const fileName = await getvariantImgName(file, 'productImages');
           req.body.productImages.push(fileName);
         })
       );
-    } else {
-      const imageField = req.files[fieldName][0];
-      const imageName = `${Date.now()}-${imageField.originalname}`;
+    } else if (fieldName === 'variantImage') {
+      if (!req.body.variantsThere) {
+        return;
+      }
 
-      // Specify the folder based on the image field name
-      const folder = `uploads/${fieldName}/`; // Corrected folder path
+      const variants = JSON.parse(req.body.variants);
+      const variantImgs = req.files.variantImage;
+      let index = 0;
+      const updateVariants = [];
+      for (const variant of variants) {
+        let mainImg = '';
+        let updatedMain = { ...variant.main };
 
-      await sharp(imageField.buffer)
-        .toFormat('jpeg')
-        .jpeg({ quality: 100 })
-        .toFile(`${folder}${imageName}`);
+        if (
+          typeof variant.main.variantImage === 'object' &&
+          Object.keys(variant.main.variantImage).length === 0
+        ) {
+          const fi = variantImgs[index];
+          index++;
+          const iname = await getvariantImgName(fi, 'variantImage');
+          mainImg = iname;
+          updatedMain.variantImage = iname;
+        } else if (variant.main.variantImage === '') {
+          updatedMain.variantImage = '';
+        }
 
-      // Update req.body with the image information as needed
-      req.body[fieldName] = imageName;
+        const updatedSub = await Promise.all(
+          variant.sub.map(async (subv) => {
+            let updatedSubv = { ...subv };
+            if (
+              typeof subv.variantImage === 'object' &&
+              Object.keys(subv.variantImage).length === 0
+            ) {
+              const fi = variantImgs[index];
+              const iname = await getvariantImgName(fi, 'variantImage');
+              updatedSubv.variantImage = iname;
+              index++; // Increment index after processing each subvariant
+            } else {
+              //if (subv.variantImage === '')
+              updatedSubv.variantImage = mainImg;
+            }
+            return updatedSubv;
+          })
+        );
+
+        updateVariants.push({
+          ...variant,
+          main: updatedMain,
+          sub: updatedSub,
+        });
+      }
+      req.body.variants = JSON.stringify(await Promise.all(updateVariants));
     }
   }
   next();
@@ -70,138 +106,218 @@ exports.storeImage = catchAsync(async (req, res, next) => {
 
 exports.addProduct = catchAsync(async (req, res, next) => {
   const {
-    vendorId,
-    categoryId,
+    productTitle,
+    productInfo,
+    variantsOrder,
+    productPrice,
+    productComparePrice,
+    productIsTaxable,
+    productCostPerItem,
+    inventoryInfo,
+    vendor,
+    cwos,
+    skuCode,
+    skuBarcode,
+    productWeight,
+    originCountry,
+    productActiveStatus,
+    category,
     productType,
+    collections,
     tags,
-    published,
-    option1,
-    option2,
-    option3,
-    displayName,
-    shortName,
-    productName,
-    productImage,
+    metaTitle,
+    metaDescription,
+    urlHandle,
     productImages,
-    productImagePosition,
-    productImageAlt,
-    gitCard,
-    seoTitle,
-    seoDescription,
-    costPerItem,
-    priceInIndia,
+    variantsThere,
+    variants,
   } = req.body;
 
-  const productquery = `INSERT INTO azst_products (display_name, short_name, product_name, vendor_id, 
-                        product_category, type, tags, published, option1, option2, option3, image_src,
-                        product_images, image_position, image_alt_text, gift_card, seo_title,
-                        seo_description, cost_per_item, price_india)
-                        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
+  const price = variantsThere
+    ? productPrice
+    : JSON.parse(variants)[0].main.amount;
+  const comparePrice = variantsThere
+    ? productComparePrice
+    : JSON.parse(variants)[0].main.amount.split('-')[1];
+
+  const url_title = productTitle.replace(/ /g, '-');
+
+  const productImage = productImages[0];
+
+  const productquery = `INSERT INTO azst_products (product_title, product_info, vendor_id,
+                         product_category, type, tags, collections, image_src,
+                         product_images, variant_store_order, image_alt_text, seo_title,
+                         seo_description, cost_per_item, price, compare_at_price,
+                         inventroy_id, sku_code, sku_bar_code, is_taxable, product_weight,
+                         out_of_stock_sale, url_handle, status, azst_updatedby, origin_country,product_url_title)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)`;
   const values = [
-    displayName,
-    shortName,
-    productName,
-    vendorId,
-    categoryId,
+    productTitle,
+    productInfo,
+    vendor,
+    category,
     productType,
     tags,
-    published,
-    option1,
-    option2,
-    option3,
+    collections,
     productImage,
     JSON.stringify(productImages),
-    productImagePosition,
-    productImageAlt,
-    gitCard,
-    seoTitle,
-    seoDescription,
-    costPerItem,
-    priceInIndia,
+    variantsOrder,
+    productImage.split('-')[1],
+    metaTitle,
+    metaDescription,
+    productCostPerItem,
+    price,
+    comparePrice,
+    JSON.stringify(inventoryInfo.inventoryIds),
+    skuCode,
+    skuBarcode,
+    productIsTaxable,
+    productWeight,
+    cwos,
+    urlHandle,
+    productActiveStatus,
+    req.empId,
+    originCountry,
+    url_title,
   ];
 
   const product = await db(productquery, values);
-  req.productDetails = { productId: product.insertId };
+
+  if (!variantsThere) {
+    res.status(200).json({
+      produtId: product.insertId,
+      message: 'Product added successfully',
+    });
+    return;
+  }
+
+  req.productId = product.insertId;
   next();
 });
 
-exports.productDetails = catchAsync(async (req, res, next) => {
-  const {
-    productDescription,
-    productHighlights,
-    productIngredients,
-    productBenifits,
-    howToUse,
-    productSpecifications,
-  } = req.body;
-
-  const { productId } = req.productDetails;
-
-  const product_details = `INSERT INTO azst_product_details (product_id,
-                                  product_description,product_highlights,product_ingredients,
-                                  product_benefits,product_how_to_use,product_specifications)
-                                  VALUES(?,?,?,?,?,?,?)`;
-  const values = [
-    productId,
-    productDescription,
-    productHighlights,
-    productIngredients,
-    productBenifits,
-    howToUse,
-    productSpecifications,
-  ];
-
-  await db(product_details, values);
-  res.status(200).json({ meassge: 'product added to store successfully ' });
-});
-
 exports.skuvarientsProduct = catchAsync(async (req, res, next) => {
-  const {
-    productId,
-    variantImage,
-    variantWeightForUnit,
-    variantHsCode,
-    variantbarcode,
-    variantSku,
-    variantGrams,
-    variantInventoryTracking,
-    variantInventoryPolicy,
-    variantFulfilmentService,
-    varientRequiresShipping,
-    varitentTaxable,
-    color,
-    size,
-    actualPrice,
-    offerPrice,
-    offerPercentage,
-  } = req.body;
+  const { productId, body } = req;
+  const { productActiveStatus, variants } = body;
 
-  const insert_product_varients = `INSERT INTO azst_sku_variant_info (product_id, variant_image, 
-                                    variant_weight_unit, variant_HS_code, variant_barcode, variant_sku,
-                                    variant_grams, variant_inventory_tracker, variant_inventory_policy,
-                                    variant_fulfillment_service, variant_requires_shipping, variant_taxable,
-                                    color, size, actual_price, offer_price, offer_percentage)
-                                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
-  const values = [
-    productId,
-    variantImage,
-    variantWeightForUnit,
-    variantHsCode,
-    variantbarcode,
-    variantSku,
-    variantGrams,
-    variantInventoryTracking,
-    variantInventoryPolicy,
-    variantFulfilmentService,
-    varientRequiresShipping,
-    varitentTaxable,
-    color,
-    size,
-    actualPrice,
-    offerPrice,
-    offerPercentage,
-  ];
+  const insert_product_varients = `INSERT INTO azst_sku_variant_info (product_id, variant_image, variant_weight_unit, variant_HS_code,
+                                      variant_barcode, variant_sku, variant_grams, variant_inventory_tracker,
+                                      variant_inventory_policy, variant_fulfillment_service, variant_requires_shipping,
+                                      variant_taxable, actual_price, offer_price, offer_percentage,
+                                      status, variant_quantity, option1, option2, option3)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
-  await db(insert_product_varients, values);
-  res.status(200).json({ message: 'Product varients inserted successfully' });
+  const insertVariant = async (values) => {
+    await db(insert_product_varients, values);
+  };
+
+  const variantsData = JSON.parse(variants);
+
+  for (let variant of variantsData) {
+    let mainVariant = variant.main;
+    let subvariants = variant.sub;
+
+    if (subvariants.length > 0) {
+      for (let subvariant of subvariants) {
+        const {
+          variantImage,
+          variantWeight,
+          variantUnitWeight,
+          value,
+          amount,
+          offerPrice,
+          quantity,
+          shCode,
+          barCode,
+          skuCode,
+          isTaxable,
+          shippingRequired,
+          inventoryId,
+          inventoryPolicy,
+          variantService,
+        } = subvariant;
+
+        const subValues = value.split('-');
+        const option2 = subValues[0];
+        const option3 = subValues.length > 1 ? subValues[1] : null;
+
+        const offerPercentage = Math.round(
+          ((parseInt(amount) - parseInt(offerPrice || 0)) / parseInt(amount)) *
+            100,
+          0
+        );
+
+        const values = [
+          productId,
+          JSON.stringify([mainVariant.variantImage, variantImage]),
+          variantUnitWeight,
+          shCode,
+          barCode,
+          skuCode,
+          variantWeight,
+          inventoryId,
+          inventoryPolicy,
+          variantService,
+          isTaxable,
+          shippingRequired,
+          amount,
+          offerPrice,
+          offerPercentage,
+          quantity,
+          mainVariant.value,
+          option2,
+          option3,
+        ];
+        await insertVariant(values);
+      }
+    } else {
+      const {
+        variantImage,
+        variantWeight,
+        variantUnitWeight,
+        value,
+        amount,
+        offerPrice,
+        quantity,
+        shCode,
+        barCode,
+        skuCode,
+        isTaxable,
+        shippingRequired,
+        inventoryId,
+        inventoryPolicy,
+        variantService,
+      } = mainVariant;
+
+      const offerPercentage = Math.round(
+        ((parseInt(amount) - parseInt(offerPrice || 0)) / parseInt(amount)) *
+          100,
+        0
+      );
+
+      const values = [
+        productId,
+        variantImage,
+        variantUnitWeight,
+        shCode,
+        barCode,
+        skuCode,
+        variantWeight,
+        inventoryId,
+        inventoryPolicy,
+        variantService,
+        isTaxable,
+        shippingRequired,
+        amount,
+        offerPrice,
+        offerPercentage,
+        productActiveStatus,
+        quantity,
+        value,
+        null,
+        null,
+      ];
+      await insertVariant(values);
+    }
+  }
+  res.status(200).json({ message: 'Product & variants inserted successfully' });
 });

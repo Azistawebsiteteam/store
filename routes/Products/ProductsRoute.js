@@ -16,19 +16,20 @@ router.post('/search', productDataCtrl.getProductsSerach);
 router.post('/collection-products', productDataCtrl.getCollectionProducts);
 
 router.post('/details', productDataCtrl.getProductDetalis);
+router.post('/variants', productDataCtrl.getProductVariants);
 
 const key = process.env.JWT_SECRET_ADMIN;
 
+//  productCtrl.uploadProductImages,  productCtrl.productDetails
+
 router.use(authCtrl.protect(key));
-
-//  productCtrl.uploadProductImages,
-
+//router.post('/add-store', productCtrl.skuvarientsProduct);
 router.post(
   '/add-store',
   productCtrl.uploadImage,
   productCtrl.storeImage,
   productCtrl.addProduct,
-  productCtrl.productDetails
+  productCtrl.skuvarientsProduct
 );
 
 router.post(

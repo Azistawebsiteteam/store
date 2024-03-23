@@ -1,5 +1,8 @@
 const Joi = require('joi');
-const moment = require('moment');
+const multer = require('multer');
+const sharp = require('sharp');
+const fs = require('fs');
+
 const db = require('../../dbconfig');
 
 const AppError = require('../../Utils/appError');
@@ -9,7 +12,9 @@ exports.isCollectionExist = catchAsync(async (req, res, next) => {
   const { collectionId } = req.body;
   if (!collectionId)
     return next(new AppError('Collection Id is Required', 400));
-  const getCollection = `SELECT azst_collection_id,azst_collection_name 
+  const getCollection = `SELECT azst_collection_id,azst_collection_name,azst_collection_content,collection_url_title,
+                            azst_collection_seo_tile,azst_collection_seo_content,azst_collection_url,
+                            azst_collection_img
                           FROM azst_collections_tbl
                           WHERE azst_collection_id = ${collectionId} AND azst_collection_status = 1`;
   const collection = await db(getCollection);
@@ -19,8 +24,56 @@ exports.isCollectionExist = catchAsync(async (req, res, next) => {
   next();
 });
 
+const multerStorage = multer.memoryStorage();
+
+const multerFilter = (req, file, cb) => {
+  if (file.mimetype.startsWith('image')) {
+    cb(null, true);
+  } else {
+    cb(
+      new AppError('file is Not an Image! please upload only image', 400),
+      false
+    );
+  }
+};
+
+const upload = multer({
+  storage: multerStorage,
+  fileFilter: multerFilter,
+});
+
+exports.uploadImage = upload.single('collectionImg');
+
+exports.storeImage = catchAsync(async (req, res, next) => {
+  if (!req.file) {
+    req.body.collectionImg = '';
+    return next();
+    //next(new AppError('Upload collection image is required', 400));
+  }
+  const imageName = `${Date.now()}-${req.file.originalname.replace(/ /g, '-')}`;
+  await sharp(req.file.buffer).toFile(`Uploads/CollectionImages/${imageName}`);
+  req.body.collectionImg = imageName;
+  next();
+});
+
+exports.updateImage = catchAsync(async (req, res, next) => {
+  const { azst_collection_img } = req.collection;
+  if (!req.file) {
+    req.body.collectionImg = azst_collection_img;
+    return next();
+  }
+  const imagePath = `Uploads/CollectionImages/${azst_collection_img}`;
+
+  fs.unlink(imagePath, (err) => {});
+
+  const imageName = `${Date.now()}-${req.file.originalname.replace(/ /g, '-')}`;
+  await sharp(req.file.buffer).toFile(`Uploads/CollectionImages/${imageName}`);
+  req.body.collectionImg = imageName;
+  next();
+});
+
 exports.collections = catchAsync(async (req, res, next) => {
-  const collectiosrQuery = `SELECT azst_collection_id,azst_collection_name 
+  const collectiosrQuery = `SELECT azst_collection_id,azst_collection_name,collection_url_title 
                        FROM azst_collections_tbl WHERE azst_collection_status = 1`;
 
   const collections = await db(collectiosrQuery);
@@ -28,40 +81,94 @@ exports.collections = catchAsync(async (req, res, next) => {
 });
 
 exports.getcollection = catchAsync(async (req, res, next) => {
-  res.status(200).json(req.collection);
+  const cl = req.collection;
+  const collection = {
+    ...cl,
+    azst_collection_img: `${req.protocol}://${req.get('host')}/collection/${
+      cl.azst_collection_img
+    }`,
+  };
+
+  res.status(200).json(collection);
 });
 
 const collectionSchema = Joi.object({
-  collectionName: Joi.string().min(1).required(),
+  title: Joi.string().min(1).required(),
+  content: Joi.string().min(1).required(),
+  metaTitle: Joi.string().min(1).required(),
+  metaDescription: Joi.string().min(1).required(),
+  urlHandle: Joi.string().min(1).required(),
 });
 
 exports.Addcollection = catchAsync(async (req, res, next) => {
-  const { collectionName } = req.body;
+  const { title, content, metaDetails, collectionImg } = req.body;
+  const { metaTitle, metaDescription, urlHandle } = JSON.parse(metaDetails);
 
-  const { error } = collectionSchema.validate(req.body);
+  const { error } = collectionSchema.validate({
+    title,
+    content,
+    metaTitle,
+    metaDescription,
+    urlHandle,
+  });
   if (error) return next(new AppError(error.message, 400));
 
-  const today = moment().format('YYYY-MM-DD HH:mm:ss');
+  const imnsertQuery = `INSERT INTO  azst_collections_tbl (azst_collection_name,azst_collection_content,
+                        azst_collection_seo_tile,azst_collection_seo_content,azst_collection_url,
+                        azst_collection_img,updatedby,collection_url_title) VALUES (?,?,?,?,?,?,?,?)`;
 
-  const imnsertQuery =
-    'INSERT INTO  azst_collections_tbl (azst_collection_name,createdon,updatedby) VALUES (?,?,?)';
+  const urlTitle = title.replace(/ /g, '-');
 
-  const values = [collectionName, today, req.empId];
+  console.log(urlTitle);
+
+  const values = [
+    title,
+    content,
+    metaTitle,
+    metaDescription,
+    urlHandle,
+    collectionImg,
+    req.empId,
+    urlTitle,
+  ];
 
   const result = await db(imnsertQuery, values);
   res.status(200).json({ azst_collection_id: result.insertId });
 });
 
 exports.updateCollection = catchAsync(async (req, res, next) => {
-  const { collectionId, collectionName } = req.body;
-  const { error } = collectionSchema.validate({ collectionName });
+  const { title, content, metaDetails, collectionImg, collectionId } = req.body;
+  const { metaTitle, metaDescription, urlHandle } = JSON.parse(metaDetails);
+
+  const { error } = collectionSchema.validate({
+    title,
+    content,
+    metaTitle,
+    metaDescription,
+    urlHandle,
+  });
+
   if (error) return next(new AppError(error.message, 400));
-  const updateQuery =
-    'UPDATE azst_collections_tbl SET azst_collection_name=?, updatedby=? where azst_collection_id =? ';
-  const values = [collectionName, req.empId, collectionId];
+
+  const updateQuery = `UPDATE azst_collections_tbl SET azst_collection_name = ?,azst_collection_content= ?,
+                        azst_collection_seo_tile = ?,azst_collection_seo_content= ?,azst_collection_url= ?,
+                        azst_collection_img = ?,updatedby = ? ,collection_url_title = ? WHERE azst_collection_id = ?`;
+  const urlTitle = title.replace(/ /g, '-');
+
+  const values = [
+    title,
+    content,
+    metaTitle,
+    metaDescription,
+    urlHandle,
+    collectionImg,
+    req.empId,
+    urlTitle,
+    collectionId,
+  ];
 
   await db(updateQuery, values);
-  res.status(200).json({ message: 'Updated collection ' + collectionName });
+  res.status(200).json({ message: 'Updated collection ' + title });
 });
 
 exports.deleteCollection = catchAsync(async (req, res, next) => {

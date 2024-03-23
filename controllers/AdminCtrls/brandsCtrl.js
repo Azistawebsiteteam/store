@@ -44,7 +44,7 @@ exports.storeImage = catchAsync(async (req, res, next) => {
     return next(new AppError('Upload brand image is required', 400));
   }
 
-  const imageName = `${Date.now()}-${req.file.originalname}`;
+  const imageName = `${Date.now()}-${req.file.originalname.replace(/ /g, '-')}`;
   await sharp(req.file.buffer).toFile(`Uploads/brandlogos/${imageName}`);
 
   req.body.image = imageName;
@@ -60,7 +60,7 @@ exports.updateImage = catchAsync(async (req, res, next) => {
 
   fs.unlink(imagePath, (err) => {});
 
-  const imageName = `${Date.now()}-${req.file.originalname}`;
+  const imageName = `${Date.now()}-${req.file.originalname.replace(/ /g, '-')}`;
   await sharp(req.file.buffer).toFile(`Uploads/brandlogos/${imageName}`);
   req.body.image = imageName;
   next();

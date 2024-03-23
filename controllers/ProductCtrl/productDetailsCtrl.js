@@ -4,7 +4,7 @@ const catchAsync = require('../../Utils/catchAsync');
 
 const getProductImageLink = (req, product) => ({
   ...product,
-  image_src: `${req.protocol}://${req.get('host')}/product/thumbnail/${
+  image_src: `${req.protocol}://${req.get('host')}/product/images/${
     product.image_src
   }`,
 });
@@ -12,33 +12,56 @@ const getProductImageLink = (req, product) => ({
 exports.getCollectionProducts = catchAsync(async (req, res, next) => {
   const { collectionId } = req.body; // Assuming collectionId is a single value
 
-  const getProducts = `SELECT id as product_id, display_name, short_name, product_name, vendor_id, 
-                        type, tags, DATE_FORMAT(published, '%d-%m-%Y') AS published_date, image_src,image_position,
-                        image_alt_text,cost_per_item, price_india, status
+  const getProducts = `SELECT id as product_id, product_title, image_src,
+                       image_alt_text, price, compare_at_price,product_url_title
                        FROM azst_products
-                       WHERE product_category ->> '$[*]' LIKE CONCAT('%', ?, '%')  AND azst_products.status = 1`;
+                       WHERE collections ->> '$[*]' LIKE CONCAT('%', ?, '%')  AND azst_products.status = 1`;
+
+  const getCollectionData = `SELECT azst_collection_id,azst_collection_name,azst_collection_content,azst_collection_img 
+                              FROM azst_collections_tbl where collection_url_title =? `;
 
   const results = await db(getProducts, [collectionId]);
 
+  let collectiondata = await db(getCollectionData, [collectionId]);
+  const collection = collectiondata[0];
+
+  collectiondata = {
+    ...collection,
+    azst_collection_img: `${req.protocol}://${req.get('host')}/collection/${
+      collection.azst_collection_img
+    }`,
+  };
+
   if (results.length === 0)
-    return res.status(200).json({ products: [], message: 'No product found' });
+    return res.status(200).json({
+      products: [],
+      collection_data: collectiondata,
+      message: 'No product found',
+    });
 
   const products = results.map((product) => getProductImageLink(req, product));
-  res.status(200).json({ products, message: 'Data retrieved successfully.' });
+  res.status(200).json({
+    products,
+    collection_data: collectiondata,
+    message: 'Data retrieved successfully.',
+  });
 });
 
 exports.getProductsSerach = catchAsync(async (req, res, next) => {
-  const { searchText } = req.body; // Assuming collectionId is a single value
+  const { searchText } = req.body;
+  if (searchText === '') {
+    res.status(200).json({ products: [], message: 'No product found' });
+    return;
+  }
 
-  const getProducts = `SELECT id as product_id, display_name, short_name, product_name, vendor_id, 
-                          type, tags, DATE_FORMAT(published, '%d-%m-%Y') AS published_date, 
-                          image_src, image_position, image_alt_text, cost_per_item, price_india
+  const getProducts = `SELECT product_title,image_src,price,product_url_title
                         FROM azst_products
-                        WHERE (display_name LIKE '%${searchText}%' OR 
-                          short_name LIKE '%${searchText}%' OR 
-                          product_name LIKE '%${searchText}%' OR
-                          tags LIKE '%${searchText}%')
-                          AND azst_products.status = 1;`;
+                        WHERE (product_title LIKE '%${searchText}%' OR 
+                            product_category LIKE '%${searchText}%' OR 
+                            type LIKE '%${searchText}%' OR
+                            tags LIKE '%${searchText}%' OR
+                            collections LIKE '%${searchText}%') 
+                            AND azst_products.status = 1;`;
 
   const results = await db(getProducts);
 
@@ -47,47 +70,19 @@ exports.getProductsSerach = catchAsync(async (req, res, next) => {
 
   const products = results.map((product) => ({
     ...product,
-    image_src: `${req.protocol}://${req.get('host')}/product/thumbnail/${
+    image_src: `${req.protocol}://${req.get('host')}/product/images/${
       product.image_src
     }`,
   }));
   res.status(200).json({ products, message: 'Data retrieved successfully.' });
 });
 
-// azst_vendor_details.azst_vendor_name;
-
-//  JOIN azst_product_details ON azst_products.id = azst_product_details.product_id
-//             JOIN azst_vendor_details ON azst_products.vendor_id = azst_vendor_details.azst_vendor_id
-
 exports.getProductDetalis = catchAsync(async (req, res, next) => {
   const { productId } = req.body;
 
-  const getproductDetails = `SELECT 
-            azst_products.display_name,
-            azst_products.short_name,
-            azst_products.product_name,
-            azst_products.type,
-            azst_products.tags,
-            azst_products.product_images,
-            azst_product_details.product_id,
-            azst_product_details.product_description,
-            azst_product_details.product_highlights,
-            azst_product_details.product_ingredients,
-            azst_product_details.product_benefits,
-            azst_product_details.product_how_to_use,
-            azst_product_details.product_specifications,
-            azst_vendor_details.azst_vendor_name
-            
-          FROM azst_products
-          LEFT JOIN azst_product_details ON azst_products.id = azst_product_details.product_id
-          LEFT JOIN azst_vendor_details ON azst_products.vendor_id = azst_vendor_details.azst_vendor_id
-          WHERE azst_products.id = ? AND azst_products.status = 1`;
+  const getproductDetails = `SELECT * FROM azst_products  WHERE product_url_title = ? AND azst_products.status = 1`;
 
-  const getVariants = `SELECT azst_sku_variant_info.id as varient_id,variant_image, variant_weight_unit, 
-                       variant_HS_code, variant_barcode, variant_sku, variant_grams, variant_inventory_tracker,
-                       variant_inventory_policy, variant_fulfillment_service, variant_requires_shipping,
-                       variant_taxable, color, size, actual_price, offer_price, offer_percentage
-                      FROM  azst_sku_variant_info WHERE product_id = ? AND status = 1`;
+  const getVariants = `SELECT  id,option1,option2,option3 FROM  azst_sku_variant_info WHERE product_id = ? AND status = 1`;
 
   const results = await db(getproductDetails, [productId]);
 
@@ -97,6 +92,7 @@ exports.getProductDetalis = catchAsync(async (req, res, next) => {
       .json({ productDetails: {}, message: 'No product found' });
 
   const product = results[0];
+  const productIdd = product.id;
 
   const productDetails = {
     ...product,
@@ -106,19 +102,58 @@ exports.getProductDetalis = catchAsync(async (req, res, next) => {
     ),
   };
 
-  const result = await db(getVariants, [productId]);
-  const variants = result.map((variant) => ({
-    ...variant,
-    variant_image: `${req.protocol}://${req.get('host')}/product/variantimage/${
-      variant.variant_image
-    }`,
-    variant_barcode: `${req.protocol}://${req.get(
-      'host'
-    )}/variant/barcode/image/${variant.variant_barcode}`,
-  }));
+  const storeOrder = JSON.parse(product.variant_store_order);
+
+  const result = await db(getVariants, [productIdd]);
+  const variantsData = [];
+  storeOrder.forEach((element) => {
+    variantsData.push({ UOM: element, values: [] });
+  });
+
+  // Push unique values from result into variantsData
+  result.forEach((variant) => {
+    for (let i = 0; i < variantsData.length; i++) {
+      variantsData[i].values.push(variant[`option${i + 1}`]);
+    }
+  });
+
+  // Remove duplicate values using set
+  variantsData.forEach((variant) => {
+    variant.values = Array.from(new Set(variant.values));
+    variant.values = variant.values.filter((value) => value !== null);
+  });
+
   res.status(200).json({
     productDetails,
-    variants,
+    variants: variantsData,
+    avalaibleVariants: result,
     message: 'Data retrieved successfully.',
   });
+});
+
+exports.getProductVariants = catchAsync(async (req, res, next) => {
+  const { variant } = req.query;
+  const query = `SELECT * FROM azst_sku_variant_info WHERE id = ? AND status = 1`;
+  const variantData = await db(query, [variant]);
+
+  if (variantData.length < 1) {
+    res.status(404).send({
+      variant: {},
+      message: 'No such variant found',
+    });
+    return;
+  }
+  const getImageLink = (img) =>
+    `${req.protocol}://${req.get('host')}/product/variantimage/${img}`;
+
+  const variantObj = variantData[0];
+
+  const variant_data = {
+    ...variantObj,
+    variant_image: JSON.parse(variantObj.variant_image).map((img) =>
+      getImageLink(img)
+    ),
+  };
+
+  res.status(200).json({ variant: variant_data, message: 'Variant Details' });
 });
