@@ -21,7 +21,7 @@ const upload = multer({
 });
 
 exports.uploadImage = upload.fields([
-  { name: 'productImages', maxCount: 8 },
+  { name: 'productImages', maxCount: 20 },
   { name: 'variantImage', maxCount: 100 }, // Assuming you want to allow multiple images
 ]);
 
@@ -257,11 +257,12 @@ exports.skuvarientsProduct = catchAsync(async (req, res, next) => {
           inventoryId,
           inventoryPolicy,
           variantService,
-          isTaxable,
           shippingRequired,
+          isTaxable,
           amount,
           offerPrice,
           offerPercentage,
+          productActiveStatus,
           quantity,
           mainVariant.value,
           option2,
@@ -305,8 +306,8 @@ exports.skuvarientsProduct = catchAsync(async (req, res, next) => {
         inventoryId,
         inventoryPolicy,
         variantService,
-        isTaxable,
         shippingRequired,
+        isTaxable,
         amount,
         offerPrice,
         offerPercentage,

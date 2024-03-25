@@ -90,9 +90,29 @@ exports.getbanners = catchAsync(async (req, res, next) => {
   res.status(200).json(banners);
 });
 
+// banner_id,
+//   azst_banner_tile,
+//   azst_banner_description,
+//   azst_web_image,
+//   azst_mobile_image,
+//   azst_alt_text,
+//   azst_background_url,
+//   azst_start_time,
+//   azst_end_time,
+//   azst_createdon,
+//   azst_updatedon,
+//   azst_updatedby,
+//   status,
+//   is_default,
+//   azst_createdby;
+
 exports.getAllBanners = catchAsync(async (req, res, next) => {
-  const defaultsQuery = `SELECT banner_id,azst_web_image,azst_mobile_image,azst_background_url
-                         FROM azst_banners_tbl WHERE status = 1  ORDER BY azst_createdon DESC`;
+  const defaultsQuery = `SELECT banner_id,azst_banner_tile,azst_banner_description,
+                            azst_web_image,azst_alt_text,azst_background_url,
+                           DATE_FORMAT(azst_start_time, '%d-%m-%Y %H:%i:%s') as start_date,
+                            DATE_FORMAT( azst_end_time, '%d-%m-%Y %H:%i:%s') as end_date,
+                            status,is_default
+                          FROM azst_banners_tbl  ORDER BY azst_createdon DESC`;
 
   let result = await db(defaultsQuery);
   if (result.length === 0) {

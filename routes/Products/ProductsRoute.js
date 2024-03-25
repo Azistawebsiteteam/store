@@ -4,6 +4,8 @@ const productCtrl = require('../../controllers/ProductCtrl/productaddCtrl');
 const productDataCtrl = require('../../controllers/ProductCtrl/productDetailsCtrl');
 const authCtrl = require('../../controllers/authController');
 
+const productValidationCtrl = require('../../Models/Product');
+
 const {
   isExistInWl,
   addToWl,
@@ -27,6 +29,7 @@ router.use(authCtrl.protect(key));
 router.post(
   '/add-store',
   productCtrl.uploadImage,
+  productValidationCtrl,
   productCtrl.storeImage,
   productCtrl.addProduct,
   productCtrl.skuvarientsProduct
