@@ -90,22 +90,6 @@ exports.getbanners = catchAsync(async (req, res, next) => {
   res.status(200).json(banners);
 });
 
-// banner_id,
-//   azst_banner_tile,
-//   azst_banner_description,
-//   azst_web_image,
-//   azst_mobile_image,
-//   azst_alt_text,
-//   azst_background_url,
-//   azst_start_time,
-//   azst_end_time,
-//   azst_createdon,
-//   azst_updatedon,
-//   azst_updatedby,
-//   status,
-//   is_default,
-//   azst_createdby;
-
 exports.getAllBanners = catchAsync(async (req, res, next) => {
   const defaultsQuery = `SELECT banner_id,azst_banner_tile,azst_banner_description,
                             azst_web_image,azst_alt_text,azst_background_url,

@@ -144,13 +144,51 @@ exports.addProduct = catchAsync(async (req, res, next) => {
 
   const productImage = productImages[0];
 
+  // id,
+  //   product_title,
+  //   product_info,
+  //   vendor_id,
+  //   product_category,
+  //   type,
+  //   tags,
+  //   collections,
+  //   published,
+  //   image_src,
+  //   product_images,
+  //   variant_store_order,
+  //   image_alt_text,
+  //   seo_title,
+  //   seo_description,
+  //   cost_per_item,
+  //   price_india,
+  //   price,
+  //   compare_at_price,
+  //   inventroy_id,
+  //   sku_code,
+  //   sku_bar_code,
+  //   is_taxable,
+  //   product_weight,
+  //   gift_card,
+  //   out_of_stock_sale,
+  //   url_handle,
+  //   status,
+  //   azst_createdon,
+  //   azst_updatedon,
+  //   azst_updatedby,
+  //   origin_country,
+  //   product_url_title,
+  // chintal_quantity,
+  // corporate_office_quantity
+  const { coc, coh, inventoryIds } = inventoryInfo;
+
   const productquery = `INSERT INTO azst_products (product_title, product_info, vendor_id,
                          product_category, type, tags, collections, image_src,
                          product_images, variant_store_order, image_alt_text, seo_title,
                          seo_description, cost_per_item, price, compare_at_price,
                          inventroy_id, sku_code, sku_bar_code, is_taxable, product_weight,
-                         out_of_stock_sale, url_handle, status, azst_updatedby, origin_country,product_url_title)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)`;
+                         out_of_stock_sale, url_handle, status, azst_updatedby, origin_country,
+                         product_url_title,chintal_quantity,corporate_office_quantity)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?,?,?)`;
   const values = [
     productTitle,
     productInfo,
@@ -168,7 +206,7 @@ exports.addProduct = catchAsync(async (req, res, next) => {
     productCostPerItem,
     price,
     comparePrice,
-    JSON.stringify(inventoryInfo.inventoryIds),
+    JSON.stringify(inventoryIds),
     skuCode,
     skuBarcode,
     productIsTaxable,
@@ -179,6 +217,8 @@ exports.addProduct = catchAsync(async (req, res, next) => {
     req.empId,
     originCountry,
     url_title,
+    coc,
+    coh,
   ];
 
   const product = await db(productquery, values);

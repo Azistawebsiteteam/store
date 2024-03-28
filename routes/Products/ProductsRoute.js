@@ -42,6 +42,8 @@ router.post(
   productCtrl.skuvarientsProduct
 );
 
+router.post('/all-products', productDataCtrl.getAllProducts);
+
 router.post('/whish-list', getWhishlist);
 router.post('/add-wl', isExistInWl, addToWl);
 router.post('/remove-wl', removeFromWl);

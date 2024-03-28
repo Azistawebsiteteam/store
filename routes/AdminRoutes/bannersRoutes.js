@@ -16,12 +16,11 @@ router.post(
   bannerCtrl.addBanner
 );
 router.get('/', bannerCtrl.getAllBanners);
+
+router.put('/', bannerCtrl.hideBanner);
+
 router.use(bannerCtrl.isBannerExist);
 
-router
-  .route('/')
-  .post(bannerCtrl.getbanner)
-  .put(bannerCtrl.hideBanner)
-  .delete(bannerCtrl.deleteBanner);
+router.route('/').post(bannerCtrl.getbanner).delete(bannerCtrl.deleteBanner);
 
 module.exports = router;

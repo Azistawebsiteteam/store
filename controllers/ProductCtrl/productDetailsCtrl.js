@@ -157,3 +157,39 @@ exports.getProductVariants = catchAsync(async (req, res, next) => {
 
   res.status(200).json({ variant: variant_data, message: 'Variant Details' });
 });
+
+exports.getAllProducts = catchAsync(async (req, res, next) => {
+  const getProductsQuery = `
+          SELECT
+              azst_products.id AS product_id,
+              product_title,
+              product_category,
+              url_handle,
+              azst_products.status,
+              image_src,
+              azst_vendor_details.azst_vendor_name,
+              chintal_quantity,
+              corporate_office_quantity,
+              SUM(azst_sku_variant_info.variant_quantity) AS total_variant_quantity,
+              COUNT(azst_sku_variant_info.variant_quantity) AS total_variants
+          FROM
+              azst_products
+          LEFT JOIN azst_vendor_details ON azst_products.vendor_id = azst_vendor_details.azst_vendor_id
+          LEFT JOIN azst_sku_variant_info ON azst_products.id = azst_sku_variant_info.product_id
+          GROUP BY azst_products.id;`;
+
+  let products = await db(getProductsQuery);
+
+  if (products.length === 0)
+    return res.status(200).json({
+      products: [],
+      collection_data: collectiondata,
+      message: 'No products found',
+    });
+
+  products = products.map((product) => getProductImageLink(req, product));
+  res.status(200).json({
+    products,
+    message: 'Data retrieved successfully.',
+  });
+});
