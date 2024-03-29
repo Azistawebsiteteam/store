@@ -77,24 +77,23 @@ const variantsSchema = Joi.object({
 });
 
 const productValidation = async (req, res, next) => {
-  //console.log('Product Validation', req.body);
   const { variantsThere, variants } = req.body;
   const { error } = productSchema.validate(req.body);
   if (error) return next(new AppError(error.message, 400));
   if (variantsThere) {
-    const variants = JSON.parse(variants);
+    const variantsData = JSON.parse(variants);
     for (let variant of variantsData) {
       let mainVariant = variant.main;
       let subvariants = variant.sub;
+
+      const { error } = variantsSchema.validate(mainVariant);
+      if (error) return next(new AppError(error.message, 400));
 
       if (subvariants.length > 0) {
         for (let subvariant of subvariants) {
           const { error } = variantsSchema.validate(subvariant);
           if (error) return next(new AppError(error.message, 400));
         }
-      } else {
-        const { error } = variantsSchema.validate(mainVariant);
-        if (error) return next(new AppError(error.message, 400));
       }
     }
   }
