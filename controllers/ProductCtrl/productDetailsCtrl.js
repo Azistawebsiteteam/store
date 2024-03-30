@@ -80,11 +80,11 @@ exports.getProductsSerach = catchAsync(async (req, res, next) => {
 exports.getProductDetalis = catchAsync(async (req, res, next) => {
   const { productId } = req.body;
 
-  const getproductDetails = `SELECT * FROM azst_products  WHERE product_url_title = ? AND azst_products.status = 1`;
+  const getproductDetails = `SELECT * FROM azst_products  WHERE id = ? || product_url_title = ? AND azst_products.status = 1`;
 
-  const getVariants = `SELECT  id,option1,option2,option3 FROM  azst_sku_variant_info WHERE product_id = ? AND status = 1`;
+  const getVariants = `SELECT * FROM  azst_sku_variant_info WHERE product_id = ? AND status = 1`;
 
-  const results = await db(getproductDetails, [productId]);
+  const results = await db(getproductDetails, [productId, productId]);
 
   if (results.length === 0)
     return res
@@ -131,7 +131,7 @@ exports.getProductDetalis = catchAsync(async (req, res, next) => {
   });
 });
 
-exports.getProductVariants = catchAsync(async (req, res, next) => {
+exports.getProductVariant = catchAsync(async (req, res, next) => {
   const { variant } = req.query;
   const query = `SELECT * FROM azst_sku_variant_info WHERE id = ? AND status = 1`;
   const variantData = await db(query, [variant]);

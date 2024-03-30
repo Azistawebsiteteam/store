@@ -26,7 +26,6 @@ router.post(
 router.post(
   '/register/verify-otp',
   otpCtrl.checkOtpExisting,
-  otpCtrl.verifyOTP,
   registerCtrl.mobileSignupInsert,
   otpCtrl.updateOtpDetails
 );
@@ -43,7 +42,6 @@ router.post(
   '/login/verify-otp',
   loginCtrl.isUserExisit,
   otpCtrl.checkOtpExisting,
-  otpCtrl.verifyOTP,
   otpCtrl.updateOtpDetails
 );
 
@@ -57,7 +55,7 @@ router.post(
   '/forgot-password/verifyotp',
   loginCtrl.isUserExisit,
   otpCtrl.checkOtpExisting,
-  otpCtrl.verifyOTP,
+  otpCtrl.updateOtpDetails,
   authControllers.forgotPassword
 );
 

@@ -15,8 +15,15 @@ const JSONArrayValidator = (value, helpers) => {
   }
 };
 
+// variantImage: Joi.alternatives()
+//   .try(
+//     Joi.string().allow(''),
+//     Joi.object().unknown() // Allow any object properties
+//   )
+//   .required(),
+
 const productSchema = Joi.object({
-  productTitle: Joi.string().min(3).max(500).required(),
+  productTitle: Joi.string().min(3).required(),
   productInfo: Joi.string().min(3).required(),
   variantsOrder: Joi.string()
     .custom((value, helpers) => {
@@ -59,19 +66,24 @@ const productSchema = Joi.object({
 });
 
 const variantsSchema = Joi.object({
-  variantImage: Joi.string().required(),
+  variantImage: Joi.alternatives()
+    .try(
+      Joi.string().allow(''),
+      Joi.object().unknown() // Allow any object properties
+    )
+    .required(),
   variantWeight: Joi.string().required(),
   variantUnitWeight: Joi.string().required(),
   value: Joi.string().required(),
   amount: Joi.string(),
   offerPrice: Joi.string(),
-  quantity: Joi.string(),
+  quantity: Joi.number(),
   shCode: Joi.string().required().allow(''),
   barCode: Joi.string().required().allow(''),
   skuCode: Joi.string().required().allow(''),
   isTaxable: Joi.boolean().required(),
   shippingRequired: Joi.boolean().required(),
-  inventoryId: Joi.string().required(),
+  inventoryId: Joi.number().required(),
   inventoryPolicy: Joi.string().required(),
   variantService: Joi.string().required(),
 });
@@ -91,6 +103,7 @@ const productValidation = async (req, res, next) => {
 
       if (subvariants.length > 0) {
         for (let subvariant of subvariants) {
+          delete subvariant.id;
           const { error } = variantsSchema.validate(subvariant);
           if (error) return next(new AppError(error.message, 400));
         }

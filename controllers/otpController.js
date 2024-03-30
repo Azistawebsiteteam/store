@@ -76,6 +76,7 @@ exports.sendOtp = catchAsync(async (req, res, next) => {
 
 exports.checkOtpExisting = catchAsync(async (req, res, next) => {
   const { mailOrMobile, otp } = req.body;
+  const { azst_customer_id } = req.userDetails || 0;
 
   const notvalidate = varifyInput(mailOrMobile);
 
@@ -90,6 +91,7 @@ exports.checkOtpExisting = catchAsync(async (req, res, next) => {
                          ORDER BY azst_otp_verification_createdon DESC LIMIT 1`;
 
   const result = await db(getOtpQuery, [mailOrMobile]);
+  // verify OTP existing or not
   if (result.length === 0) {
     return next(new AppError('OTP expired or does not exist', 400));
   }
@@ -99,33 +101,29 @@ exports.checkOtpExisting = catchAsync(async (req, res, next) => {
     createdTime,
     azst_otp_verification_reason,
   } = result[0];
-  req.otpDetails = {
-    verificationId: azst_otp_verification_id,
-    requestOtp: otp,
-    databaseOTp: azst_otp_verification_value,
-    reason: azst_otp_verification_reason,
-    createdTime,
-  };
-  next();
-});
 
-exports.verifyOTP = catchAsync(async (req, res, next) => {
-  const { requestOtp, databaseOTp, createdTime } = req.otpDetails;
-
-  // Check if OTP exists and is not expired
-  const expireTime = moment(createdTime, 'YYYY-MM-DD HH:mm:ss')
+  const isExpired = moment(createdTime, 'YYYY-MM-DD HH:mm:ss')
     .add(5, 'minutes')
-    .format('YYYY-MM-DD HH:mm:ss');
-
-  if (!databaseOTp || expireTime < Date.now()) {
-    return res.status(400).json({ message: 'OTP expired or does not exist' });
+    .isBefore(moment());
+  // verify OTP is Expires
+  if (isExpired) {
+    const updateOtpSDetais = `UPDATE azst_otp_verification
+                            SET azst_otp_verification_userid = ?, azst_otp_verification_status = ?
+                            WHERE azst_otp_verification_id = ?`;
+    const otpValues = [azst_customer_id, 0, verificationId];
+    await db(updateOtpSDetais, otpValues);
+    return next(new AppError('OTP expired or does not exist', 400));
   }
   // Verify the provided OTP
-  if (databaseOTp === requestOtp) {
-    next();
-  } else {
-    res.status(400).json({ message: 'Invalid OTP' });
+  if (azst_otp_verification_value !== otp) {
+    return next(new AppError('Invalid OTP', 400));
   }
+  // here assing the opt relataed data to req in body for next operation
+  req.otpDetails = {
+    verificationId: azst_otp_verification_id,
+    reason: azst_otp_verification_reason,
+  };
+  next();
 });
 
 exports.updateOtpDetails = catchAsync(async (req, res, next) => {
@@ -138,11 +136,16 @@ exports.updateOtpDetails = catchAsync(async (req, res, next) => {
                             WHERE azst_otp_verification_id = ?`;
 
   const otpValues = [azst_customer_id, 0, verificationId];
+  // if the reason is forgot password go to authcontroll and update the password with the new password
+  if (reason === 'forgot password') {
+    return next();
+  }
 
   await db(updateOtpSDetais, otpValues);
   const key = process.env.JWT_SECRET;
   const jwtToken = createSendToken(azst_customer_id, key);
 
+  // if the reason is Login create a login log here
   if (reason === 'Login') {
     enterLoginLogs(azst_customer_id, jwtToken);
   }

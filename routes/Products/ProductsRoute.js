@@ -18,7 +18,7 @@ router.post('/search', productDataCtrl.getProductsSerach);
 router.post('/collection-products', productDataCtrl.getCollectionProducts);
 
 router.post('/details', productDataCtrl.getProductDetalis);
-router.post('/variants', productDataCtrl.getProductVariants);
+router.post('/variants', productDataCtrl.getProductVariant);
 
 const key = process.env.JWT_SECRET_ADMIN;
 
