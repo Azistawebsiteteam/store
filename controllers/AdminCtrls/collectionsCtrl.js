@@ -71,12 +71,19 @@ exports.updateImage = catchAsync(async (req, res, next) => {
   req.body.collectionImg = imageName;
   next();
 });
-
+// azst_collection_img: `${req.protocol}://${req.get('host')}/collection/${
 exports.collections = catchAsync(async (req, res, next) => {
-  const collectiosrQuery = `SELECT azst_collection_id,azst_collection_name,collection_url_title 
-                       FROM azst_collections_tbl WHERE azst_collection_status = 1`;
+  const collectiosrQuery = `SELECT azst_collection_id,azst_collection_name,collection_url_title,
+                            azst_collection_img 
+                            FROM azst_collections_tbl WHERE azst_collection_status = 1`;
 
-  const collections = await db(collectiosrQuery);
+  let collections = await db(collectiosrQuery);
+  collections = collections.map((cl) => ({
+    ...cl,
+    azst_collection_img: `${req.protocol}://${req.get('host')}/collection/${
+      cl.azst_collection_img
+    }`,
+  }));
   res.status(200).json(collections);
 });
 
@@ -118,8 +125,6 @@ exports.Addcollection = catchAsync(async (req, res, next) => {
                         azst_collection_img,updatedby,collection_url_title) VALUES (?,?,?,?,?,?,?,?)`;
 
   const urlTitle = title.replace(/ /g, '-');
-
-  console.log(urlTitle);
 
   const values = [
     title,
