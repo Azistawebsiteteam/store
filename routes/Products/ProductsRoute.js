@@ -3,6 +3,7 @@ const router = require('express').Router();
 const productCtrl = require('../../controllers/ProductCtrl/productaddCtrl');
 const productDataCtrl = require('../../controllers/ProductCtrl/productDetailsCtrl');
 const authCtrl = require('../../controllers/authController');
+const editCtrl = require('../../controllers/ProductCtrl/editProduct');
 
 const productValidationCtrl = require('../../Models/Product');
 
@@ -43,6 +44,8 @@ router.post(
 );
 
 router.post('/all-products', productDataCtrl.getAllProducts);
+
+router.post('/get/details', editCtrl.getProductDetalis);
 
 router.post('/whish-list', getWhishlist);
 router.post('/add-wl', isExistInWl, addToWl);
