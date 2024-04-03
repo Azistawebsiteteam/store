@@ -24,6 +24,9 @@ exports.getProductDetalis = catchAsync(async (req, res, next) => {
 
   const productDetails = {
     ...product,
+    image_src: `${req.protocol}://${req.get('host')}/product/images/${
+      product.image_src
+    }`,
     product_images: JSON.parse(product.product_images).map(
       (product_image) =>
         `${req.protocol}://${req.get('host')}/product/images/${product_image}`
