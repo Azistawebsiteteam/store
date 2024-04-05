@@ -144,41 +144,6 @@ exports.addProduct = catchAsync(async (req, res, next) => {
 
   const productImage = productImages[0];
 
-  // id,
-  //   product_title,
-  //   product_info,
-  //   vendor_id,
-  //   product_category,
-  //   type,
-  //   tags,
-  //   collections,
-  //   published,
-  //   image_src,
-  //   product_images,
-  //   variant_store_order,
-  //   image_alt_text,
-  //   seo_title,
-  //   seo_description,
-  //   cost_per_item,
-  //   price_india,
-  //   price,
-  //   compare_at_price,
-  //   inventroy_id,
-  //   sku_code,
-  //   sku_bar_code,
-  //   is_taxable,
-  //   product_weight,
-  //   gift_card,
-  //   out_of_stock_sale,
-  //   url_handle,
-  //   status,
-  //   azst_createdon,
-  //   azst_updatedon,
-  //   azst_updatedby,
-  //   origin_country,
-  //   product_url_title,
-  // chintal_quantity,
-  // corporate_office_quantity
   const { coc, coh, inventoryIds } = inventoryInfo;
 
   const productquery = `INSERT INTO azst_products (product_title, product_info, vendor_id,
@@ -261,7 +226,7 @@ exports.skuvarientsProduct = catchAsync(async (req, res, next) => {
         const {
           variantImage,
           variantWeight,
-          variantUnitWeight,
+          variantWeightUnit,
           value,
           amount,
           offerPrice,
@@ -289,7 +254,7 @@ exports.skuvarientsProduct = catchAsync(async (req, res, next) => {
         const values = [
           productId,
           JSON.stringify([mainVariant.variantImage, variantImage]),
-          variantUnitWeight,
+          variantWeightUnit,
           shCode,
           barCode,
           skuCode,
@@ -314,7 +279,7 @@ exports.skuvarientsProduct = catchAsync(async (req, res, next) => {
       const {
         variantImage,
         variantWeight,
-        variantUnitWeight,
+        variantWeightUnit,
         value,
         amount,
         offerPrice,
@@ -338,7 +303,7 @@ exports.skuvarientsProduct = catchAsync(async (req, res, next) => {
       const values = [
         productId,
         variantImage,
-        variantUnitWeight,
+        variantWeightUnit,
         shCode,
         barCode,
         skuCode,

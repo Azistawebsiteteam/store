@@ -5,7 +5,7 @@ const productDataCtrl = require('../../controllers/ProductCtrl/productDetailsCtr
 const authCtrl = require('../../controllers/authController');
 const editCtrl = require('../../controllers/ProductCtrl/editProduct');
 
-const productValidationCtrl = require('../../Models/Product');
+const productModel = require('../../Models/Product');
 
 const {
   isExistInWl,
@@ -14,37 +14,41 @@ const {
   getWhishlist,
 } = require('../../controllers/wishLIstCtrl');
 
-router.post('/search', productDataCtrl.getProductsSerach);
-
 router.post('/collection-products', productDataCtrl.getCollectionProducts);
+router.post('/search', productDataCtrl.getProductsSerach);
 
 router.post('/details', productDataCtrl.getProductDetalis);
 router.post('/variants', productDataCtrl.getProductVariant);
 
 const key = process.env.JWT_SECRET_ADMIN;
 
-//  productCtrl.uploadProductImages,  productCtrl.productDetails
-
 router.use(authCtrl.protect(key));
-//router.post('/add-store', productCtrl.skuvarientsProduct);
+
 router.post(
   '/add-store',
   productCtrl.uploadImage,
-  productValidationCtrl,
+  productModel.productValidation,
   productCtrl.storeImage,
   productCtrl.addProduct,
   productCtrl.skuvarientsProduct
 );
 
-router.post(
-  '/add-variant',
-  productCtrl.uploadImage,
-  productCtrl.storeImage,
-  productCtrl.skuvarientsProduct
+router.put(
+  '/update/variant',
+  editCtrl.updateVariantImage,
+  productModel.variantValidation,
+  editCtrl.isVariantExist,
+  editCtrl.updateImage,
+  editCtrl.variantUpdate
+);
+
+router.delete(
+  '/delete/variant',
+  editCtrl.isVariantExist,
+  editCtrl.deleteVariant
 );
 
 router.post('/all-products', productDataCtrl.getAllProducts);
-
 router.post('/get/details', editCtrl.getProductDetalis);
 
 router.post('/whish-list', getWhishlist);

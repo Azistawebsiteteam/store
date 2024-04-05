@@ -22,7 +22,9 @@ exports.isAdminExisit = catchAsync(async (req, res, next) => {
   const result = await db(loginQuery, [userId]);
 
   if (result.length === 0) {
-    return next(new AppError('You dont have an account ? Please Register'));
+    return next(
+      new AppError('You dont have an account ? Please Register', 404)
+    );
   }
   req.adminDetails = result[0];
   next();
@@ -48,7 +50,7 @@ exports.login = catchAsync(async (req, res, next) => {
   const isPasswordMatched = password === azst_admin_details_pwd;
 
   if (!isPasswordMatched) {
-    return next(new AppError('Invalid username or password', 400));
+    return next(new AppError('Invalid username or password', 404));
   }
 
   const key = process.env.JWT_SECRET_ADMIN;

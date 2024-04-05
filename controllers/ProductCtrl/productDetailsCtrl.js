@@ -1,4 +1,5 @@
 const db = require('../../dbconfig');
+const AppError = require('../../Utils/appError');
 
 const catchAsync = require('../../Utils/catchAsync');
 
@@ -133,7 +134,11 @@ exports.getProductDetalis = catchAsync(async (req, res, next) => {
 
 exports.getProductVariant = catchAsync(async (req, res, next) => {
   const { variantId } = req.body;
+
+  if (!variantId) return next(new AppError('Variant Id not provided.', 400));
+
   const query = `SELECT * FROM azst_sku_variant_info WHERE id = ? AND status = 1`;
+
   const variantData = await db(query, [variantId]);
 
   if (variantData.length < 1) {

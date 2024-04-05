@@ -51,16 +51,16 @@ const removeFromWl = catchAsync(async (req, res, next) => {
 });
 
 const getWhishlist = catchAsync(async (req, res, next) => {
-  const query = `SELECT azst_wishlist_id,variant_image,size,actual_price , offer_price,offer_percentage
+  const query = `SELECT azst_wishlist_id,variant_image,actual_price , offer_price,offer_percentage
                     FROM azst_wishlist
-                    JOIN azst_sku_variant_info ON  azst_wishlist.azst_variant_id = azst_sku_variant_info.id
+                    LEFT JOIN azst_sku_variant_info ON  azst_wishlist.azst_variant_id = azst_sku_variant_info.id
                     WHERE azst_customer_id = ? AND azst_wishlist.status = 1`;
 
   const result = await db(query, req.empId);
   const whish_list = result.map((product) => ({
     ...product,
     variant_image: `${req.protocol}://${req.get('host')}/product/variantimage/${
-      product.variant_image
+      JSON.parse(product.variant_image)[1]
     }`,
   }));
   res.status(200).json({ whish_list, message: 'Data Retrived successfully' });

@@ -1,4 +1,6 @@
 const Joi = require('joi');
+
+const catchAsync = require('../Utils/catchAsync');
 const AppError = require('../Utils/appError');
 
 const JSONArrayValidator = (value, helpers) => {
@@ -14,13 +16,6 @@ const JSONArrayValidator = (value, helpers) => {
     });
   }
 };
-
-// variantImage: Joi.alternatives()
-//   .try(
-//     Joi.string().allow(''),
-//     Joi.object().unknown() // Allow any object properties
-//   )
-//   .required(),
 
 const productSchema = Joi.object({
   productTitle: Joi.string().min(3).required(),
@@ -66,14 +61,10 @@ const productSchema = Joi.object({
 });
 
 const variantsSchema = Joi.object({
-  variantImage: Joi.alternatives()
-    .try(
-      Joi.string().allow(''),
-      Joi.object().unknown() // Allow any object properties
-    )
-    .required(),
+  variantId: Joi.string().allow(''),
   variantWeight: Joi.string().required(),
-  variantUnitWeight: Joi.string().required(),
+  variantImage: Joi.string().allow(''),
+  variantWeightUnit: Joi.string().required(),
   value: Joi.string().required(),
   amount: Joi.string(),
   offerPrice: Joi.string(),
@@ -88,7 +79,7 @@ const variantsSchema = Joi.object({
   variantService: Joi.string().required(),
 });
 
-const productValidation = async (req, res, next) => {
+const productValidation = catchAsync(async (req, res, next) => {
   const { variantsThere, variants } = req.body;
   const { error } = productSchema.validate(req.body);
   if (error) return next(new AppError(error.message, 400));
@@ -111,6 +102,12 @@ const productValidation = async (req, res, next) => {
     }
   }
   next();
-};
+});
 
-module.exports = productValidation;
+const variantValidation = catchAsync(async (req, res, next) => {
+  const { error } = variantsSchema.validate(req.body);
+  if (error) return next(new AppError(error.message, 400));
+  next();
+});
+
+module.exports = { productValidation, variantValidation };

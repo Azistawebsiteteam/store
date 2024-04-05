@@ -1,6 +1,64 @@
+const multer = require('multer');
+const sharp = require('sharp');
+const fs = require('fs');
+
 const db = require('../../dbconfig');
 
 const catchAsync = require('../../Utils/catchAsync');
+const AppError = require('../../Utils/appError');
+
+const multerStorage = multer.memoryStorage();
+
+const multerFilter = (req, file, cb) => {
+  if (file.mimetype.startsWith('image')) {
+    cb(null, true);
+  } else {
+    cb(new Error('File is not an image! Please upload only images.'), false);
+  }
+};
+
+const upload = multer({
+  storage: multerStorage,
+  fileFilter: multerFilter,
+});
+
+exports.updateVariantImage = upload.single('variantImage');
+
+exports.isVariantExist = catchAsync(async (req, res, next) => {
+  const { variantId } = req.body;
+
+  if (!variantId) return next(new AppError('Variant Id not provided.', 400));
+
+  const query = `SELECT id,variant_image FROM azst_sku_variant_info WHERE id = ? AND status = 1`;
+
+  const variantData = await db(query, [variantId]);
+
+  if (variantData.length < 1)
+    return next(new AppError('No such variant found', 404));
+  req.variantData = variantData[0];
+  next();
+});
+
+exports.updateImage = catchAsync(async (req, res, next) => {
+  if (!req.file) {
+    req.body.variantImage = '';
+    return next();
+  }
+
+  const variantImg = JSON.parse(req.variantData.variant_image)[1];
+
+  const imagePath = `uploads/variantImage/${variantImg}`;
+  fs.unlink(imagePath, (err) => {});
+
+  const imageName = `${Date.now()}-${req.file.originalname.replace(/ /g, '-')}`;
+
+  await sharp(req.file.buffer)
+    .toFormat('jpeg')
+    .jpeg({ quality: 100 })
+    .toFile(`uploads/variantImage/${imageName}`);
+  req.body.variantImage = imageName;
+  next();
+});
 
 const getProductImageLink = (req, i) =>
   `${req.protocol}://${req.get('host')}/product/variantimage/${i}`;
@@ -69,29 +127,73 @@ exports.getProductDetalis = catchAsync(async (req, res, next) => {
   });
 });
 
-exports.getProductVariant = catchAsync(async (req, res, next) => {
-  const { variantId } = req.query;
-  const query = `SELECT * FROM azst_sku_variant_info WHERE id = ? AND status = 1`;
-  const variantData = await db(query, [variantId]);
+exports.variantUpdate = catchAsync(async (req, res, next) => {
+  const {
+    variantId,
+    variantWeight,
+    variantWeightUnit,
+    amount,
+    offerPrice,
+    quantity,
+    shCode,
+    barCode,
+    skuCode,
+    isTaxable,
+    shippingRequired,
+    inventoryId,
+    inventoryPolicy,
+    variantService,
+    variantImage,
+  } = req.body;
 
-  if (variantData.length < 1) {
-    res.status(404).send({
-      variant: {},
-      message: 'No such variant found',
-    });
-    return;
+  const offerPercentage = Math.round(
+    ((parseInt(amount) - parseInt(offerPrice || 0)) / parseInt(amount)) * 100,
+    0
+  );
+
+  let variantImgQuery = 'variant_image =? ,';
+
+  const variantImg = JSON.parse(req.variantData.variant_image)[0];
+  const variantImages = JSON.stringify([variantImg, variantImage]);
+
+  const values = [
+    variantImages,
+    variantWeightUnit,
+    shCode,
+    barCode,
+    skuCode,
+    variantWeight,
+    inventoryId,
+    inventoryPolicy,
+    variantService,
+    shippingRequired,
+    isTaxable,
+    amount,
+    offerPrice,
+    offerPercentage,
+    quantity,
+    variantId,
+  ];
+
+  if (variantImage === '') {
+    variantImgQuery = '';
+    values.shift();
   }
-  const getImageLink = (img) =>
-    `${req.protocol}://${req.get('host')}/product/variantimage/${img}`;
 
-  const variantObj = variantData[0];
+  const query = `UPDATE azst_sku_variant_info 
+                 SET ${variantImgQuery} variant_weight_unit =?, variant_HS_code =?, variant_barcode =?,
+                  variant_sku =?, variant_weight=?, variant_inventory_tracker=?, variant_inventory_policy=?,
+                  variant_fulfillment_service=?, variant_requires_shipping=?, variant_taxable=?,
+                  actual_price=?, offer_price=?, offer_percentage=?, variant_quantity=?
+                 WHERE id = ? `;
+  await db(query, values);
 
-  const variant_data = {
-    ...variantObj,
-    variant_image: JSON.parse(variantObj.variant_image).map((img) =>
-      getImageLink(img)
-    ),
-  };
+  res.status(200).json({ message: 'Variant data updated successfully' });
+});
 
-  res.status(200).json({ variant: variant_data, message: 'Variant Details' });
+exports.deleteVariant = catchAsync(async (req, res, next) => {
+  const { variantId } = req.body;
+  const query = `DELETE FROM azst_sku_variant_info WHERE id = ?`;
+  await db(query, [variantId]);
+  res.status(200).json({ message: 'Variant data Deleted successfully' });
 });
