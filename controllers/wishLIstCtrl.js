@@ -50,7 +50,7 @@ const removeFromWl = catchAsync(async (req, res, next) => {
 
 const getImageLink = (req, imges, pImg) => {
   if (imges === '' || imges === null) {
-    return `${req.protocol}://${req.get('host')}/product/images${pImg}`;
+    return `${req.protocol}://${req.get('host')}/product/images/${pImg}`;
   }
   return `${req.protocol}://${req.get('host')}/product/variantimage/${
     JSON.parse(imges)[1]
