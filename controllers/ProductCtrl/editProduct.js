@@ -193,7 +193,7 @@ exports.variantUpdate = catchAsync(async (req, res, next) => {
 
 exports.deleteVariant = catchAsync(async (req, res, next) => {
   const { variantId } = req.body;
-  const query = `DELETE FROM azst_sku_variant_info WHERE id = ?`;
+  const query = `Update azst_sku_variant_info SET status = 0 WHERE id = ?`;
   await db(query, [variantId]);
   res.status(200).json({ message: 'Variant data Deleted successfully' });
 });

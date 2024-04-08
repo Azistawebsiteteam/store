@@ -24,6 +24,21 @@ exports.getCollectionProducts = catchAsync(async (req, res, next) => {
   const results = await db(getProducts, [collectionId]);
 
   let collectiondata = await db(getCollectionData, [collectionId]);
+
+  if (collectiondata.length === 0)
+    return res.status(404).json({
+      products: [],
+      collection_data: {},
+      message: 'No Collection found',
+    });
+
+  if (results.length === 0)
+    return res.status(200).json({
+      products: [],
+      collection_data: collectiondata,
+      message: 'No product found',
+    });
+
   const collection = collectiondata[0];
 
   collectiondata = {
@@ -33,15 +48,8 @@ exports.getCollectionProducts = catchAsync(async (req, res, next) => {
     }`,
   };
 
-  if (results.length === 0)
-    return res.status(200).json({
-      products: [],
-      collection_data: collectiondata,
-      message: 'No product found',
-    });
-
   const products = results.map((product) => getProductImageLink(req, product));
-  res.status(200).json({
+  res.status(404).json({
     products,
     collection_data: collectiondata,
     message: 'Data retrieved successfully.',
@@ -81,9 +89,11 @@ exports.getProductsSerach = catchAsync(async (req, res, next) => {
 exports.getProductDetalis = catchAsync(async (req, res, next) => {
   const { productId } = req.body;
 
-  const getproductDetails = `SELECT * FROM azst_products  WHERE  product_url_title = ? AND azst_products.status = 1`;
+  const getproductDetails = `SELECT * FROM azst_products  
+                              WHERE  product_url_title = ? AND azst_products.status = 1`;
 
-  const getVariants = `SELECT  id,option1,option2,option3 FROM  azst_sku_variant_info WHERE product_id = ? AND status = 1`;
+  const getVariants = `SELECT  id,option1,option2,option3 FROM  azst_sku_variant_info 
+                        WHERE product_id = ? AND status = 1 ORDER BY id`;
 
   const results = await db(getproductDetails, [productId]);
 
