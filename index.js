@@ -21,6 +21,7 @@ const brandRoute = require('./routes/AdminRoutes/brandRoutes');
 const categoryRoute = require('./routes/AdminRoutes/categoryRoutes');
 const tagRoute = require('./routes/AdminRoutes/tagsRoutes');
 const bannerRoute = require('./routes/AdminRoutes/bannersRoutes');
+const popupRoute = require('./routes/AdminRoutes/popupRoute');
 
 const productsRoute = require('./routes/Products/ProductsRoute');
 const cartRoute = require('./routes/Products/cartRoute');
@@ -50,6 +51,7 @@ app.use('/variant/barcode/image', express.static('Uploads/variantbarcode'));
 app.use('/banners', express.static('Uploads/bannerImages'));
 app.use('/collection', express.static('Uploads/CollectionImages'));
 app.use('/admin/profile', express.static('Uploads/AdminImages'));
+app.use('/popup/image', express.static('Uploads/PopupImages'));
 
 const api = process.env.APP_API;
 
@@ -64,6 +66,7 @@ app.use(`${api}/brands`, brandRoute);
 app.use(`${api}/category`, categoryRoute);
 app.use(`${api}/tags`, tagRoute);
 app.use(`${api}/banners`, bannerRoute);
+app.use(`${api}/popups`, popupRoute);
 
 app.use(`${api}/product`, productsRoute);
 app.use(`${api}/whish-list`, whishListRoute);

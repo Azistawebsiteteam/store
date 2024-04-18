@@ -118,7 +118,9 @@ exports.updateDetails = catchAsync(async (req, res, next) => {
   const { fullName, mobileNumber, email, profilePic } = req.body;
 
   const updateQuery = `UPDATE azst_admin_details SET  azst_admin_details_fname = ?,azst_admin_details_mobile = ?,
-                    azst_admin_details_email = ? ,azst_admin_details_profile_photo=? WHERE azst_admin_details_admin_id = ?`;
+                        azst_admin_details_email = ?,azst_admin_details_profile_photo=?
+                        WHERE azst_admin_details_admin_id = ?`;
+
   const values = [fullName, mobileNumber, email, profilePic, req.empId];
   await db(updateQuery, values);
   res.status(200).json({ message: 'Updated details successfully' });

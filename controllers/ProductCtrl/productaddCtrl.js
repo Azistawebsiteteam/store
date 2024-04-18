@@ -204,11 +204,26 @@ exports.skuvarientsProduct = catchAsync(async (req, res, next) => {
   const { productId, body } = req;
   const { productActiveStatus, variants } = body;
 
-  const insert_product_varients = `INSERT INTO azst_sku_variant_info (product_id, variant_image, variant_weight_unit, variant_HS_code,
-                                      variant_barcode, variant_sku, variant_grams, variant_inventory_tracker,
-                                      variant_inventory_policy, variant_fulfillment_service, variant_requires_shipping,
-                                      variant_taxable, actual_price, offer_price, offer_percentage,
-                                      status, variant_quantity, option1, option2, option3)
+  const insert_product_varients = `INSERT INTO azst_sku_variant_info (product_id,
+    variant_image,
+    variant_weight_unit,
+    variant_HS_code,
+    variant_barcode,
+    variant_sku,
+    variant_weight,
+    variant_inventory_tracker,
+    variant_inventory_policy,
+    variant_fulfillment_service,
+    variant_requires_shipping,
+    variant_taxable,
+    actual_price,
+    offer_price,
+    offer_percentage,
+    status,
+    variant_quantity,
+    option1,
+    option2,
+    option3)
                                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
   const insertVariant = async (values) => {

@@ -33,7 +33,7 @@ exports.getCollectionProducts = catchAsync(async (req, res, next) => {
     });
 
   if (results.length === 0)
-    return res.status(200).json({
+    return res.status(404).json({
       products: [],
       collection_data: collectiondata,
       message: 'No product found',
@@ -49,7 +49,7 @@ exports.getCollectionProducts = catchAsync(async (req, res, next) => {
   };
 
   const products = results.map((product) => getProductImageLink(req, product));
-  res.status(404).json({
+  res.status(200).json({
     products,
     collection_data: collectiondata,
     message: 'Data retrieved successfully.',

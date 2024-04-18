@@ -26,7 +26,7 @@ const productSchema = Joi.object({
     })
     .required(),
   productPrice: Joi.string().required(),
-  productComparePrice: Joi.string().required(),
+  productComparePrice: Joi.string().required().allow(''),
   productIsTaxable: Joi.boolean().required(),
   productCostPerItem: Joi.number().required(),
   inventoryInfo: Joi.string().required(),
@@ -53,6 +53,7 @@ const productSchema = Joi.object({
   metaDescription: Joi.string().allow(''),
   urlHandle: Joi.string().required(),
   variantsThere: Joi.boolean().required(),
+  variantImage: Joi.array().allow(''),
   variants: Joi.string()
     .custom((value, helpers) => {
       JSONArrayValidator(value, helpers);
@@ -62,8 +63,8 @@ const productSchema = Joi.object({
 
 const variantsSchema = Joi.object({
   variantId: Joi.string().allow(''),
-  variantWeight: Joi.string().required(),
-  variantImage: Joi.string().allow(''),
+  variantImage: Joi.array().allow(''),
+  variantWeight: Joi.string().required().allow(''),
   variantWeightUnit: Joi.string().required(),
   value: Joi.string().required(),
   amount: Joi.string(),

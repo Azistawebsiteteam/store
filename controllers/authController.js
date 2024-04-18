@@ -24,7 +24,6 @@ exports.protect = (token_key) => {
     ) {
       token = req.headers.authorization.split(' ')[1];
     }
-
     // 1) Getting Token and Check is there or not available
     if (!token) {
       return next(
