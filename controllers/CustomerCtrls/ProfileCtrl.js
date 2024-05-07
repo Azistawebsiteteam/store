@@ -71,6 +71,8 @@ exports.updateProfile = catchAsync(async (req, res, next) => {
     customerNote,
     taxExempts,
     tags,
+    gender,
+    dob,
   } = req.body;
   const profile = `UPDATE azst_customer SET  azst_customer_fname = ?, azst_customer_lname = ?, 
                         azst_customer_mobile = ?, azst_customer_email = ?, azst_customer_hno = ?,
@@ -79,7 +81,8 @@ exports.updateProfile = catchAsync(async (req, res, next) => {
                         azst_customer_landmark = ?, azst_customer_acceptemail_marketing = ?,
                         azst_customer_company = ?, azst_customer_address1 = ?, azst_customer_address2 = ?,
                         azst_customer_acceptsms_marketing = ?, azst_customer_note = ?, 
-                        azst_customer_taxexempts = ?, azst_customer_tags = ?,azst_customer_updatedon  = ?
+                        azst_customer_taxexempts = ?, azst_customer_tags = ?,azst_customer_updatedon  = ?,
+                        azst_customer_gender = ?, azst_customer_DOB = ?,
                     WHERE azst_customer_id  = ?`;
 
   const today = moment().format('YYYY-MM-DD HH:mm:ss');
@@ -106,6 +109,8 @@ exports.updateProfile = catchAsync(async (req, res, next) => {
     taxExempts,
     tags,
     today,
+    gender,
+    dob,
     req.empId,
   ];
 

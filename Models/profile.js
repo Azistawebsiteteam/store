@@ -31,6 +31,8 @@ const profileSchema = Joi.object({
   customerNote: Joi.string().trim().allow(''),
   taxExempts: Joi.string().valid('Yes', 'No').trim(),
   tags: Joi.string().trim().allow(''),
+  gender: Joi.string().required(),
+  dob: Joi.string().required(),
 });
 
 const profileValidation = async (req, res, next) => {

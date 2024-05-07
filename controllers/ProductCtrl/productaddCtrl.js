@@ -35,12 +35,12 @@ const getvariantImgName = async (file, folderName) => {
 };
 
 exports.storeImage = catchAsync(async (req, res, next) => {
-  if (req.files.productImages.length <= 0) {
+  if (!req.files || req.files.length <= 0) {
     return next(new AppError('Upload Product Images'));
   }
   for (const fieldName in req.files) {
     if (fieldName === 'productImages') {
-      req.body.productImages = [];
+      req.body.productImages = req.body.productImages ?? [];
       await Promise.all(
         req.files.productImages.map(async (file, i) => {
           const fileName = await getvariantImgName(file, 'productImages');
@@ -150,7 +150,7 @@ exports.addProduct = catchAsync(async (req, res, next) => {
                          product_category, type, tags, collections, image_src,
                          product_images, variant_store_order, image_alt_text, seo_title,
                          seo_description, cost_per_item, price, compare_at_price,
-                         inventroy_id, sku_code, sku_bar_code, is_taxable, product_weight,
+                         inventory_id, sku_code, sku_bar_code, is_taxable, product_weight,
                          out_of_stock_sale, url_handle, status, azst_updatedby, origin_country,
                          product_url_title,chintal_quantity,corporate_office_quantity)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?,?,?)`;

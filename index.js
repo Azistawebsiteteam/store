@@ -22,6 +22,7 @@ const categoryRoute = require('./routes/AdminRoutes/categoryRoutes');
 const tagRoute = require('./routes/AdminRoutes/tagsRoutes');
 const bannerRoute = require('./routes/AdminRoutes/bannersRoutes');
 const popupRoute = require('./routes/AdminRoutes/popupRoute');
+const inventroyRoute = require('./routes/AdminRoutes/inventoryRoutes');
 
 const productsRoute = require('./routes/Products/ProductsRoute');
 const cartRoute = require('./routes/Products/cartRoute');
@@ -67,6 +68,7 @@ app.use(`${api}/category`, categoryRoute);
 app.use(`${api}/tags`, tagRoute);
 app.use(`${api}/banners`, bannerRoute);
 app.use(`${api}/popups`, popupRoute);
+app.use(`${api}/inventory`, inventroyRoute);
 
 app.use(`${api}/product`, productsRoute);
 app.use(`${api}/whish-list`, whishListRoute);

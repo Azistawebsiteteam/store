@@ -2,6 +2,7 @@ const router = require('express').Router();
 
 const productCtrl = require('../../controllers/ProductCtrl/productaddCtrl');
 const productDataCtrl = require('../../controllers/ProductCtrl/productDetailsCtrl');
+const productUpdateCtrl = require('../../controllers/ProductCtrl/editProduct');
 const authCtrl = require('../../controllers/authController');
 const editCtrl = require('../../controllers/ProductCtrl/editProduct');
 
@@ -33,6 +34,17 @@ router.post(
   productCtrl.skuvarientsProduct
 );
 
+//  productModel.productValidation,
+
+router.post(
+  '/update-store',
+  productCtrl.uploadImage,
+  productModel.productValidation,
+  productCtrl.storeImage,
+  productUpdateCtrl.updateProduct,
+  productUpdateCtrl.skuvarientsUpdate
+);
+
 router.put(
   '/update/variant',
   editCtrl.updateVariantImage,
@@ -47,6 +59,8 @@ router.delete(
   editCtrl.isVariantExist,
   editCtrl.deleteVariant
 );
+
+router.patch('/delete/images', productUpdateCtrl.deleteProductImages);
 
 router.post('/all-products', productDataCtrl.getAllProducts);
 router.post('/get/details', editCtrl.getProductDetalis);

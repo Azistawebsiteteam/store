@@ -1,71 +1,70 @@
 const Joi = require('joi');
-
 const catchAsync = require('../Utils/catchAsync');
 const AppError = require('../Utils/appError');
 
-const JSONArrayValidator = (value, helpers) => {
+// Define a reusable function to validate JSON array format
+const validateJSONArray = (value, message) => {
   try {
     const parsedValue = JSON.parse(value);
     if (!Array.isArray(parsedValue)) {
-      throw new Error('Variants order must be an array');
+      throw new Error(message);
     }
     return parsedValue;
   } catch (err) {
-    return helpers.error('any.custom', {
-      message: 'Invalid JSON array format',
-    });
+    throw new Error('Invalid JSON array format');
   }
 };
 
-const productSchema = Joi.object({
+// Define Joi schemas for products
+const baseProductSchema = Joi.object({
   productTitle: Joi.string().min(3).required(),
   productInfo: Joi.string().min(3).required(),
-  variantsOrder: Joi.string()
-    .custom((value, helpers) => {
-      JSONArrayValidator(value, helpers);
-    })
-    .required(),
-  productPrice: Joi.string().required(),
-  productComparePrice: Joi.string().required().allow(''),
-  productIsTaxable: Joi.boolean().required(),
-  productCostPerItem: Joi.number().required(),
-  inventoryInfo: Joi.string().required(),
-  vendor: Joi.string().required(),
-  cwos: Joi.boolean().required(),
-  skuCode: Joi.string().allow(''),
-  skuBarcode: Joi.string().allow(''),
-  productWeight: Joi.string().required(),
-  originCountry: Joi.string().required(),
-  productActiveStatus: Joi.string().valid('1', '0').required(),
-  category: Joi.string().required(),
-  productType: Joi.string().required(),
-  collections: Joi.string()
-    .custom((value, helpers) => {
-      JSONArrayValidator(value, helpers);
-    })
-    .required(),
-  tags: Joi.string()
-    .custom((value, helpers) => {
-      JSONArrayValidator(value, helpers);
-    })
-    .required(),
+  productImages: Joi.array().items(
+    Joi.string(), // Allow strings
+    Joi.object() // Allow objects
+  ),
+  variantsThere: Joi.boolean().required().valid(false),
   metaTitle: Joi.string().required(),
   metaDescription: Joi.string().allow(''),
   urlHandle: Joi.string().required(),
-  variantsThere: Joi.boolean().required(),
-  variantImage: Joi.array().allow(''),
-  variants: Joi.string()
-    .custom((value, helpers) => {
-      JSONArrayValidator(value, helpers);
-    })
-    .required(),
+  productActiveStatus: Joi.string().valid('1', '0').required(),
+  vendor: Joi.number().required(),
+  category: Joi.string().required(),
+  productType: Joi.string().required(),
+  collections: Joi.custom((value, helpers) => {
+    return validateJSONArray(value, 'Tags must be an Array');
+  }).required(),
+  tags: Joi.custom((value, helpers) => {
+    return validateJSONArray(value, 'Tags must be an Array');
+  }).required(),
+  brnad: Joi.number().required().allow(''),
+});
+
+const productSchemaWithoutVariants = baseProductSchema.keys({
+  productPrice: Joi.number().required(),
+  productComparePrice: Joi.number().allow(''),
+  productIsTaxable: Joi.boolean().required(),
+  productCostPerItem: Joi.number().required(),
+  inventoryInfo: Joi.string().required(),
+  cwos: Joi.boolean().required(),
+  skuCode: Joi.string().required(),
+  skuBarcode: Joi.string().allow(''),
+  productWeight: Joi.string().required().allow(''),
+  originCountry: Joi.string().required().allow(''),
+});
+
+const productSchemaWithVariants = baseProductSchema.keys({
+  variantsThere: Joi.boolean().required().valid(true),
+  variants: Joi.custom((value, helpers) => {
+    return validateJSONArray(value, 'Variants must be an Array');
+  }).required(),
 });
 
 const variantsSchema = Joi.object({
   variantId: Joi.string().allow(''),
   variantImage: Joi.array().allow(''),
-  variantWeight: Joi.string().required().allow(''),
-  variantWeightUnit: Joi.string().required(),
+  variantWeight: Joi.string().allow(''),
+  variantWeightUnit: Joi.string().allow(''),
   value: Joi.string().required(),
   amount: Joi.string(),
   offerPrice: Joi.string(),
@@ -80,29 +79,37 @@ const variantsSchema = Joi.object({
   variantService: Joi.string().required(),
 });
 
+const validateProduct = async (reqBody, schema) => {
+  try {
+    await schema.validateAsync(reqBody, { abortEarly: false });
+  } catch (error) {
+    throw new AppError(error.message, 400);
+  }
+};
+
 const productValidation = catchAsync(async (req, res, next) => {
-  const { variantsThere, variants } = req.body;
-  const { error } = productSchema.validate(req.body);
-  if (error) return next(new AppError(error.message, 400));
-  if (variantsThere) {
-    const variantsData = JSON.parse(variants);
+  const { variantsThere } = req.body;
+
+  if (variantsThere.toLowerCase() === 'true') {
+    await validateProduct(req.body, productSchemaWithVariants);
+    const variantsData = JSON.parse(req.body.variants);
     for (let variant of variantsData) {
-      let mainVariant = variant.main;
-      let subvariants = variant.sub;
+      let { main, sub } = variant;
 
-      const { error } = variantsSchema.validate(mainVariant);
-      if (error) return next(new AppError(error.message, 400));
+      await validateProduct(main, variantsSchema);
 
-      if (subvariants.length > 0) {
-        for (let subvariant of subvariants) {
+      if (sub && sub.length > 0) {
+        for (let subvariant of sub) {
           delete subvariant.id;
-          const { error } = variantsSchema.validate(subvariant);
-          if (error) return next(new AppError(error.message, 400));
+          await validateProduct(subvariant, variantsSchema);
         }
       }
     }
+  } else {
+    await validateProduct(req.body, productSchemaWithoutVariants);
   }
-  next();
+
+  // next();
 });
 
 const variantValidation = catchAsync(async (req, res, next) => {
