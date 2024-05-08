@@ -96,16 +96,20 @@ exports.getProductDetalis = catchAsync(async (req, res, next) => {
   const result = await db(getVariants, [productIdd]);
 
   const variantsData = [];
-  storeOrder.forEach((element) => {
-    variantsData.push({ UOM: element, values: [] });
-  });
+  if (storeOrder && storeOrder.length > 0) {
+    storeOrder.forEach((element) => {
+      variantsData.push({ UOM: element, values: [] });
+    });
+  }
 
   // Push unique values from result into variantsData
-  result.forEach((variant) => {
-    for (let i = 0; i < variantsData.length; i++) {
-      variantsData[i].values.push(variant[`option${i + 1}`]);
-    }
-  });
+  if (result && result.length > 0) {
+    result.forEach((variant) => {
+      for (let i = 0; i < variantsData.length; i++) {
+        variantsData[i].values.push(variant[`option${i + 1}`]);
+      }
+    });
+  }
 
   // Remove duplicate values using set
   variantsData.forEach((variant) => {

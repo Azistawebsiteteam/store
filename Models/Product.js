@@ -17,6 +17,7 @@ const validateJSONArray = (value, message) => {
 
 // Define Joi schemas for products
 const baseProductSchema = Joi.object({
+  productId: Joi.string().allow(''),
   productTitle: Joi.string().min(3).required(),
   productInfo: Joi.string().min(3).required(),
   productImages: Joi.array().items(
@@ -37,7 +38,7 @@ const baseProductSchema = Joi.object({
   tags: Joi.custom((value, helpers) => {
     return validateJSONArray(value, 'Tags must be an Array');
   }).required(),
-  brnad: Joi.number().required().allow(''),
+  brand: Joi.number().required().allow(''),
 });
 
 const productSchemaWithoutVariants = baseProductSchema.keys({
@@ -109,7 +110,7 @@ const productValidation = catchAsync(async (req, res, next) => {
     await validateProduct(req.body, productSchemaWithoutVariants);
   }
 
-  // next();
+  next();
 });
 
 const variantValidation = catchAsync(async (req, res, next) => {
