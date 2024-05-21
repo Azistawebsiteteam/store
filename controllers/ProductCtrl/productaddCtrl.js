@@ -69,8 +69,8 @@ exports.storeImage = catchAsync(async (req, res, next) => {
           const iname = await getvariantImgName(fi, 'variantImage');
           mainImg = iname;
           updatedMain.variantImage = iname;
-        } else if (variant.main.variantImage === '') {
-          updatedMain.variantImage = '';
+        } else if (typeof variant.main.variantImage === 'string') {
+          updatedMain.variantImage = variant.main.variantImage;
         }
 
         const updatedSub = await Promise.all(
@@ -134,17 +134,20 @@ exports.addProduct = catchAsync(async (req, res, next) => {
   } = req.body;
 
   const price = variantsThere
-    ? productPrice
-    : JSON.parse(variants)[0].main.amount;
+    ? JSON.parse(variants)[0].main.offer_price
+    : productPrice;
   const comparePrice = variantsThere
-    ? productComparePrice
-    : JSON.parse(variants)[0].main.amount.split('-')[1];
+    ? JSON.parse(variants)[0].main.comparePrice
+    : productComparePrice;
 
   const url_title = productTitle.replace(/ /g, '-');
 
   const productImage = productImages[0];
 
-  const { coc, coh, inventoryIds } = inventoryInfo;
+  let inventory = { coc: null, coh: null, inventoryIds: [] };
+  if (!variantsThere) {
+    inventory = JSON.parse(inventoryInfo);
+  }
 
   const productquery = `INSERT INTO azst_products (product_title, product_info, vendor_id,
                          product_category, type, tags, collections, image_src,
@@ -171,7 +174,7 @@ exports.addProduct = catchAsync(async (req, res, next) => {
     productCostPerItem,
     price,
     comparePrice,
-    JSON.stringify(inventoryIds),
+    JSON.stringify(inventory.inventoryIds),
     skuCode,
     skuBarcode,
     productIsTaxable,
@@ -182,8 +185,8 @@ exports.addProduct = catchAsync(async (req, res, next) => {
     req.empId,
     originCountry,
     url_title,
-    coc,
-    coh,
+    inventory.coc,
+    inventory.coh,
   ];
 
   const product = await db(productquery, values);
@@ -194,10 +197,10 @@ exports.addProduct = catchAsync(async (req, res, next) => {
       message: 'Product added successfully',
     });
     return;
+  } else {
+    req.productId = product.insertId;
+    next();
   }
-
-  req.productId = product.insertId;
-  next();
 });
 
 exports.skuvarientsProduct = catchAsync(async (req, res, next) => {
@@ -216,7 +219,7 @@ exports.skuvarientsProduct = catchAsync(async (req, res, next) => {
     variant_fulfillment_service,
     variant_requires_shipping,
     variant_taxable,
-    actual_price,
+    compare_at_price,
     offer_price,
     offer_percentage,
     status,
@@ -224,7 +227,7 @@ exports.skuvarientsProduct = catchAsync(async (req, res, next) => {
     option1,
     option2,
     option3)
-                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
   const insertVariant = async (values) => {
     await db(insert_product_varients, values);
@@ -238,15 +241,15 @@ exports.skuvarientsProduct = catchAsync(async (req, res, next) => {
 
     if (subvariants.length > 0) {
       for (let subvariant of subvariants) {
-        const {
+        let {
           variantImage,
           variantWeight,
           variantWeightUnit,
           value,
-          amount,
-          offerPrice,
+          comparePrice,
+          offer_price,
           quantity,
-          shCode,
+          hsCode,
           barCode,
           skuCode,
           isTaxable,
@@ -259,18 +262,28 @@ exports.skuvarientsProduct = catchAsync(async (req, res, next) => {
         const subValues = value.split('-');
         const option2 = subValues[0];
         const option3 = subValues.length > 1 ? subValues[1] : null;
+        console.log(comparePrice, offer_price);
+        let offerPercentage = 0;
 
-        const offerPercentage = Math.round(
-          ((parseInt(amount) - parseInt(offerPrice || 0)) / parseInt(amount)) *
-            100,
-          0
-        );
+        if (!comparePrice) {
+          comparePrice = offer_price;
+        }
 
+        const parsedComparePrice = parseFloat(comparePrice);
+        const parsedOfferPrice = parseFloat(offer_price);
+
+        if (parsedComparePrice >= parsedOfferPrice && parsedComparePrice > 0) {
+          offerPercentage = Math.round(
+            ((parsedComparePrice - parsedOfferPrice) / parsedComparePrice) * 100
+          );
+        }
+
+        console.log(offerPercentage);
         const values = [
           productId,
           JSON.stringify([mainVariant.variantImage, variantImage]),
           variantWeightUnit,
-          shCode,
+          hsCode,
           barCode,
           skuCode,
           variantWeight,
@@ -279,8 +292,8 @@ exports.skuvarientsProduct = catchAsync(async (req, res, next) => {
           variantService,
           shippingRequired,
           isTaxable,
-          amount,
-          offerPrice,
+          comparePrice,
+          offer_price,
           offerPercentage,
           productActiveStatus,
           quantity,
@@ -296,10 +309,10 @@ exports.skuvarientsProduct = catchAsync(async (req, res, next) => {
         variantWeight,
         variantWeightUnit,
         value,
-        amount,
-        offerPrice,
+        offer_price,
+        comparePrice,
         quantity,
-        shCode,
+        hsCode,
         barCode,
         skuCode,
         isTaxable,
@@ -310,7 +323,8 @@ exports.skuvarientsProduct = catchAsync(async (req, res, next) => {
       } = mainVariant;
 
       const offerPercentage = Math.round(
-        ((parseInt(amount) - parseInt(offerPrice || 0)) / parseInt(amount)) *
+        ((parseInt(comparePrice || 0) - parseInt(offer_price || 0)) /
+          parseInt(comparePrice || 0)) *
           100,
         0
       );
@@ -319,7 +333,7 @@ exports.skuvarientsProduct = catchAsync(async (req, res, next) => {
         productId,
         variantImage,
         variantWeightUnit,
-        shCode,
+        hsCode,
         barCode,
         skuCode,
         variantWeight,
@@ -328,8 +342,8 @@ exports.skuvarientsProduct = catchAsync(async (req, res, next) => {
         variantService,
         shippingRequired,
         isTaxable,
-        amount,
-        offerPrice,
+        offer_price,
+        comparePrice,
         offerPercentage,
         productActiveStatus,
         quantity,

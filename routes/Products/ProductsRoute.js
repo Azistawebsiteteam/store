@@ -34,8 +34,6 @@ router.post(
   productCtrl.skuvarientsProduct
 );
 
-//  productModel.productValidation,
-
 router.post(
   '/update-store',
   productCtrl.uploadImage,

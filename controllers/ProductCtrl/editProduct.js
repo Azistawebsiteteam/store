@@ -171,28 +171,30 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
   });
 
   const price = variantsThere
-    ? productPrice
-    : JSON.parse(variants)[0].main.amount;
+    ? JSON.parse(variants)[0].main.amount
+    : productPrice;
   const comparePrice = variantsThere
-    ? productComparePrice
-    : JSON.parse(variants)[0].main.amount.split('-')[1];
+    ? JSON.parse(variants)[0].main.amount
+    : productComparePrice;
 
   const url_title = productTitle.replace(/ /g, '-');
 
   const productImage = newProductImages[0];
-
-  const { coc, coh, inventoryIds } = JSON.parse(inventoryInfo);
+  let inventory = { coc: null, coh: null, inventoryIds: [] };
+  if (inventoryInfo) {
+    inventory = JSON.parse(inventoryInfo);
+  }
 
   const productUpdatequery = `UPDATE azst_products 
-                             SET product_title = ?,product_info = ?,vendor_id = ?,product_category = ?,
-                              type = ?,tags = ?,collections = ?,image_src = ?,product_images = ?,
-                              variant_store_order = ?,image_alt_text = ?,seo_title = ?,seo_description = ?,
-                              cost_per_item = ?,price = ?,compare_at_price = ?,inventory_id = ?,sku_code = ?,
-                              sku_bar_code = ?,is_taxable = ?,product_weight = ?,out_of_stock_sale = ?,
-                              url_handle = ?,status = ?,azst_updatedby = ?,origin_country = ?,
-                              product_url_title = ?,chintal_quantity = ?,corporate_office_quantity = ? , brand_id = ?
-                            WHERE id = ?;
-                            `;
+                              SET product_title = ?,product_info = ?,vendor_id = ?,product_category = ?,
+                                type = ?,tags = ?,collections = ?,image_src = ?,product_images = ?,
+                                variant_store_order = ?,image_alt_text = ?,seo_title = ?,seo_description = ?,
+                                cost_per_item = ?,price = ?,compare_at_price = ?,inventory_id = ?,sku_code = ?,
+                                sku_bar_code = ?,is_taxable = ?,product_weight = ?,out_of_stock_sale = ?,
+                                url_handle = ?,status = ?,azst_updatedby = ?,origin_country = ?,
+                                product_url_title = ?,chintal_quantity = ?,corporate_office_quantity = ? , brand_id = ?
+                              WHERE id = ?;
+                              `;
 
   const values = [
     productTitle,
@@ -211,7 +213,7 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
     productCostPerItem,
     price,
     comparePrice,
-    JSON.stringify(inventoryIds),
+    JSON.stringify(inventory.inventoryIds),
     skuCode,
     skuBarcode,
     productIsTaxable,
@@ -222,73 +224,127 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
     req.empId,
     originCountry,
     url_title,
-    coc,
-    coh,
+    inventory.coc,
+    inventory.coh,
     brand,
     productId,
   ];
 
-  const result = await db(productUpdatequery, values);
+  await db(productUpdatequery, values);
 
-  res.status(200).json({
-    message: 'Product updated successfully',
-  });
-  // if (!variantsThere) {
-  //   res.status(200).json({
-  //     message: 'Product updated successfully',
-  //   });
-  //   return;
-  // }
-  // next();
+  if (!variantsThere) {
+    res.status(200).json({
+      message: 'Product updated successfully',
+    });
+    return;
+  }
+  next();
 });
 
+const getofferPercentage = (comparePrice, offer_price) => {
+  let offerPercentage = 0;
+  const parsedComparePrice = parseFloat(comparePrice);
+  const parsedOfferPrice = parseFloat(offer_price);
+
+  if (parsedComparePrice >= parsedOfferPrice && parsedComparePrice > 0) {
+    offerPercentage = Math.round(
+      ((parsedComparePrice - parsedOfferPrice) / parsedComparePrice) * 100
+    );
+  }
+
+  return offerPercentage;
+};
+
 exports.skuvarientsUpdate = catchAsync(async (req, res, next) => {
-  const { productId, body } = req;
-  const { productActiveStatus, variants } = body;
+  const { productActiveStatus, variants, productId } = req.body;
 
   const insert_product_varients = `INSERT INTO azst_sku_variant_info (product_id,
-    variant_image,
-    variant_weight_unit,
-    variant_HS_code,
-    variant_barcode,
-    variant_sku,
-    variant_weight,
-    variant_inventory_tracker,
-    variant_inventory_policy,
-    variant_fulfillment_service,
-    variant_requires_shipping,
-    variant_taxable,
-    actual_price,
-    offer_price,
-    offer_percentage,
-    status,
-    variant_quantity,
-    option1,
-    option2,
-    option3)
+                                    variant_image,
+                                    variant_weight_unit,
+                                    variant_HS_code,
+                                    variant_barcode,
+                                    variant_sku,
+                                    variant_weight,
+                                    variant_inventory_tracker,
+                                    variant_inventory_policy,
+                                    variant_fulfillment_service,
+                                    variant_requires_shipping,
+                                    variant_taxable,
+                                    compare_at_price,
+                                    offer_price,
+                                    offer_percentage,
+                                    status,
+                                    variant_quantity,
+                                    option1,
+                                    option2,
+                                    option3)
                                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+
+  const update_product_varients = `UPDATE  azst_sku_variant_info SET product_id = ?,
+                                    variant_image= ?,
+                                    variant_weight_unit= ?,
+                                    variant_HS_code= ?,
+                                    variant_barcode= ?,
+                                    variant_sku= ?,
+                                    variant_weight= ?,
+                                    variant_inventory_tracker= ?,
+                                    variant_inventory_policy= ?,
+                                    variant_fulfillment_service= ?,
+                                    variant_requires_shipping= ?,
+                                    variant_taxable= ?,
+                                    compare_at_price= ?,
+                                    offer_price= ?,
+                                    offer_percentage= ?,
+                                    status= ?,
+                                    variant_quantity= ?,
+                                    option1= ?,
+                                    option2= ?,
+                                    option3= ? where id = ?
+                                `;
+
+  const deleteMainVariant = `DELETE FROM  azst_sku_variant_info where id = ?`;
 
   const insertVariant = async (values) => {
     await db(insert_product_varients, values);
   };
 
+  const updateVariant = async (values) => {
+    await db(update_product_varients, values);
+  };
+
+  const deleteOldMainVariants = async (id) => {
+    await db(deleteMainVariant, [id]);
+  };
+
   const variantsData = JSON.parse(variants);
+
+  const newVariantImages = (productImages) => {
+    const imageNames = productImages.map((url) => {
+      const startIndex = url.lastIndexOf('/') + 1; // Find the last '/' to get the start index of the filename
+      return url.substring(startIndex); // Extract the filename from the URL
+    });
+    return imageNames;
+  };
 
   for (let variant of variantsData) {
     let mainVariant = variant.main;
     let subvariants = variant.sub;
 
+    if (subvariants.length > 1) {
+      await deleteOldMainVariants(mainVariant.variantId);
+    }
     if (subvariants.length > 0) {
       for (let subvariant of subvariants) {
         const {
+          variantId,
           variantImage,
           variantWeight,
           variantWeightUnit,
           value,
-          amount,
-          offerPrice,
+          offer_price,
+          comparePrice,
           quantity,
-          shCode,
+          hsCode,
           barCode,
           skuCode,
           isTaxable,
@@ -302,17 +358,20 @@ exports.skuvarientsUpdate = catchAsync(async (req, res, next) => {
         const option2 = subValues[0];
         const option3 = subValues.length > 1 ? subValues[1] : null;
 
-        const offerPercentage = Math.round(
-          ((parseInt(amount) - parseInt(offerPrice ?? 0)) / parseInt(amount)) *
-            100,
-          0
-        );
+        if (!comparePrice) {
+          comparePrice = offer_price;
+        }
+        const offerPercentage = getofferPercentage(comparePrice, offer_price);
+
+        console.log(offerPercentage);
 
         const values = [
           productId,
-          JSON.stringify([mainVariant.variantImage, variantImage]),
+          JSON.stringify(
+            newVariantImages([(mainVariant.variantImage, variantImage)])
+          ),
           variantWeightUnit,
-          shCode,
+          hsCode,
           barCode,
           skuCode,
           variantWeight,
@@ -321,8 +380,8 @@ exports.skuvarientsUpdate = catchAsync(async (req, res, next) => {
           variantService,
           shippingRequired,
           isTaxable,
-          amount,
-          offerPrice,
+          comparePrice,
+          offer_price,
           offerPercentage,
           productActiveStatus,
           quantity,
@@ -330,18 +389,25 @@ exports.skuvarientsUpdate = catchAsync(async (req, res, next) => {
           option2,
           option3,
         ];
-        await insertVariant(values);
+
+        if (subvariants.length > 1 || parseInt(mainVariant.variantId) === 0) {
+          await insertVariant(values);
+        } else {
+          values.push(mainVariant.variantId);
+          await updateVariant(values);
+        }
       }
     } else {
       const {
+        variantId,
         variantImage,
         variantWeight,
         variantWeightUnit,
         value,
-        amount,
-        offerPrice,
+        comparePrice,
+        offer_price,
         quantity,
-        shCode,
+        hsCode,
         barCode,
         skuCode,
         isTaxable,
@@ -351,17 +417,16 @@ exports.skuvarientsUpdate = catchAsync(async (req, res, next) => {
         variantService,
       } = mainVariant;
 
-      const offerPercentage = Math.round(
-        ((parseInt(amount) - parseInt(offerPrice || 0)) / parseInt(amount)) *
-          100,
-        0
-      );
+      if (!comparePrice) {
+        comparePrice = offer_price;
+      }
+      const offerPercentage = getofferPercentage(comparePrice, offer_price);
 
       const values = [
         productId,
-        variantImage,
+        JSON.stringify(newVariantImages([variantImage])),
         variantWeightUnit,
-        shCode,
+        hsCode,
         barCode,
         skuCode,
         variantWeight,
@@ -370,8 +435,8 @@ exports.skuvarientsUpdate = catchAsync(async (req, res, next) => {
         variantService,
         shippingRequired,
         isTaxable,
-        amount,
-        offerPrice,
+        comparePrice,
+        offer_price,
         offerPercentage,
         productActiveStatus,
         quantity,
@@ -379,7 +444,13 @@ exports.skuvarientsUpdate = catchAsync(async (req, res, next) => {
         null,
         null,
       ];
-      await insertVariant(values);
+
+      if (variantId && parseInt(variantId) !== 0) {
+        values.push(variantId);
+        await updateVariant(values);
+      } else {
+        await insertVariant(values);
+      }
     }
   }
   res.status(200).json({ message: 'Product & variants inserted successfully' });
@@ -390,10 +461,10 @@ exports.variantUpdate = catchAsync(async (req, res, next) => {
     variantId,
     variantWeight,
     variantWeightUnit,
-    amount,
-    offerPrice,
+    comparePrice,
+    offer_price,
     quantity,
-    shCode,
+    hsCode,
     barCode,
     skuCode,
     isTaxable,
@@ -404,10 +475,7 @@ exports.variantUpdate = catchAsync(async (req, res, next) => {
     variantImage,
   } = req.body;
 
-  const offerPercentage = Math.round(
-    ((parseInt(amount) - parseInt(offerPrice || 0)) / parseInt(amount)) * 100,
-    0
-  );
+  const offerPercentage = getofferPercentage(comparePrice, offer_price);
 
   let variantImgQuery = 'variant_image =? ,';
 
@@ -417,7 +485,7 @@ exports.variantUpdate = catchAsync(async (req, res, next) => {
   const values = [
     variantImages,
     variantWeightUnit,
-    shCode,
+    hsCode,
     barCode,
     skuCode,
     variantWeight,
@@ -426,8 +494,8 @@ exports.variantUpdate = catchAsync(async (req, res, next) => {
     variantService,
     shippingRequired,
     isTaxable,
-    amount,
-    offerPrice,
+    comparePrice,
+    offer_price,
     offerPercentage,
     quantity,
     variantId,
@@ -442,7 +510,7 @@ exports.variantUpdate = catchAsync(async (req, res, next) => {
                  SET ${variantImgQuery} variant_weight_unit =?, variant_HS_code =?, variant_barcode =?,
                   variant_sku =?, variant_weight=?, variant_inventory_tracker=?, variant_inventory_policy=?,
                   variant_fulfillment_service=?, variant_requires_shipping=?, variant_taxable=?,
-                  actual_price=?, offer_price=?, offer_percentage=?, variant_quantity=?
+                  compare_at_price=?, offer_price=?, offer_percentage=?, variant_quantity=?
                  WHERE id = ? `;
   await db(query, values);
 

@@ -117,9 +117,11 @@ exports.getProductDetalis = catchAsync(async (req, res, next) => {
 
   const result = await db(getVariants, [productIdd]);
   const variantsData = [];
-  storeOrder.forEach((element) => {
-    variantsData.push({ UOM: element, values: [] });
-  });
+  if (storeOrder) {
+    storeOrder.forEach((element) => {
+      variantsData.push({ UOM: element, values: [] });
+    });
+  }
 
   // Push unique values from result into variantsData
   result.forEach((variant) => {
