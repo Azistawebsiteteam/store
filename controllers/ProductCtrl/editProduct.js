@@ -332,10 +332,11 @@ exports.skuvarientsUpdate = catchAsync(async (req, res, next) => {
 
     if (subvariants.length > 1) {
       await deleteOldMainVariants(mainVariant.variantId);
+      mainVariant.variantId = 0;
     }
     if (subvariants.length > 0) {
       for (let subvariant of subvariants) {
-        const {
+        let {
           variantId,
           variantImage,
           variantWeight,
@@ -362,13 +363,10 @@ exports.skuvarientsUpdate = catchAsync(async (req, res, next) => {
           comparePrice = offer_price;
         }
         const offerPercentage = getofferPercentage(comparePrice, offer_price);
-
-        console.log(offerPercentage);
-
         const values = [
           productId,
           JSON.stringify(
-            newVariantImages([(mainVariant.variantImage, variantImage)])
+            newVariantImages([mainVariant.variantImage, variantImage])
           ),
           variantWeightUnit,
           hsCode,
@@ -390,15 +388,19 @@ exports.skuvarientsUpdate = catchAsync(async (req, res, next) => {
           option3,
         ];
 
-        if (subvariants.length > 1 || parseInt(mainVariant.variantId) === 0) {
+        if (
+          subvariants.length > 1 &&
+          parseInt(mainVariant.variantId) === 0 &&
+          parseInt(variantId) === 0
+        ) {
           await insertVariant(values);
         } else {
-          values.push(mainVariant.variantId);
+          values.push(variantId);
           await updateVariant(values);
         }
       }
     } else {
-      const {
+      let {
         variantId,
         variantImage,
         variantWeight,

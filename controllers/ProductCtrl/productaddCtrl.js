@@ -67,6 +67,7 @@ exports.storeImage = catchAsync(async (req, res, next) => {
           const fi = variantImgs[index];
           index++;
           const iname = await getvariantImgName(fi, 'variantImage');
+
           mainImg = iname;
           updatedMain.variantImage = iname;
         } else if (typeof variant.main.variantImage === 'string') {
@@ -262,7 +263,7 @@ exports.skuvarientsProduct = catchAsync(async (req, res, next) => {
         const subValues = value.split('-');
         const option2 = subValues[0];
         const option3 = subValues.length > 1 ? subValues[1] : null;
-        console.log(comparePrice, offer_price);
+
         let offerPercentage = 0;
 
         if (!comparePrice) {
@@ -278,7 +279,6 @@ exports.skuvarientsProduct = catchAsync(async (req, res, next) => {
           );
         }
 
-        console.log(offerPercentage);
         const values = [
           productId,
           JSON.stringify([mainVariant.variantImage, variantImage]),

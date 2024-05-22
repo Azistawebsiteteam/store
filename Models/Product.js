@@ -148,14 +148,12 @@ const productValidation = catchAsync(async (req, res, next) => {
 
   if (variantsThere && variantsThere.toLowerCase() === 'true') {
     const { variants } = req.body;
-    console.log('variants there is ');
 
     await validateProduct(req.body, productSchemaWithVariants);
     const variantsData = JSON.parse(variants);
 
     for (let variant of variantsData) {
       let { main, sub } = variant;
-      console.log(variant);
 
       await validateProduct(main, variantsSchema);
 
@@ -167,7 +165,6 @@ const productValidation = catchAsync(async (req, res, next) => {
       }
     }
   } else {
-    console.log('Product no variants ');
     await validateProduct(req.body, productSchemaWithoutVariants);
   }
   next();
