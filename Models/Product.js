@@ -58,7 +58,10 @@ const baseProductSchema = Joi.object({
   tags: Joi.custom((value, helpers) => {
     return validateJSONArray(value, 'Tags must be an Array');
   }).required(),
-  brand: Joi.number().required().allow(''),
+  brand: Joi.number().required().messages({
+    'any.required': 'please select a brand',
+    'number.base': 'please select a valid brand',
+  }),
 });
 
 const productSchemaWithoutVariants = baseProductSchema.keys({

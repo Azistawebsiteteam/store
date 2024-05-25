@@ -4,6 +4,10 @@ const db = require('../../dbconfig');
 
 const AppError = require('../../Utils/appError');
 const catchAsync = require('../../Utils/catchAsync');
+const {
+  getofferPercentage,
+  getPricess,
+} = require('../../Utils/offerperecentageCal');
 
 const multerStorage = multer.memoryStorage();
 
@@ -135,10 +139,10 @@ exports.addProduct = catchAsync(async (req, res, next) => {
   } = req.body;
 
   const price = variantsThere
-    ? JSON.parse(variants)[0].main.offer_price
+    ? getPricess(JSON.parse(variants)[0]).offer_price
     : productPrice;
   const comparePrice = variantsThere
-    ? JSON.parse(variants)[0].main.comparePrice
+    ? getPricess(JSON.parse(variants)[0]).comparePrice
     : productComparePrice;
 
   const url_title = productTitle.replace(/ /g, '-');
@@ -264,20 +268,10 @@ exports.skuvarientsProduct = catchAsync(async (req, res, next) => {
         const option2 = subValues[0];
         const option3 = subValues.length > 1 ? subValues[1] : null;
 
-        let offerPercentage = 0;
-
         if (!comparePrice) {
           comparePrice = offer_price;
         }
-
-        const parsedComparePrice = parseFloat(comparePrice);
-        const parsedOfferPrice = parseFloat(offer_price);
-
-        if (parsedComparePrice >= parsedOfferPrice && parsedComparePrice > 0) {
-          offerPercentage = Math.round(
-            ((parsedComparePrice - parsedOfferPrice) / parsedComparePrice) * 100
-          );
-        }
+        const offerPercentage = getofferPercentage(comparePrice, offer_price);
 
         const values = [
           productId,
@@ -322,12 +316,10 @@ exports.skuvarientsProduct = catchAsync(async (req, res, next) => {
         variantService,
       } = mainVariant;
 
-      const offerPercentage = Math.round(
-        ((parseInt(comparePrice || 0) - parseInt(offer_price || 0)) /
-          parseInt(comparePrice || 0)) *
-          100,
-        0
-      );
+      if (!comparePrice) {
+        comparePrice = offer_price;
+      }
+      const offerPercentage = getofferPercentage(comparePrice, offer_price);
 
       const values = [
         productId,

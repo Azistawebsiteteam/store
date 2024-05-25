@@ -6,6 +6,10 @@ const db = require('../../dbconfig');
 
 const catchAsync = require('../../Utils/catchAsync');
 const AppError = require('../../Utils/appError');
+const {
+  getofferPercentage,
+  getPricess,
+} = require('../../Utils/offerperecentageCal');
 
 const multerStorage = multer.memoryStorage();
 
@@ -171,10 +175,10 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
   });
 
   const price = variantsThere
-    ? JSON.parse(variants)[0].main.amount
+    ? getPricess(JSON.parse(variants)[0]).offer_price
     : productPrice;
   const comparePrice = variantsThere
-    ? JSON.parse(variants)[0].main.amount
+    ? getPricess(JSON.parse(variants)[0]).comparePrice
     : productComparePrice;
 
   const url_title = productTitle.replace(/ /g, '-');
@@ -240,20 +244,6 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
   }
   next();
 });
-
-const getofferPercentage = (comparePrice, offer_price) => {
-  let offerPercentage = 0;
-  const parsedComparePrice = parseFloat(comparePrice);
-  const parsedOfferPrice = parseFloat(offer_price);
-
-  if (parsedComparePrice >= parsedOfferPrice && parsedComparePrice > 0) {
-    offerPercentage = Math.round(
-      ((parsedComparePrice - parsedOfferPrice) / parsedComparePrice) * 100
-    );
-  }
-
-  return offerPercentage;
-};
 
 exports.skuvarientsUpdate = catchAsync(async (req, res, next) => {
   const { productActiveStatus, variants, productId } = req.body;
@@ -335,7 +325,19 @@ exports.skuvarientsUpdate = catchAsync(async (req, res, next) => {
       mainVariant.variantId = 0;
     }
     if (subvariants.length > 0) {
+      const updatedVariants = [];
       for (let subvariant of subvariants) {
+        const updateId = updatedVariants.find(
+          (v) => v.variantId === subvariant.variantId
+        );
+        if (parseInt(subvariant.variantId) !== 0) {
+          updatedVariants.push(subvariant);
+        }
+        if (updateId) {
+          subvariant.variantId = 0; // Corrected property access
+        }
+
+        console.log(subvariant);
         let {
           variantId,
           variantImage,
@@ -476,6 +478,8 @@ exports.variantUpdate = catchAsync(async (req, res, next) => {
     variantService,
     variantImage,
   } = req.body;
+
+  console.log(req.body);
 
   const offerPercentage = getofferPercentage(comparePrice, offer_price);
 
