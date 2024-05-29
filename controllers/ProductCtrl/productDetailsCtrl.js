@@ -92,7 +92,7 @@ exports.getProductDetalis = catchAsync(async (req, res, next) => {
   const getproductDetails = `SELECT * FROM azst_products  
                               WHERE  product_url_title = ? AND azst_products.status = 1`;
 
-  const getVariants = `SELECT  id,option1,option2,option3 FROM  azst_sku_variant_info 
+  const getVariants = `SELECT  id,option1,option2,option3 , variant_quantity FROM  azst_sku_variant_info 
                         WHERE product_id = ? AND status = 1 ORDER BY id`;
 
   const results = await db(getproductDetails, [productId]);
