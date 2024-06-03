@@ -5,10 +5,10 @@ const db = require('../../dbconfig');
 const AppError = require('../../Utils/appError');
 const catchAsync = require('../../Utils/catchAsync');
 
-const getProductFromCart = async (empId, variantId) => {
+const getProductFromCart = async (empId, variantId, productId) => {
   const query =
-    'SELECT azst_quantity FROM azst_cart WHERE azst_customer_id=? AND azst_variant_id=?';
-  const result = await db(query, [empId, variantId]);
+    'SELECT azst_quantity FROM azst_cart WHERE azst_customer_id=? AND azst_variant_id=? AND azst_product_id=? AND status=1';
+  const result = await db(query, [empId, variantId ?? 0, productId]);
   return { isExist: result.length > 0, quantity: result[0]?.azst_quantity };
 };
 
@@ -31,7 +31,8 @@ const addpRoductToCart = catchAsync(async (req, res, next) => {
     try {
       const { isExist, quantity } = await getProductFromCart(
         req.empId,
-        product.variantId
+        product.variantId,
+        product.productId
       );
       if (isExist) {
         const updateQty = quantity + product.quantity;

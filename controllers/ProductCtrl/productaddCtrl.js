@@ -160,8 +160,8 @@ exports.addProduct = catchAsync(async (req, res, next) => {
                          seo_description, cost_per_item, price, compare_at_price,
                          inventory_id, sku_code, sku_bar_code, is_taxable, product_weight,
                          out_of_stock_sale, url_handle, status, azst_updatedby, origin_country,
-                         product_url_title,chintal_quantity,corporate_office_quantity)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?,?,?)`;
+                         product_url_title,chintal_quantity,corporate_office_quantity,is_variants_aval)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?,?,?,?)`;
   const values = [
     productTitle,
     productInfo,
@@ -192,6 +192,7 @@ exports.addProduct = catchAsync(async (req, res, next) => {
     url_title,
     inventory.coc,
     inventory.coh,
+    variantsThere,
   ];
 
   const product = await db(productquery, values);

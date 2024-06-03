@@ -123,6 +123,8 @@ exports.addBanner = catchAsync(async (req, res, next) => {
     isDefault,
   } = req.body;
 
+  console.log(req.body);
+
   const rowquery = `SELECT COUNT(*) as row_count FROM azst_banners_tbl`;
 
   const resultRows = await db(rowquery);

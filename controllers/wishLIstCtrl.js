@@ -12,14 +12,14 @@ const whishlistSchema = Joi.object({
 });
 
 const isExistInWl = catchAsync(async (req, res, next) => {
-  const { variantId } = req.body;
+  const { variantId, productId } = req.body;
   const { empId } = req;
 
   const { error } = whishlistSchema.validate(req.body);
   if (error) return next(new AppError(error.message, 400));
   const query = `SELECT azst_variant_id FROM azst_wishlist 
-                 WHERE azst_customer_id=? AND status = 1 AND azst_variant_id = ?`;
-  const values = [empId, variantId];
+                 WHERE azst_customer_id= ?  AND azst_product_id =?  AND azst_variant_id = ? AND status = 1`;
+  const values = [empId, productId, variantId];
   const result = await db(query, values);
   if (result.length > 0)
     return next(new AppError('Product already in wishlist', 400));
@@ -58,7 +58,7 @@ const getImageLink = (req, imges, pImg) => {
 };
 
 const getWhishlist = catchAsync(async (req, res, next) => {
-  const query = `SELECT azst_wishlist_id,product_title,product_url_title,price,azst_sku_variant_info.compare_at_price,variant_image,image_src,azst_product_id,azst_variant_id, offer_price,offer_percentage
+  const query = `SELECT azst_wishlist_id,product_title,product_url_title,price,azst_sku_variant_info.compare_at_price,azst_products.compare_at_price as product_compare_at_price,variant_image,image_src,azst_product_id,azst_variant_id, offer_price,offer_percentage
                     FROM azst_wishlist
                     LEFT JOIN azst_sku_variant_info ON  azst_wishlist.azst_variant_id = azst_sku_variant_info.id
                     LEFT JOIN azst_products ON azst_wishlist.azst_product_id = azst_products.id
