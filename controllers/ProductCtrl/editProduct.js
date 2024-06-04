@@ -168,7 +168,7 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
     variants,
     brand,
   } = req.body;
-
+  console.log(productId);
   const newProductImages = productImages.map((url) => {
     const startIndex = url.lastIndexOf('/') + 1; // Find the last '/' to get the start index of the filename
     return url.substring(startIndex); // Extract the filename from the URL

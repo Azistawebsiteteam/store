@@ -41,6 +41,8 @@ const organizCustomerData = (customer) => {
     azst_customer_note: customer.azst_customer_note,
     azst_customer_taxexempts: customer.azst_customer_taxexempts,
     azst_customer_tags: customer.azst_customer_tags,
+    azst_customer_gender: customer.azst_customer_gender,
+    azst_customer_dob: customer.azst_customer_Dob,
   };
 };
 
@@ -82,7 +84,7 @@ exports.updateProfile = catchAsync(async (req, res, next) => {
                         azst_customer_company = ?, azst_customer_address1 = ?, azst_customer_address2 = ?,
                         azst_customer_acceptsms_marketing = ?, azst_customer_note = ?, 
                         azst_customer_taxexempts = ?, azst_customer_tags = ?,azst_customer_updatedon  = ?,
-                        azst_customer_gender = ?, azst_customer_DOB = ?,
+                        azst_customer_gender = ?, azst_customer_DOB = ?
                     WHERE azst_customer_id  = ?`;
 
   const today = moment().format('YYYY-MM-DD HH:mm:ss');
