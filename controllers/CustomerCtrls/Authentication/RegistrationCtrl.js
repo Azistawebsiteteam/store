@@ -87,10 +87,33 @@ exports.mobileSignupInsert = catchAsync(async (req, res, next) => {
   next();
 });
 
+exports.otpSignupDetails = catchAsync(async (req, res, next) => {
+  const { firstName, lastName, password, gender } = req.body;
+  const today = moment().format('YYYY-MM-DD HH:mm:ss');
+
+  const registerQuery = `UPDATE azst_customer SET azst_customer_fname = ? ,azst_customer_lname = ?,
+                            azst_customer_pwd = ? ,azst_customer_gender =?  ,azst_customer_updatedon = ?
+                            WHERE azst_customer_id = ?`;
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  const values = [
+    firstName,
+    lastName,
+    hashedPassword,
+    gender,
+    today,
+    req.empId,
+  ];
+
+  const results = await db(registerQuery, values);
+  if (results.affectedRows >= 1) {
+    res.status(200).json({ message: 'User details updated successfully' });
+  }
+});
+
 exports.deleteAccount = catchAsync(async (req, res, next) => {
   const deleteQuery = `UPDATE azst_customer SET azst_customer_status = 0 WHERE azst_customer_id = ?`;
   await db(deleteQuery, [req.empId]);
   res.status(200).json({ message: 'Your account has been deleted' });
 });
-
-exports.updateDetails = catchAsync(async (req, res, next) => {});

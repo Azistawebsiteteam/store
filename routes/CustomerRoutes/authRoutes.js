@@ -69,6 +69,8 @@ router.post(
   authControllers.resetPassword
 );
 
+router.post('/details/otp-register', registerCtrl.otpSignupDetails);
+
 router.post('/delete/account', registerCtrl.deleteAccount);
 
 router.post('/logout', loginCtrl.logout);
