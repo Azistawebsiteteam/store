@@ -27,6 +27,8 @@ const inventroyRoute = require('./routes/AdminRoutes/inventoryRoutes');
 const productsRoute = require('./routes/Products/ProductsRoute');
 const cartRoute = require('./routes/Products/cartRoute');
 const whishListRoute = require('./routes/Products/whishlist');
+const reviewsRoute = require('./routes/CustomerRoutes/ReviewRoute');
+const reviewsRouteAdmin = require('./routes/AdminRoutes/ReviewsRoutes');
 
 const app = express();
 
@@ -53,6 +55,7 @@ app.use('/banners', express.static('Uploads/bannerImages'));
 app.use('/collection', express.static('Uploads/CollectionImages'));
 app.use('/admin/profile', express.static('Uploads/AdminImages'));
 app.use('/popup/image', express.static('Uploads/PopupImages'));
+app.use('/review/images', express.static('Uploads/reviewImages'));
 
 const api = process.env.APP_API;
 
@@ -73,6 +76,8 @@ app.use(`${api}/inventory`, inventroyRoute);
 app.use(`${api}/product`, productsRoute);
 app.use(`${api}/whish-list`, whishListRoute);
 app.use(`${api}/cart`, cartRoute);
+app.use(`${api}/reviews`, reviewsRoute);
+app.use(`${api}/admin/reviews`, reviewsRouteAdmin);
 
 app.get('/favicon.ico', (req, res) => res.status(204));
 
