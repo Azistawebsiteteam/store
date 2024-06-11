@@ -78,7 +78,8 @@ exports.storeImage = catchAsync(async (req, res, next) => {
 });
 
 exports.createReview = catchAsync(async (req, res, next) => {
-  const { productId, reviewContent, reviewPoints, reviewImages } = req.body;
+  const { productId, reviewTilte, reviewContent, reviewPoints, reviewImages } =
+    req.body;
   const { empId } = req;
 
   // Query to check if the review already exists
@@ -97,10 +98,11 @@ exports.createReview = catchAsync(async (req, res, next) => {
 
   // Query to insert the new review
   const insertQuery =
-    'INSERT INTO product_review_rating_tbl (customer_id, product_id, review_content, review_points,review_images) VALUES (?,?,?,?,?)';
+    'INSERT INTO product_review_rating_tbl (customer_id, product_id,review_title, review_content, review_points,review_images) VALUES (?,?,?,?,?)';
   const insertValues = [
     empId,
     productId,
+    reviewTilte,
     reviewContent,
     reviewPoints,
     JSON.stringify(reviewImages),
@@ -116,10 +118,18 @@ exports.createReview = catchAsync(async (req, res, next) => {
 });
 
 exports.updateReview = catchAsync(async (req, res, next) => {
-  const { reviewId, reviewContent, reviewPoints, reviewImages } = req.body;
+  const { reviewId, reviewTilte, reviewContent, reviewPoints, reviewImages } =
+    req.body;
   const updatedTime = moment().format('YYYY-MM-DD HH:mm:ss');
 
-  const values = [reviewContent, reviewPoints, updatedTime, 1, reviewId];
+  const values = [
+    reviewTilte,
+    reviewContent,
+    reviewPoints,
+    updatedTime,
+    1,
+    reviewId,
+  ];
 
   let imagesquery = '';
   if (reviewImages.length > 0) {
@@ -127,7 +137,7 @@ exports.updateReview = catchAsync(async (req, res, next) => {
     values.unshift(JSON.stringify(reviewImages));
   }
 
-  const updatedReview = `UPDATE product_review_rating_tbl SET ${imagesquery} review_content = ?, review_points=?,review_updated_on = ?,is_modified =? WHERE review_id = ?`;
+  const updatedReview = `UPDATE product_review_rating_tbl SET ${imagesquery} review_title=?, review_content = ?, review_points=?,review_updated_on = ?,is_modified =? WHERE review_id = ?`;
 
   const result = await db(updatedReview, values);
 
@@ -184,6 +194,7 @@ exports.getProductReviews = catchAsync(async (req, res, next) => {
                               customer_id,
                               azst_customer_fname,
                               azst_customer_lname,
+                              review_title,
                               review_content,
                               review_points,
                               review_images,
@@ -248,7 +259,7 @@ exports.getAllReviews = catchAsync(async (req, res, next) => {
   const filtersQuery =
     filters.length > 0 ? ' AND ' + filters.join(' AND ') : '';
 
-  const getQuery = `SELECT review_id,customer_id,product_id,review_content,review_points,review_status,
+  const getQuery = `SELECT review_id,customer_id,product_id,review_title,review_content,review_points,review_status,
                       review_images,review_approval_status,approve_by, DATE_FORMAT(review_created_on, '%d-%m-%Y %H:%i:%s') AS created_on,
                       DATE_FORMAT(review_updated_on, '%d-%m-%Y %H:%i:%s') AS updated_on,DATE_FORMAT(approved_on, '%d-%m-%Y %H:%i:%s') AS approve_on,
                       azst_customer_fname,azst_customer_lname,product_title,image_src as product_image,url_handle
