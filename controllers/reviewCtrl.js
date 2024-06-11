@@ -177,18 +177,9 @@ const getReviewImageLink = (req, images) => {
 
 exports.getProductReviews = catchAsync(async (req, res, next) => {
   const { productId } = req.body;
-  let token = req.headers?.authorization?.split(' ')[1];
-
   if (!productId) return next(new AppError('Product Id Is Required', 400));
 
-  let filter = 'review_approval_status = 1';
   const values = [productId];
-  if (token) {
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
-    const { id } = payload;
-    filter = '(customer_id = ? OR review_approval_status = 1)';
-    values.push(id);
-  }
 
   const reviewQuery = ` SELECT review_id,
                               customer_id,
@@ -203,8 +194,8 @@ exports.getProductReviews = catchAsync(async (req, res, next) => {
                               DATE_FORMAT(review_updated_on, '%d-%m-%Y %H:%i:%s') AS updated_on
                         FROM product_review_rating_tbl
                         LEFT JOIN azst_customer ON product_review_rating_tbl.customer_id = azst_customer.azst_customer_id
-                        WHERE review_status = 1  AND product_id = ?
-                        AND  ${filter} ORDER BY created_on DESC;
+                        WHERE review_status = 1   AND  review_approval_status = 1 AND product_id = ?
+                        ORDER BY created_on DESC;
                       `;
 
   const result = await db(reviewQuery, values);
