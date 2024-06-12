@@ -208,20 +208,6 @@ exports.getProductReviews = catchAsync(async (req, res, next) => {
   res.status(200).json(modifiedReview);
 });
 
-// review_id,
-//   customer_id,
-//   product_id,
-//   review_content,
-//   review_points,
-//   review_status,
-//   review_images,
-//   review_created_on,
-//   review_updated_on,
-//   is_modified,
-//   review_approval_status,
-//   approve_by,
-//   approved_on;
-
 exports.getAllReviews = catchAsync(async (req, res, next) => {
   const { productId, customerId, fromDate, toDate } = req.body;
 
