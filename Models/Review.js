@@ -16,11 +16,12 @@ const updateSchema = Joi.object({
 });
 
 const reviewValidation = async (req, res, next) => {
-  const { productId, reviewContent, reviewPoints } = req.body;
+  const { productId, reviewContent, reviewTitle, reviewPoints } = req.body;
 
   const { error } = reviewSchema.validate({
     productId,
     reviewContent,
+    reviewTitle,
     reviewPoints,
   });
   if (error) {
@@ -31,11 +32,12 @@ const reviewValidation = async (req, res, next) => {
 };
 
 const updateVliadation = async (req, res, next) => {
-  const { reviewId, reviewContent, reviewPoints } = req.body;
+  const { reviewId, reviewContent, reviewTitle, reviewPoints } = req.body;
 
   const { error } = updateSchema.validate({
     reviewId,
     reviewContent,
+    reviewTitle,
     reviewPoints,
   });
   if (error) {
