@@ -29,6 +29,7 @@ const cartRoute = require('./routes/Products/cartRoute');
 const whishListRoute = require('./routes/Products/whishlist');
 const reviewsRoute = require('./routes/CustomerRoutes/ReviewRoute');
 const reviewsRouteAdmin = require('./routes/AdminRoutes/ReviewsRoutes');
+const adminUsersRoute = require('./routes/AdminRoutes/customerRoutes');
 
 const app = express();
 
@@ -78,6 +79,7 @@ app.use(`${api}/whish-list`, whishListRoute);
 app.use(`${api}/cart`, cartRoute);
 app.use(`${api}/reviews`, reviewsRoute);
 app.use(`${api}/admin/reviews`, reviewsRouteAdmin);
+app.use(`${api}/users`, adminUsersRoute);
 
 app.get('/favicon.ico', (req, res) => res.status(204));
 

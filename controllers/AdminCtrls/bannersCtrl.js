@@ -37,30 +37,69 @@ const bannerSchema = Joi.object({
   altText: Joi.string().min(3).allow(''),
   webBanner: Joi.string().min(3).allow(''),
   mobileBanner: Joi.string().min(3).allow(''),
-  backgroundUrl: Joi.string().min(3).required(),
+  backgroundUrl: Joi.string().min(3).allow(''),
   startTime: Joi.string().allow(''),
   endTime: Joi.string().allow(''),
   isDefault: Joi.string().required().valid('0', '1'),
 });
 
+// exports.storebanner = catchAsync(async (req, res, next) => {
+//   const { error } = bannerSchema.validate(req.body);
+//   if (error) return next(new AppError(error.message, 400));
+//   if (!req.files || Object.keys(req.files).length < 2) {
+//     return next(new AppError('banner image is required', 400));
+//   }
+//   for (const fieldName in req.files) {
+//     const imageField = req.files[fieldName][0];
+//     const imageName = `${Date.now()}-${imageField.originalname.replace(
+//       / /g,
+//       '-'
+//     )}`;
+//     // Specify the folder based on the image field name
+//     const folder = `uploads/bannerImages/`; // Corrected folder path
+//     await sharp(imageField.buffer).toFile(`${folder}${imageName}`);
+//     // Update req.body with the image information as needed
+//     req.body[fieldName] = imageName;
+//   }
+//   next();
+// });
+
 exports.storebanner = catchAsync(async (req, res, next) => {
   const { error } = bannerSchema.validate(req.body);
   if (error) return next(new AppError(error.message, 400));
+
   if (!req.files || Object.keys(req.files).length < 2) {
     return next(new AppError('banner image is required', 400));
   }
+
+  const allowedMimeTypes = ['image/png', 'image/jpeg', 'image/jpg'];
+
   for (const fieldName in req.files) {
     const imageField = req.files[fieldName][0];
+
+    // Check the file type
+    if (!allowedMimeTypes.includes(imageField.mimetype)) {
+      return next(
+        new AppError(
+          'Invalid file type. Only PNG, JPEG, and JPG are allowed.',
+          400
+        )
+      );
+    }
+
     const imageName = `${Date.now()}-${imageField.originalname.replace(
       / /g,
       '-'
     )}`;
+
     // Specify the folder based on the image field name
     const folder = `uploads/bannerImages/`; // Corrected folder path
     await sharp(imageField.buffer).toFile(`${folder}${imageName}`);
+
     // Update req.body with the image information as needed
     req.body[fieldName] = imageName;
   }
+
   next();
 });
 
@@ -123,7 +162,7 @@ exports.addBanner = catchAsync(async (req, res, next) => {
     isDefault,
   } = req.body;
 
-  console.log(req.body);
+
 
   const rowquery = `SELECT COUNT(*) as row_count FROM azst_banners_tbl`;
 

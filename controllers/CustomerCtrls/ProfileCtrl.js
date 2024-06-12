@@ -5,9 +5,14 @@ const AppError = require('../../Utils/appError');
 const catchAsync = require('../../Utils/catchAsync');
 
 exports.isUserExist = catchAsync(async (req, res, next) => {
+  const { userId } = req.body;
+
+  // userId is required came when Admin request to get user Details
+  const id = userId ?? req.empId;
+
   const getUser =
     'Select *  from azst_customer where azst_customer_id  = ? AND azst_customer_status = 1';
-  const result = await db(getUser, [req.empId]);
+  const result = await db(getUser, [id]);
   if (result.length === 0)
     return next(new AppError('No such customer was found', 404));
   req.userDetails = result[0];

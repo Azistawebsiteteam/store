@@ -98,7 +98,7 @@ exports.createReview = catchAsync(async (req, res, next) => {
 
   // Query to insert the new review
   const insertQuery =
-    'INSERT INTO product_review_rating_tbl (customer_id, product_id,review_title, review_content, review_points,review_images) VALUES (?,?,?,?,?)';
+    'INSERT INTO product_review_rating_tbl (customer_id, product_id,review_title, review_content, review_points,review_images) VALUES (?,?,?,?,?,?)';
   const insertValues = [
     empId,
     productId,
