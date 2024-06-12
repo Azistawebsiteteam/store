@@ -3,13 +3,15 @@ const AppError = require('../Utils/appError');
 
 const reviewSchema = Joi.object({
   productId: Joi.number().required(),
-  reviewContent: Joi.string().required().allow(''),
+  reviewTitle: Joi.string().min(10).required(),
+  reviewContent: Joi.string().min(10).required(),
   reviewPoints: Joi.number().required().min(1).max(5),
 });
 
 const updateSchema = Joi.object({
   reviewId: Joi.number().required(),
-  reviewContent: Joi.string().required().allow(''),
+  reviewTitle: Joi.string().min(10).required(),
+  reviewContent: Joi.string().min(10).required(),
   reviewPoints: Joi.number().required().min(1).max(5),
 });
 

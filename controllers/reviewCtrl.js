@@ -78,7 +78,7 @@ exports.storeImage = catchAsync(async (req, res, next) => {
 });
 
 exports.createReview = catchAsync(async (req, res, next) => {
-  const { productId, reviewTilte, reviewContent, reviewPoints, reviewImages } =
+  const { productId, reviewTitle, reviewContent, reviewPoints, reviewImages } =
     req.body;
   const { empId } = req;
 
@@ -102,7 +102,7 @@ exports.createReview = catchAsync(async (req, res, next) => {
   const insertValues = [
     empId,
     productId,
-    reviewTilte,
+    reviewTitle,
     reviewContent,
     reviewPoints,
     JSON.stringify(reviewImages),
@@ -118,12 +118,12 @@ exports.createReview = catchAsync(async (req, res, next) => {
 });
 
 exports.updateReview = catchAsync(async (req, res, next) => {
-  const { reviewId, reviewTilte, reviewContent, reviewPoints, reviewImages } =
+  const { reviewId, reviewTitle, reviewContent, reviewPoints, reviewImages } =
     req.body;
   const updatedTime = moment().format('YYYY-MM-DD HH:mm:ss');
 
   const values = [
-    reviewTilte,
+    reviewTitle,
     reviewContent,
     reviewPoints,
     updatedTime,

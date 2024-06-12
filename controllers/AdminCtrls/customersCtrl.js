@@ -16,7 +16,6 @@ exports.getAllCusters = catchAsync(async (req, res, next) => {
                         FROM azst_customer  ${filterQuery} Order BY azst_customer_createdon ${
     orderby ?? 'DESC'
   }`;
-  console.log(getUsers);
   const users = await db(getUsers);
   res.status(200).json(users);
 });
