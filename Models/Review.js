@@ -8,11 +8,9 @@ const reviewSchema = Joi.object({
   reviewPoints: Joi.number().required().min(1).max(5),
 });
 
-const updateSchema = Joi.object({
+const updateSchema = reviewSchema.keys({
   reviewId: Joi.number().required(),
-  reviewTitle: Joi.string().min(10).required(),
-  reviewContent: Joi.string().min(10).required(),
-  reviewPoints: Joi.number().required().min(1).max(5),
+  productId: Joi.number().optional(),
 });
 
 const reviewValidation = async (req, res, next) => {
