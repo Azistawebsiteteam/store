@@ -15,6 +15,13 @@ router.post(
   bannerCtrl.storebanner,
   bannerCtrl.addBanner
 );
+
+router.post(
+  '/update',
+  bannerCtrl.uploadbanner,
+  bannerCtrl.updatestorebanner,
+  bannerCtrl.addBanner
+);
 router.get('/', bannerCtrl.getAllBanners);
 
 router.put('/', bannerCtrl.hideBanner);

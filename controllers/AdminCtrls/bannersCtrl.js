@@ -41,28 +41,48 @@ const bannerSchema = Joi.object({
   startTime: Joi.string().allow(''),
   endTime: Joi.string().allow(''),
   isDefault: Joi.string().required().valid('0', '1'),
+  bannerId: Joi.number().optional(),
 });
 
-// exports.storebanner = catchAsync(async (req, res, next) => {
-//   const { error } = bannerSchema.validate(req.body);
-//   if (error) return next(new AppError(error.message, 400));
-//   if (!req.files || Object.keys(req.files).length < 2) {
-//     return next(new AppError('banner image is required', 400));
-//   }
-//   for (const fieldName in req.files) {
-//     const imageField = req.files[fieldName][0];
-//     const imageName = `${Date.now()}-${imageField.originalname.replace(
-//       / /g,
-//       '-'
-//     )}`;
-//     // Specify the folder based on the image field name
-//     const folder = `uploads/bannerImages/`; // Corrected folder path
-//     await sharp(imageField.buffer).toFile(`${folder}${imageName}`);
-//     // Update req.body with the image information as needed
-//     req.body[fieldName] = imageName;
-//   }
-//   next();
-// });
+const updateBannerSchema = bannerSchema.keys({
+  bannerId: Joi.number().required(),
+});
+
+const uploadBannerImage = async (files) => {
+  const allowedMimeTypes = ['image/png', 'image/jpeg', 'image/jpg'];
+  const images = {};
+  const promises = [];
+
+  for (const fieldName in files) {
+    const imageField = files[fieldName][0];
+
+    // Check the file type
+    if (!allowedMimeTypes.includes(imageField.mimetype)) {
+      throw new AppError(
+        'Invalid file type. Only PNG, JPEG, and JPG are allowed.',
+        400
+      );
+    }
+
+    const imageName = `${Date.now()}-${imageField.originalname.replace(
+      / /g,
+      '-'
+    )}`;
+    const folder = `uploads/bannerImages/`; // Corrected folder path
+
+    // Process image and save it
+    promises.push(
+      sharp(imageField.buffer)
+        .toFile(`${folder}${imageName}`)
+        .then(() => {
+          images[fieldName] = imageName;
+        })
+    );
+  }
+
+  await Promise.all(promises);
+  return images;
+};
 
 exports.storebanner = catchAsync(async (req, res, next) => {
   const { error } = bannerSchema.validate(req.body);
@@ -72,34 +92,25 @@ exports.storebanner = catchAsync(async (req, res, next) => {
     return next(new AppError('banner image is required', 400));
   }
 
-  const allowedMimeTypes = ['image/png', 'image/jpeg', 'image/jpg'];
+  const images = await uploadBannerImage(req.files);
+  Object.keys(images).forEach((image) => {
+    req.body[image] = images[image];
+  });
+  next();
+});
 
-  for (const fieldName in req.files) {
-    const imageField = req.files[fieldName][0];
+exports.updatestorebanner = catchAsync(async (req, res, next) => {
+  const { error } = updateBannerSchema.validate(req.body);
+  if (error) return next(new AppError(error.message, 400));
 
-    // Check the file type
-    if (!allowedMimeTypes.includes(imageField.mimetype)) {
-      return next(
-        new AppError(
-          'Invalid file type. Only PNG, JPEG, and JPG are allowed.',
-          400
-        )
-      );
-    }
-
-    const imageName = `${Date.now()}-${imageField.originalname.replace(
-      / /g,
-      '-'
-    )}`;
-
-    // Specify the folder based on the image field name
-    const folder = `uploads/bannerImages/`; // Corrected folder path
-    await sharp(imageField.buffer).toFile(`${folder}${imageName}`);
-
-    // Update req.body with the image information as needed
-    req.body[fieldName] = imageName;
+  if (!req.files || Object.keys(req.files).length < 2) {
+    return next();
   }
 
+  const images = await uploadBannerImage(req.files);
+  Object.keys(images).forEach((image) => {
+    req.body[image] = images[image];
+  });
   next();
 });
 
@@ -130,7 +141,7 @@ exports.getbanners = catchAsync(async (req, res, next) => {
 });
 
 exports.getAllBanners = catchAsync(async (req, res, next) => {
-  const defaultsQuery = `SELECT banner_id,azst_banner_tile,azst_banner_description,
+  const defaultsQuery = `SELECT banner_id,azst_banner_title,azst_banner_description,
                             azst_web_image,azst_alt_text,azst_background_url,
                            DATE_FORMAT(azst_start_time, '%d-%m-%Y %H:%i:%s') as start_date,
                             DATE_FORMAT( azst_end_time, '%d-%m-%Y %H:%i:%s') as end_date,
@@ -161,8 +172,6 @@ exports.addBanner = catchAsync(async (req, res, next) => {
     endTime,
     isDefault,
   } = req.body;
-
-
 
   const rowquery = `SELECT COUNT(*) as row_count FROM azst_banners_tbl`;
 
@@ -204,7 +213,7 @@ exports.addBanner = catchAsync(async (req, res, next) => {
 exports.isBannerExist = catchAsync(async (req, res, next) => {
   const { bannerId } = req.body;
   if (!bannerId) return next(new AppError('banner Id required', 400));
-  const query = `SELECT banner_id,azst_web_image,azst_mobile_image,azst_background_url
+  const query = `SELECT *
                  FROM azst_banners_tbl WHERE status = 1 AND banner_id = ? `;
   const result = await db(query, [bannerId]);
   if (result.length <= 0) return next(new AppError('banner not found', 404));
@@ -212,7 +221,50 @@ exports.isBannerExist = catchAsync(async (req, res, next) => {
   next();
 });
 
+exports.updateBanner = catchAsync(async (req, res, next) => {
+  let {
+    title,
+    description,
+    altText,
+    webBanner,
+    mobileBanner,
+    backgroundUrl,
+    startTime,
+    endTime,
+    isDefault,
+    bannerId,
+  } = req.body;
+
+  const today = moment().format('YYYY-MM-DD HH:mm:ss');
+  startTime = startTime === '' ? today : startTime;
+  endTime =
+    endTime === ''
+      ? moment().add(10, 'months').format('YYYY-MM-DD HH:mm:ss')
+      : endTime;
+
+  const query = `UPDATE azst_banners_tbl SET azst_banner_tile=?, azst_banner_description=?, azst_web_image=?, azst_mobile_image=?, azst_alt_text =? , azst_background_url =?,
+                        azst_start_time =?, azst_end_time=?, is_default =?, azst_updatedby =? , azst_createdby = ? WHERE banner_id = ? `;
+
+  const values = [
+    title,
+    description,
+    webBanner,
+    mobileBanner,
+    altText,
+    backgroundUrl,
+    startTime,
+    endTime,
+    isDefault,
+    req.empId,
+    bannerId,
+  ];
+  await db(query, values);
+
+  res.status(200).send({ message: 'banner  details updated successfully' });
+});
+
 exports.getbanner = catchAsync(async (req, res, next) => {
+  console.log(req.banner);
   const banner_details = {
     ...req.banner,
     azst_web_image: getBannerImageLink(req, req.banner.azst_web_image),
