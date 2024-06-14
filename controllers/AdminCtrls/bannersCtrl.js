@@ -106,7 +106,15 @@ exports.updatestorebanner = catchAsync(async (req, res, next) => {
   if (!req.files || Object.keys(req.files).length < 2) {
     return next();
   }
+  const { azst_web_image, azst_mobile_image } = req.banner;
+  for (const fieldName in req.files) {
+    const imagePath =
+      fieldName === 'webBanner'
+        ? `uploads/bannerImages/${azst_web_image}`
+        : `uploads/bannerImages/${azst_mobile_image}`;
 
+    fs.unlink(imagePath, (err) => {});
+  }
   const images = await uploadBannerImage(req.files);
   Object.keys(images).forEach((image) => {
     req.body[image] = images[image];
@@ -186,7 +194,7 @@ exports.addBanner = catchAsync(async (req, res, next) => {
       ? moment().add(10, 'months').format('YYYY-MM-DD HH:mm:ss')
       : endTime;
 
-  const query = `INSERT INTO azst_banners_tbl (azst_banner_tile, azst_banner_description, azst_web_image, azst_mobile_image, azst_alt_text, azst_background_url,
+  const query = `INSERT INTO azst_banners_tbl (azst_banner_title, azst_banner_description, azst_web_image, azst_mobile_image, azst_alt_text, azst_background_url,
                         azst_start_time, azst_end_time, is_default, azst_updatedby, azst_createdby) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
   const values = [
@@ -242,8 +250,28 @@ exports.updateBanner = catchAsync(async (req, res, next) => {
       ? moment().add(10, 'months').format('YYYY-MM-DD HH:mm:ss')
       : endTime;
 
-  const query = `UPDATE azst_banners_tbl SET azst_banner_tile=?, azst_banner_description=?, azst_web_image=?, azst_mobile_image=?, azst_alt_text =? , azst_background_url =?,
-                        azst_start_time =?, azst_end_time=?, is_default =?, azst_updatedby =? , azst_createdby = ? WHERE banner_id = ? `;
+  webBanner = webBanner.substring(webBanner.lastIndexOf('/') + 1);
+  mobileBanner = mobileBanner.substring(mobileBanner.lastIndexOf('/') + 1);
+  // Find the last '/' to get the start index of the filename
+  // Extract the filename from the URL
+
+  const query = `
+    UPDATE azst_banners_tbl
+    SET
+        azst_banner_title = ?,
+        azst_banner_description = ?,
+        azst_web_image = ?,
+        azst_mobile_image = ?,
+        azst_alt_text = ?,
+        azst_background_url = ?,
+        azst_start_time = ?,
+        azst_end_time = ?,
+        is_default = ?,
+        azst_updatedby = ?
+      
+    WHERE
+        banner_id = ?
+`;
 
   const values = [
     title,
@@ -252,19 +280,19 @@ exports.updateBanner = catchAsync(async (req, res, next) => {
     mobileBanner,
     altText,
     backgroundUrl,
-    startTime,
-    endTime,
+    moment(startTime).format('YYYY-MM-DD HH:mm:ss'),
+    moment(endTime).format('YYYY-MM-DD HH:mm:ss'),
     isDefault,
     req.empId,
     bannerId,
   ];
+
   await db(query, values);
 
   res.status(200).send({ message: 'banner  details updated successfully' });
 });
 
 exports.getbanner = catchAsync(async (req, res, next) => {
-  console.log(req.banner);
   const banner_details = {
     ...req.banner,
     azst_web_image: getBannerImageLink(req, req.banner.azst_web_image),

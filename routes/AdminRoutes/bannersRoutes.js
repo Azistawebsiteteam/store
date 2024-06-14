@@ -19,8 +19,9 @@ router.post(
 router.post(
   '/update',
   bannerCtrl.uploadbanner,
+  bannerCtrl.isBannerExist,
   bannerCtrl.updatestorebanner,
-  bannerCtrl.addBanner
+  bannerCtrl.updateBanner
 );
 router.get('/', bannerCtrl.getAllBanners);
 

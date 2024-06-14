@@ -168,7 +168,7 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
     variants,
     brand,
   } = req.body;
-  console.log(productId);
+
   const newProductImages = productImages.map((url) => {
     const startIndex = url.lastIndexOf('/') + 1; // Find the last '/' to get the start index of the filename
     return url.substring(startIndex); // Extract the filename from the URL
@@ -337,7 +337,6 @@ exports.skuvarientsUpdate = catchAsync(async (req, res, next) => {
           subvariant.variantId = 0; // Corrected property access
         }
 
-        console.log(subvariant);
         let {
           variantId,
           variantImage,
@@ -478,8 +477,6 @@ exports.variantUpdate = catchAsync(async (req, res, next) => {
     variantService,
     variantImage,
   } = req.body;
-
-  console.log(req.body);
 
   const offerPercentage = getofferPercentage(comparePrice, offer_price);
 
