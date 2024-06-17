@@ -128,7 +128,7 @@ const getBannerImageLink = (req, img) =>
 exports.getbanners = catchAsync(async (req, res, next) => {
   const date = moment().format('YYYY-MM-DD HH:mm:ss');
   const query = `SELECT banner_id,azst_web_image,azst_mobile_image,azst_background_url
-                 FROM azst_banners_tbl WHERE status = 1 AND is_default = 0 AND
+                 FROM azst_banners_tbl WHERE status = 1 AND 
                   '${date}' >= azst_start_time AND '${date}' <= azst_end_time
                  ORDER BY azst_createdon DESC`;
 

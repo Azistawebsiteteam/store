@@ -9,6 +9,7 @@ const key = process.env.JWT_SECRET_ADMIN;
 
 router.use(authCtrl.protect(key));
 router.post('/add', categoryCtrl.addcategory);
+router.post('/add-sub', categoryCtrl.addSubCategory);
 
 router.use(categoryCtrl.isCategoryExit);
 router

@@ -47,7 +47,7 @@ exports.storeImage = catchAsync(async (req, res, next) => {
   if (Object.keys(req.files).length > 0) {
     let reviewImages = [];
     if (req.body.reviewImages) {
-      reviewImages = JSON.parse(req.body.reviewImages);
+      reviewImages = req.body.reviewImages;
       if (!Array.isArray(reviewImages)) {
         // Ensure reviewImages is an array
         next(new AppError('reviewImages is not an array', 400));
@@ -72,7 +72,7 @@ exports.storeImage = catchAsync(async (req, res, next) => {
     );
     next();
   } else {
-    req.body.reviewImages = [];
+    req.body.reviewImages = req.body.reviewImages ?? [];
     next();
   }
 });
@@ -120,6 +120,7 @@ exports.createReview = catchAsync(async (req, res, next) => {
 exports.updateReview = catchAsync(async (req, res, next) => {
   const { reviewId, reviewTitle, reviewContent, reviewPoints, reviewImages } =
     req.body;
+
   const updatedTime = moment().format('YYYY-MM-DD HH:mm:ss');
 
   const values = [
@@ -134,7 +135,10 @@ exports.updateReview = catchAsync(async (req, res, next) => {
   let imagesquery = '';
   if (reviewImages.length > 0) {
     imagesquery = 'review_images = ?,';
-    values.unshift(JSON.stringify(reviewImages));
+    const updatedImages = reviewImages.map((img) =>
+      img.substring(img.lastIndexOf('/') + 1)
+    );
+    values.unshift(JSON.stringify(updatedImages));
   }
 
   const updatedReview = `UPDATE product_review_rating_tbl SET ${imagesquery} review_title=?, review_content = ?, review_points=?,review_updated_on = ?,is_modified =? WHERE review_id = ?`;

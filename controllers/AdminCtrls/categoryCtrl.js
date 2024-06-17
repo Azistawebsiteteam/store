@@ -36,12 +36,35 @@ exports.addcategory = catchAsync(async (req, res, next) => {
 
   const today = moment().format('YYYY-MM-DD HH:mm:ss');
 
-  const imnsertQuery =
+  const insertQuery =
     'INSERT INTO  azst_category_tbl (azst_category_name,azst_category_createdon,azst_updated_by) VALUES (?,?,?)';
 
   const values = [categoryName, today, req.empId];
 
-  const result = await db(imnsertQuery, values);
+  const result = await db(insertQuery, values);
+  res.status(200).json({ azst_category_id: result.insertId });
+});
+
+// azst_sub_category_id,
+//   azst_sub_category_name,
+//   azst_category_id,
+//   azst_sub_category_status,
+//   category_createdon,
+//   category_updatedon,
+//   updated_by;
+
+exports.addSubCategory = catchAsync(async (req, res, next) => {
+  const { categoryName, categoryId } = req.body;
+
+  if (!categoryName)
+    return next(new AppError('Category Name is Required', 400));
+
+  const insertQuery =
+    'INSERT INTO  azst_sub_category_tbl (azst_sub_category_name,azst_category_id,updated_by) VALUES (?,?,?)';
+
+  const values = [categoryName, categoryId, req.empId];
+
+  const result = await db(insertQuery, values);
   res.status(200).json({ azst_category_id: result.insertId });
 });
 
