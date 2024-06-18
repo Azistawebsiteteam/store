@@ -139,11 +139,12 @@ exports.getAnnouncementDetails = catchAsync(async (req, res, next) => {
 });
 
 exports.getAnnoucements = catchAsync(async (req, res, next) => {
+  const filter = req.empId ? 'WHERE announcement_status = 1' : '';
   const annoucementsQuery = `SELECT  announcement_id,   announcement_web_text,   
                                   announcement_mobile_text,announcement_web_link,
                                   announcement_background_color, announcement_text_color,
                                   announcement_show_homepage_only, announcement_status
-                              FROM azst_announcements_tbl WHERE announcement_status = 1`;
+                              FROM azst_announcements_tbl ${filter} `;
 
   const results = await db(annoucementsQuery);
   res.status(200).json(results);
@@ -155,7 +156,7 @@ exports.changeAnnoucementViewStatus = catchAsync(async (req, res, next) => {
 
   const { announcementId, showAnnouncement } = req.body;
 
-  const isShow = showAnnouncement.toLowerCase() === 'true' ? 1 : 0;
+  const isShow = `${showAnnouncement}`.toLowerCase() === 'true' ? 1 : 0;
 
   const values = [isShow, announcementId];
   const changeStatusQuery = `UPDATE azst_announcements_tbl SET  announcement_status = ?

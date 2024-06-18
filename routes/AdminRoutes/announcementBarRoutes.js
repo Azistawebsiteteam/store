@@ -11,7 +11,7 @@ const key = process.env.JWT_SECRET_ADMIN;
 router.use(authCtrl.protect(key));
 
 router.use(multer().any());
-
+router.get('/', announcementCtrl.getAnnoucements);
 router.post('/add', announcementCtrl.addAnnoucement);
 router.post('/getdetails', announcementCtrl.getAnnouncementDetails);
 router.post('/update', announcementCtrl.updateAnnoucement);
