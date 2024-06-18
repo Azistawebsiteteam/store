@@ -53,7 +53,7 @@ const organizCustomerData = (customer) => {
 
 exports.getCustomer = catchAsync(async (req, res, next) => {
   const customerData = organizCustomerData(req.userDetails);
-  res.status(200).json({ customerData });
+  res.status(200).json(customerData);
 });
 
 exports.updateProfile = catchAsync(async (req, res, next) => {
@@ -123,4 +123,13 @@ exports.updateProfile = catchAsync(async (req, res, next) => {
 
   await db(profile, values);
   res.status(200).send({ message: 'Profile updated successfully' });
+});
+
+exports.getMyOrders = catchAsync(async (req, res, next) => {
+  const { userId } = req.body;
+
+  // userId is required came when Admin request to get user Details
+  const id = userId ?? req.empId;
+
+  const ordersQuery = `SELECT * FROM `;
 });

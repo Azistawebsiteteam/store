@@ -38,7 +38,11 @@ exports.addAnnoucement = catchAsync(async (req, res, next) => {
     endTime,
     showHomePageOnly,
   } = req.body;
+
   const { empId } = req;
+
+  const homPage = `${showHomePageOnly}`.toLowerCase() === 'true' ? 1 : 0;
+
   const values = [
     webText,
     mobileText,
@@ -47,7 +51,7 @@ exports.addAnnoucement = catchAsync(async (req, res, next) => {
     textCrl,
     startTime,
     endTime,
-    showHomePageOnly ? 1 : 0,
+    homPage,
     empId,
   ];
 
@@ -87,7 +91,7 @@ exports.updateAnnoucement = catchAsync(async (req, res, next) => {
   } = req.body;
 
   const { empId } = req;
-  const homPage = showHomePageOnly.toLowerCase() === 'true' ? 1 : 0;
+  const homPage = `${showHomePageOnly}`.toLowerCase() === 'true' ? 1 : 0;
   const values = [
     webText,
     mobileText,
@@ -138,7 +142,7 @@ exports.getAnnoucements = catchAsync(async (req, res, next) => {
   const annoucementsQuery = `SELECT  announcement_id,   announcement_web_text,   
                                   announcement_mobile_text,announcement_web_link,
                                   announcement_background_color, announcement_text_color,
-                                  announcement_show_homepage_only
+                                  announcement_show_homepage_only, announcement_status
                               FROM azst_announcements_tbl WHERE announcement_status = 1`;
 
   const results = await db(annoucementsQuery);
