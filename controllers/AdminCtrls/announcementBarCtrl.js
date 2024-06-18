@@ -123,6 +123,17 @@ exports.updateAnnoucement = catchAsync(async (req, res, next) => {
   next(new AppError('oops something went wrong', 400));
 });
 
+exports.getAnnouncementDetails = catchAsync(async (req, res, next) => {
+  const { announcementId } = req.body;
+
+  const insertQuery = `SELECT * FROM  azst_announcements_tbl 
+                        WHERE announcement_id = ? `;
+  const response = await db(insertQuery, [announcementId]);
+  response.length > 0
+    ? res.status(200).json(response[0])
+    : res.status(404).json({ message: 'no announcement found' });
+});
+
 exports.getAnnoucements = catchAsync(async (req, res, next) => {
   const annoucementsQuery = `SELECT  announcement_id,   announcement_web_text,   
                                   announcement_mobile_text,announcement_web_link,

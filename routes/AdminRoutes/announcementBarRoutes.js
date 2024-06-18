@@ -13,7 +13,7 @@ router.use(authCtrl.protect(key));
 router.use(multer().any());
 
 router.post('/add', announcementCtrl.addAnnoucement);
-
+router.post('/getdetails', announcementCtrl.getAnnouncementDetails);
 router.post('/update', announcementCtrl.updateAnnoucement);
 router.post('/viewstatus', announcementCtrl.changeAnnoucementViewStatus);
 
