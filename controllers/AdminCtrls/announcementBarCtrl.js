@@ -139,7 +139,7 @@ exports.getAnnouncementDetails = catchAsync(async (req, res, next) => {
 });
 
 exports.getAnnoucements = catchAsync(async (req, res, next) => {
-  const filter = req.empId ? 'WHERE announcement_status = 1' : '';
+  const filter = req.empId ? '' : 'WHERE announcement_status = 1';
   const annoucementsQuery = `SELECT  announcement_id,   announcement_web_text,   
                                   announcement_mobile_text,announcement_web_link,
                                   announcement_background_color, announcement_text_color,
@@ -171,18 +171,3 @@ exports.changeAnnoucementViewStatus = catchAsync(async (req, res, next) => {
 
   next(new AppError('oops something went wrong', 400));
 });
-
-// announcement_id,
-//   announcement_web_text,
-//   announcement_mobile_text,
-//   announcement_web_link,
-//   announcement_background_color,
-//   announcement_text_color,
-//   announcement_start_time,
-//   announcement_end_time,
-//   announcement_created_on,
-//   announcement_updated_on,
-//   announcement_created_by,
-//   announcement_updated_by,
-//   announcement_status,
-//   announcement_show_homepage_only;

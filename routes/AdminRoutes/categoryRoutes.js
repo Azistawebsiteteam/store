@@ -6,7 +6,7 @@ const authCtrl = require('../../controllers/authController');
 router.use(multer().any());
 
 router.get('/data', categoryCtrl.getcategories);
-router.get('/sub-categories', categoryCtrl.getSubcategories);
+router.post('/sub-categories', categoryCtrl.getSubcategories);
 
 const key = process.env.JWT_SECRET_ADMIN;
 
@@ -14,7 +14,7 @@ router.use(authCtrl.protect(key));
 
 router.post('/add', categoryCtrl.addcategory);
 router.post('/add-sub', categoryCtrl.addSubCategory);
-router.get('/data/categories', categoryCtrl.getAdminSubCategories);
+router.post('/data/categories', categoryCtrl.getAdminSubCategories);
 
 router.post('/edit', categoryCtrl.updateSubCategory);
 router.post('/delete-sub', categoryCtrl.deleteSubCategory);

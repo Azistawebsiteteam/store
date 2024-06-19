@@ -26,7 +26,7 @@ exports.getcategories = catchAsync(async (req, res, next) => {
 
 exports.getSubcategories = catchAsync(async (req, res, next) => {
   const { categoryId } = req.body;
-  console.log(categoryId, 'subcategories');
+
   const categoryQuery = `SELECT azst_sub_category_id,azst_sub_category_name 
                          FROM azst_sub_category_tbl
                          WHERE azst_sub_category_status = 1 AND azst_category_id = ? `;

@@ -2,7 +2,7 @@ const db = require('../../dbconfig');
 
 const catchAsync = require('../../Utils/catchAsync');
 
-exports.getAllCusters = catchAsync(async (req, res, next) => {
+exports.getAllCustomers = catchAsync(async (req, res, next) => {
   const { isActive, orderby } = req.body;
   let filterQuery = '';
   if (isActive) {
