@@ -196,7 +196,7 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
                                 cost_per_item = ?,price = ?,compare_at_price = ?,inventory_id = ?,sku_code = ?,
                                 sku_bar_code = ?,is_taxable = ?,product_weight = ?,out_of_stock_sale = ?,
                                 url_handle = ?,status = ?,azst_updatedby = ?,origin_country = ?,
-                                product_url_title = ?,chintal_quantity = ?,corporate_office_quantity = ? , brand_id = ?
+                                product_url_title = ?,chintal_quantity = ?,corporate_office_quantity = ? , brand_id = ? ,is_varaints_aval = ?
                               WHERE id = ?;
                               `;
 
@@ -231,6 +231,7 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
     inventory.coc,
     inventory.coh,
     brand,
+    variantsThere,
     productId,
   ];
 
@@ -290,7 +291,7 @@ exports.skuvarientsUpdate = catchAsync(async (req, res, next) => {
                                     option1= ?,
                                     option2= ?,
                                     option3= ? where id = ?
-                                `;
+                                 `;
 
   const deleteMainVariant = `DELETE FROM  azst_sku_variant_info where id = ?`;
 
