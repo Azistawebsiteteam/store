@@ -9,7 +9,13 @@ router.use(multer().any());
 router.use(authCtrl.protect(key));
 
 router.post('/get/all', customerCtrl.getAllCustomers);
-router.post('/get/details', userCtrl.isUserExist, userCtrl.getCustomer);
+router.post(
+  '/get/details',
+  userCtrl.isUserExist,
+  customerCtrl.getUserDetailsAndLastOrder
+);
 router.post('/get/orders', userCtrl.getMyOrders);
+router.post('/user/disable', customerCtrl.disableCustomer);
+router.delete('/user/delete', customerCtrl.deleteCustomer);
 
 module.exports = router;

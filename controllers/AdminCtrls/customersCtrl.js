@@ -1,6 +1,9 @@
 const db = require('../../dbconfig');
+const AppError = require('../../Utils/appError');
 
 const catchAsync = require('../../Utils/catchAsync');
+
+const organizCustomerData = require('../CustomerCtrls/datafunctions');
 
 exports.getAllCustomers = catchAsync(async (req, res, next) => {
   let { isActive, orderbyKey, sort } = req.body;
@@ -58,6 +61,57 @@ exports.getAllCustomers = catchAsync(async (req, res, next) => {
   res.status(200).json(users);
 });
 
+exports.disableCustomer = catchAsync(async (req, res, next) => {
+  const { userId } = req.body;
+
+  if (!userId) return next(new AppError('User Id is required'));
+
+  const disableQuery = `UPDATE azst_customer SET azst_customer_status = 0 , azst_customer_updatedby =? WHERE azst_customer_id = ?`;
+  const response = await db(disableQuery, [req.empId, userId]);
+  if (response.affectedRows > 0) {
+    res.status(200).json({ message: 'User Account successfully disabled.' });
+  } else {
+    res.status(404).json({ message: 'User Account not found.' });
+  }
+});
+
+exports.deleteCustomer = catchAsync(async (req, res, next) => {
+  const { userId } = req.body;
+
+  if (!userId) return next(new AppError('User Id is required'));
+
+  const deleteQuery = `
+    DELETE FROM azst_customer 
+    WHERE azst_customer_id = ? AND azst_customer_totalorders = 0
+  `;
+
+  const response = await db(deleteQuery, [userId]);
+
+  if (response.affectedRows > 0)
+    return res
+      .status(200)
+      .json({ message: 'User Account successfully deleted.' });
+  next(
+    new AppError(
+      `This can't be deleted because they have personal orders.`,
+      400
+    )
+  );
+});
+
+exports.getUserDetailsAndLastOrder = catchAsync(async (req, res, next) => {
+  const { userId } = req.body;
+
+  const customerData = organizCustomerData(req.userDetails);
+
+  const ordersQuery = `SELECT * FROM azst_orders_tbl 
+                      WHERE azst_orders_customer_id = ? 
+                      ORDER BY azst_orders_created_on DESC LIMIT 1`;
+  const order = await db(ordersQuery, [userId]);
+
+  res.status(200).json({ customerData, latestOrder: order[0] });
+});
+
 // azst_customer_id,
 //   azst_customer_fname,
 //   azst_customer_lname,
@@ -87,3 +141,4 @@ exports.getAllCustomers = catchAsync(async (req, res, next) => {
 //   azst_customer_updatedon,
 //   azst_customer_gender,
 //   azst_customer_DOB;
+//  azst_customer_updatedby,
