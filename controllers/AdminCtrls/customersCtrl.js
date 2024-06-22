@@ -109,7 +109,7 @@ exports.getUserDetailsAndLastOrder = catchAsync(async (req, res, next) => {
                       ORDER BY azst_orders_created_on DESC LIMIT 1`;
   const order = await db(ordersQuery, [userId]);
 
-  res.status(200).json({ customerData, latestOrder: order[0] });
+  res.status(200).json({ customerData, latestOrder: order[0] ?? {} });
 });
 
 // azst_customer_id,
