@@ -108,7 +108,7 @@ exports.addPopup = catchAsync(async (req, res, next) => {
 
   const { error } = popupSchema.validate(req.body);
 
-  if (error) return next(new AppError(error, 400));
+  if (error) return next(new AppError(error.message, 400));
 
   const insertQuery =
     'INSERT INTO azst_popups_table (popup_name,popup_url,popup_image,updated_by) VALUES (?,?,?,?)';
