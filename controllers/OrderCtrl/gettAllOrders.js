@@ -53,7 +53,7 @@ exports.getOrderDetails = catchAsync(async (req, res, next) => {
 
   const orderQuery = `
     SELECT
-      azst_orders_tbl.*,
+      azst_orders_tbl.*,azst_customer_adressbook.*,
        JSON_ARRAYAGG(
         JSON_OBJECT(
         'product_title', azst_products.product_title,
@@ -70,6 +70,11 @@ exports.getOrderDetails = catchAsync(async (req, res, next) => {
     FROM azst_orders_tbl
     LEFT JOIN azst_ordersummary_tbl 
       ON azst_orders_tbl.azst_orders_id = azst_ordersummary_tbl.azst_orders_id
+    LEFT JOIN azst_orderinfo_tbl 
+      ON azst_orders_tbl.azst_orders_id = azst_orderinfo_tbl.azst_orders_id
+    LEFT JOIN azst_customer_adressbook 
+      ON azst_orderinfo_tbl.azst_addressbook_id = azst_customer_adressbook.azst_customer_adressbook_id
+
     LEFT JOIN azst_products
       ON azst_ordersummary_tbl.azst_order_product_id = azst_products.id
     LEFT JOIN azst_sku_variant_info
@@ -77,7 +82,7 @@ exports.getOrderDetails = catchAsync(async (req, res, next) => {
     WHERE azst_orders_tbl.azst_orders_id = ?
     GROUP BY azst_orders_tbl.azst_orders_tbl_id
   `;
-
+  await db("SET SESSION sql_mode = ''");
   const result = await db(orderQuery, [orderId]);
 
   if (result.length === 0) return res.status(200).json({});
