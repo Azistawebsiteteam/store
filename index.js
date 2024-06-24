@@ -31,6 +31,7 @@ const reviewsRoute = require('./routes/CustomerRoutes/ReviewRoute');
 const reviewsRouteAdmin = require('./routes/AdminRoutes/ReviewsRoutes');
 const adminUsersRoute = require('./routes/AdminRoutes/customerRoutes');
 const announcementsRoute = require('./routes/AdminRoutes/announcementBarRoutes');
+const orderRoutes = require('./routes/ordersRoutes/orderRoute');
 
 const app = express();
 
@@ -82,6 +83,7 @@ app.use(`${api}/reviews`, reviewsRoute);
 app.use(`${api}/admin/reviews`, reviewsRouteAdmin);
 app.use(`${api}/users`, adminUsersRoute);
 app.use(`${api}/announcement`, announcementsRoute);
+app.use(`${api}/orders`, orderRoutes);
 
 app.get('/favicon.ico', (req, res) => res.status(204));
 

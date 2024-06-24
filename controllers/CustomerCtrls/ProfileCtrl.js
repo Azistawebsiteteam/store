@@ -93,17 +93,3 @@ exports.updateProfile = catchAsync(async (req, res, next) => {
   await db(profile, values);
   res.status(200).send({ message: 'Profile updated successfully' });
 });
-
-exports.getMyOrders = catchAsync(async (req, res, next) => {
-  const { userId } = req.body;
-
-  // userId is required came when Admin request to get user Details
-  const id = userId ?? req.empId;
-
-  const ordersQuery = `SELECT * FROM azst_orders_tbl 
-                      WHERE azst_orders_customer_id = ? 
-                      ORDER BY azst_orders_created_on DESC`;
-
-  const results = await db(ordersQuery, [id]);
-  res.status(200).json(results);
-});

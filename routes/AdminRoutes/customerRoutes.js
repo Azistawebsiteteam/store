@@ -14,7 +14,7 @@ router.post(
   userCtrl.isUserExist,
   customerCtrl.getUserDetailsAndLastOrder
 );
-router.post('/get/orders', userCtrl.getMyOrders);
+
 router.post('/user/disable', customerCtrl.disableCustomer);
 router.delete('/user/delete', customerCtrl.disableCustomer);
 
