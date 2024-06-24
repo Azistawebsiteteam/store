@@ -21,10 +21,14 @@ exports.getAllOrdrs = catchAsync(async (req, res, next) => {
 
   await db("SET SESSION sql_mode = ''");
 
-  const ordersQuery = `SELECT azst_orders_tbl.*, IFNULL(SUM(azst_ordersummary_tbl.azst_order_qty), 0) AS items
+  const ordersQuery = `SELECT azst_orders_tbl.*,azst_customer.azst_customer_fname,
+                            azst_customer.azst_customer_lname,
+                            IFNULL(SUM(azst_ordersummary_tbl.azst_order_qty), 0) AS items
                        FROM azst_orders_tbl
                        LEFT JOIN azst_ordersummary_tbl
                        ON azst_orders_tbl.azst_orders_id = azst_ordersummary_tbl.azst_orders_id
+                        LEFT JOIN azst_customer
+                        ON azst_customer.azst_customer_id = azst_orders_tbl.azst_orders_customer_id 
                        ${filterQuery}
                        GROUP BY azst_orders_tbl.azst_orders_id`;
   const results = await db(ordersQuery, values);
