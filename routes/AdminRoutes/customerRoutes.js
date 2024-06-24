@@ -16,6 +16,6 @@ router.post(
 );
 router.post('/get/orders', userCtrl.getMyOrders);
 router.post('/user/disable', customerCtrl.disableCustomer);
-router.delete('/user/delete', customerCtrl.deleteCustomer);
+router.delete('/user/delete', customerCtrl.disableCustomer);
 
 module.exports = router;

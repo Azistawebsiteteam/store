@@ -28,6 +28,9 @@ const organizCustomerData = (customer) => {
     azst_customer_taxexempts: customer.azst_customer_taxexempts,
     azst_customer_tags: customer.azst_customer_tags,
     azst_customer_gender: customer.azst_customer_gender,
+    azst_customer_createdon: moment(customer.azst_customer_createdon).format(
+      'DD-MM-YYYY HH:mm:ss'
+    ),
     azst_customer_dob: moment(customer.azst_customer_DOB).format('DD-MM-YYYY'),
   };
 };

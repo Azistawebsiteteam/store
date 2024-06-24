@@ -75,41 +75,108 @@ exports.disableCustomer = catchAsync(async (req, res, next) => {
   }
 });
 
-exports.deleteCustomer = catchAsync(async (req, res, next) => {
-  const { userId } = req.body;
+// exports.deleteCustomer = catchAsync(async (req, res, next) => {
+//   const { userId } = req.body;
 
-  if (!userId) return next(new AppError('User Id is required'));
+//   if (!userId) return next(new AppError('User Id is required'));
 
-  const deleteQuery = `
-    DELETE FROM azst_customer 
-    WHERE azst_customer_id = ? AND azst_customer_totalorders = 0
-  `;
+//   const deleteQuery = `
+//     DELETE FROM azst_customer
+//     WHERE azst_customer_id = ? AND azst_customer_totalorders = 0
+//   `;
 
-  const response = await db(deleteQuery, [userId]);
+//   const response = await db(deleteQuery, [userId]);
 
-  if (response.affectedRows > 0)
-    return res
-      .status(200)
-      .json({ message: 'User Account successfully deleted.' });
-  next(
-    new AppError(
-      `This can't be deleted because they have personal orders.`,
-      400
-    )
-  );
-});
+//   if (response.affectedRows > 0)
+//     return res
+//       .status(200)
+//       .json({ message: 'User Account successfully deleted.' });
+//   next(
+//     new AppError(
+//       `This can't be deleted because they have personal orders.`,
+//       400
+//     )
+//   );
+// });
 
 exports.getUserDetailsAndLastOrder = catchAsync(async (req, res, next) => {
   const { userId } = req.body;
 
   const customerData = organizCustomerData(req.userDetails);
 
-  const ordersQuery = `SELECT * FROM azst_orders_tbl 
-                      WHERE azst_orders_customer_id = ? 
-                      ORDER BY azst_orders_created_on DESC LIMIT 1`;
-  const order = await db(ordersQuery, [userId]);
+  const ordersQuery = `
+    SELECT  azst_orders_tbl.* ,azst_ordersummary_tbl.*, product_title,image_src, price, offer_price, option1,
+    option2,
+    option3
+    FROM azst_orders_tbl
+    LEFT JOIN azst_ordersummary_tbl 
+      ON azst_orders_tbl.azst_orders_id = azst_ordersummary_tbl.azst_orders_id
+    LEFT JOIN azst_products
+      ON azst_ordersummary_tbl.azst_order_product_id = azst_products.id
+    LEFT JOIN azst_sku_variant_info
+      ON azst_ordersummary_tbl.azst_order_variant_id = azst_sku_variant_info.id
+    WHERE azst_orders_tbl.azst_orders_id = (
+      SELECT azst_orders_id 
+      FROM azst_orders_tbl 
+      WHERE azst_orders_customer_id = ?
+      ORDER BY azst_orders_created_on DESC 
+      LIMIT 1
+    )
+  `;
 
-  res.status(200).json({ customerData, latestOrder: order[0] ?? {} });
+  const result = await db(ordersQuery, [userId]);
+
+  const latestOrder = {
+    azst_orders_tbl_id: result[0].azst_orders_tbl_id,
+    azst_orders_id: result[0].azst_orders_id,
+    azst_orders_email: result[0].azst_orders_email,
+    azst_orders_financial_status: result[0].azst_orders_financial_status,
+    azst_orders_paid_on: result[0].azst_orders_paid_on,
+    azst_orders_fulfillment_status: result[0].azst_orders_fulfillment_status,
+    azst_orders_fulfilled_on: result[0].azst_orders_fulfilled_on,
+    azst_orders_currency: result[0].azst_orders_currency,
+    azst_orders_subtotal: result[0].azst_orders_subtotal,
+    azst_orders_shipping: result[0].azst_orders_shipping,
+    azst_orders_taxes: result[0].azst_orders_taxes,
+    azst_orders_total: result[0].azst_orders_total,
+    azst_orders_discount_code: result[0].azst_orders_discount_code,
+    azst_orders_discount_amount: result[0].azst_orders_discount_amount,
+    azst_orders_shipping_method: result[0].azst_orders_shipping_method,
+    azst_orders_status: result[0].azst_orders_status,
+    azst_orders_created_on: result[0].azst_orders_created_on,
+    azst_orders_customer_id: result[0].azst_orders_customer_id,
+    azst_orders_checkout_id: result[0].azst_orders_checkout_id,
+    azst_orders_cancelled_at: result[0].azst_orders_cancelled_at,
+    azst_orders_payment_method: result[0].azst_orders_payment_method,
+    azst_orders_payment_reference: result[0].azst_orders_payment_reference,
+    azst_orders_vendor: result[0].azst_orders_vendor,
+    azst_orders_vendor_code: result[0].azst_orders_vendor_code,
+    azst_orders_tags: result[0].azst_orders_tags,
+    azst_orders_source: result[0].azst_orders_source,
+    azst_orders_billing_province_name:
+      result[0].azst_orders_billing_province_name,
+    azst_orders_shipping_province_name:
+      result[0].azst_orders_shipping_province_name,
+    azst_orders_payment_id: result[0].azst_orders_payment_id,
+    azst_orders_payment_references: result[0].azst_orders_payment_references,
+    azst_ordersummary_id: result[0].azst_ordersummary_id,
+    products_details: result.map((order) => ({
+      azst_order_product_id: order.azst_order_product_id,
+      azst_order_variant_id: order.azst_order_variant_id,
+      azst_order_qty: order.azst_order_qty,
+      product_title: order.product_title,
+      product_image: `${req.protocol}://${req.get('host')}/product/images/${
+        order.image_src
+      }`,
+      price: order.price,
+      offer_price: order.offer_price,
+      option1: order.option1,
+      option2: order.option2,
+      option3: order.option3,
+    })),
+  };
+
+  res.status(200).json({ customerData, latestOrder });
 });
 
 // azst_customer_id,
@@ -142,3 +209,34 @@ exports.getUserDetailsAndLastOrder = catchAsync(async (req, res, next) => {
 //   azst_customer_gender,
 //   azst_customer_DOB;
 //  azst_customer_updatedby,
+
+// azst_orders_tbl_id,
+//   azst_orders_id,
+//   azst_orders_email,
+//   azst_orders_financial_status,
+//   azst_orders_paid_on,
+//   azst_orders_fulfillment_status,
+//   azst_orders_fulfilled_on,
+//   azst_orders_currency,
+//   azst_orders_subtotal,
+//   azst_orders_shipping,
+//   azst_orders_taxes,
+//   azst_orders_total,
+//   azst_orders_discount_code,
+//   azst_orders_discount_amount,
+//   azst_orders_shipping_method,
+//   azst_orders_status,
+//   azst_orders_created_on,
+//   azst_orders_customer_id,
+//   azst_orders_checkout_id,
+//   azst_orders_cancelled_at,
+//   azst_orders_payment_method,
+//   azst_orders_payment_reference,
+//   azst_orders_vendor,
+//   azst_orders_vendor_code,
+//   azst_orders_tags,
+//   azst_orders_source,
+//   azst_orders_billing_province_name,
+//   azst_orders_shipping_province_name,
+//   azst_orders_payment_id,
+//   azst_orders_payment_references;
