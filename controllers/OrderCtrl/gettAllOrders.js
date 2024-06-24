@@ -1,5 +1,6 @@
 const db = require('../../dbconfig');
 const Joi = require('joi');
+
 const catchAsync = require('../../Utils/catchAsync');
 const AppError = require('../../Utils/appError');
 
@@ -21,9 +22,9 @@ exports.getAllOrdrs = catchAsync(async (req, res, next) => {
 
   await db("SET SESSION sql_mode = ''");
 
-  const ordersQuery = `SELECT azst_orders_tbl.*,azst_customer.azst_customer_fname,
-                            azst_customer.azst_customer_lname,
-                            IFNULL(SUM(azst_ordersummary_tbl.azst_order_qty), 0) AS items
+  const ordersQuery = `SELECT azst_orders_tbl.*,azst_ordersummary_tbl.azst_order_delivery_method,
+                            IFNULL(SUM(azst_ordersummary_tbl.azst_order_qty), 0) AS items , 
+                           CONCAT(azst_customer_fname , ' ' , azst_customer_lname) AS customer_name
                        FROM azst_orders_tbl
                        LEFT JOIN azst_ordersummary_tbl
                        ON azst_orders_tbl.azst_orders_id = azst_ordersummary_tbl.azst_orders_id
