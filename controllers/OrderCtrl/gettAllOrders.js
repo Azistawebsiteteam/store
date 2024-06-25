@@ -36,11 +36,6 @@ exports.getAllOrdrs = catchAsync(async (req, res, next) => {
   res.status(200).json(results);
 });
 
-exports.getCustomerOrders = catchAsync(async (req, res, next) => {
-  req.body.customerId = req.empId;
-  next();
-});
-
 const productDetailsQuery = `JSON_ARRAYAGG(
     JSON_OBJECT(
       'azst_order_product_id', azst_ordersummary_tbl.azst_order_product_id,
@@ -76,6 +71,72 @@ const shippingAddressquery = `JSON_OBJECT(
     'address_available_time', azst_customer_adressbook.azst_customer_adressbook_available_time
   ) AS shipping_address`;
 
+const billingAddressQuery = `JSON_OBJECT( 
+        'azst_customer_hno', azst_customer.azst_customer_hno,
+        'azst_customer_area', azst_customer.azst_customer_area,
+        'azst_customer_city',azst_customer.azst_customer_city ,
+        'azst_customer_district', azst_customer.azst_customer_district,
+        'azst_customer_state', azst_customer.azst_customer_state,
+        'azst_customer_country', azst_customer.azst_customer_country,
+        'azst_customer_zip', azst_customer.azst_customer_zip ,
+        'azst_customer_landmark',azst_customer.azst_customer_landmark ,
+        'azst_customer_company',azst_customer.azst_customer_company ,
+        'azst_customer_address1',azst_customer.azst_customer_address1 ,
+        'azst_customer_address2',azst_customer.azst_customer_address2 ) AS billing_address`;
+
+exports.getCustomerOrders = catchAsync(async (req, res, next) => {
+  const customerId = req.empId;
+  const schema = Joi.object({
+    customerId: Joi.number().min(1).required(),
+  });
+
+  const { error } = schema.validate({ customerId });
+  if (error) return next(new AppError(error.message, 400));
+
+  const orderQuery = `SELECT
+                      azst_orders_tbl.*,azst_orderinfo_tbl.*,
+                      azst_orders_tbl.azst_orders_id as azst_order_id,
+                      ${productDetailsQuery},
+                      ${shippingAddressquery},
+                      ${billingAddressQuery}
+                      
+                    FROM azst_orders_tbl
+                    LEFT JOIN azst_ordersummary_tbl 
+                      ON azst_orders_tbl.azst_orders_id = azst_ordersummary_tbl.azst_orders_id
+                    LEFT JOIN azst_orderinfo_tbl 
+                      ON azst_orders_tbl.azst_orders_id = azst_orderinfo_tbl.azst_orders_id
+                    LEFT JOIN azst_customer_adressbook 
+                      ON azst_orderinfo_tbl.azst_addressbook_id = azst_customer_adressbook.azst_customer_adressbook_id
+                    LEFT JOIN azst_products
+                      ON azst_ordersummary_tbl.azst_order_product_id = azst_products.id
+                    LEFT JOIN azst_customer
+                      ON azst_customer.azst_customer_id = azst_orders_tbl.azst_orders_customer_id
+                    LEFT JOIN azst_sku_variant_info
+                      ON azst_ordersummary_tbl.azst_order_variant_id = azst_sku_variant_info.id
+                    WHERE azst_orders_tbl.azst_orders_customer_id = ?
+                    GROUP BY azst_orders_tbl.azst_orders_id;
+                    `;
+
+  await db("SET SESSION sql_mode = ''");
+  const result = await db(orderQuery, [customerId]);
+
+  if (result.length === 0) return res.status(200).json([]);
+
+  let orders = result;
+
+  const ordersData = orders.map((order) => ({
+    ...order,
+    products_details: order.products_details.map((product) => ({
+      ...product,
+      product_image: `${req.protocol}://${req.get('host')}/product/images/${
+        product.product_image
+      }`,
+    })),
+  }));
+
+  res.status(200).json(ordersData);
+});
+
 exports.getOrderDetails = catchAsync(async (req, res, next) => {
   const { orderId } = req.body;
 
@@ -88,6 +149,7 @@ exports.getOrderDetails = catchAsync(async (req, res, next) => {
 
   const orderQuery = `SELECT
                       azst_orders_tbl.*,azst_orderinfo_tbl.*,
+                      azst_orders_tbl.azst_orders_id as azst_order_id,
                       ${productDetailsQuery},
                       ${shippingAddressquery}
                     FROM azst_orders_tbl
