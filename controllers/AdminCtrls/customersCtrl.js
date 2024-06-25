@@ -112,7 +112,7 @@ exports.getUserDetailsAndLastOrder = catchAsync(async (req, res, next) => {
         'azst_order_product_id', azst_ordersummary_tbl.azst_order_product_id,
         'azst_order_variant_id', azst_ordersummary_tbl.azst_order_variant_id,
         'azst_product_price' ,azst_ordersummary_tbl.azst_product_price,
-        'image_src', azst_products.image_src,
+        'product_image', azst_products.image_src,
         'option1', azst_sku_variant_info.option1,
         'option2', azst_sku_variant_info.option2,
         'option3', azst_sku_variant_info.option3,
@@ -147,7 +147,7 @@ exports.getUserDetailsAndLastOrder = catchAsync(async (req, res, next) => {
     products_details: orderDetails.products_details.map((order) => ({
       ...order,
       product_image: `${req.protocol}://${req.get('host')}/product/images/${
-        order.image_src
+        order.product_image
       }`,
     })),
   };
