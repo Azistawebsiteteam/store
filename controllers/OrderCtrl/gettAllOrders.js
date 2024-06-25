@@ -87,7 +87,7 @@ exports.getOrderDetails = catchAsync(async (req, res, next) => {
   if (error) return next(new AppError(error.message, 400));
 
   const orderQuery = `SELECT
-                      azst_orders_tbl.*,
+                      azst_orders_tbl.*,azst_orderinfo_tbl.*,
                       ${productDetailsQuery},
                       ${shippingAddressquery}
                     FROM azst_orders_tbl
