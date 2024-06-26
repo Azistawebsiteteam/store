@@ -5,7 +5,7 @@ const catchAsync = require('../../Utils/catchAsync');
 
 const getProductImageLink = (req, product) => ({
   ...product,
-  image_src: `${req.protocol}://${req.get('host')}/product/images/${
+  image_src: `${req.protocol}://${req.get('host')}/api/images/product/${
     product.image_src
   }`,
 });
@@ -43,9 +43,9 @@ exports.getCollectionProducts = catchAsync(async (req, res, next) => {
 
   collectiondata = {
     ...collection,
-    azst_collection_img: `${req.protocol}://${req.get('host')}/collection/${
-      collection.azst_collection_img
-    }`,
+    azst_collection_img: `${req.protocol}://${req.get(
+      'host'
+    )}/api/images/collection/${collection.azst_collection_img}`,
   };
 
   const products = results.map((product) => getProductImageLink(req, product));
@@ -79,7 +79,7 @@ exports.getProductsSerach = catchAsync(async (req, res, next) => {
 
   const products = results.map((product) => ({
     ...product,
-    image_src: `${req.protocol}://${req.get('host')}/product/images/${
+    image_src: `${req.protocol}://${req.get('host')}/api/images/product/${
       product.image_src
     }`,
   }));
@@ -109,7 +109,9 @@ exports.getProductDetalis = catchAsync(async (req, res, next) => {
     ...product,
     product_images: JSON.parse(product.product_images).map(
       (product_image) =>
-        `${req.protocol}://${req.get('host')}/product/images/${product_image}`
+        `${req.protocol}://${req.get(
+          'host'
+        )}/api/images/product/${product_image}`
     ),
   };
 
@@ -161,7 +163,9 @@ exports.getProductVariant = catchAsync(async (req, res, next) => {
     return;
   }
   const getImageLink = (img) =>
-    `${req.protocol}://${req.get('host')}/product/variantimage/${img}`;
+    `${req.protocol}://${req.get(
+      'host'
+    )}/api/images/product/variantimage/${img}`;
 
   const variantObj = variantData[0];
 

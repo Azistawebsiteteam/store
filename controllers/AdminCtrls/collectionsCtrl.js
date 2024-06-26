@@ -80,9 +80,9 @@ exports.collections = catchAsync(async (req, res, next) => {
   let collections = await db(collectiosrQuery);
   collections = collections.map((cl) => ({
     ...cl,
-    azst_collection_img: `${req.protocol}://${req.get('host')}/collection/${
-      cl.azst_collection_img
-    }`,
+    azst_collection_img: `${req.protocol}://${req.get(
+      'host'
+    )}/api/images/collection/${cl.azst_collection_img}`,
   }));
   res.status(200).json(collections);
 });
@@ -91,9 +91,9 @@ exports.getcollection = catchAsync(async (req, res, next) => {
   const cl = req.collection;
   const collection = {
     ...cl,
-    azst_collection_img: `${req.protocol}://${req.get('host')}/collection/${
-      cl.azst_collection_img
-    }`,
+    azst_collection_img: `${req.protocol}://${req.get(
+      'host'
+    )}/api/images/collection/${cl.azst_collection_img}`,
   };
 
   res.status(200).json(collection);

@@ -50,11 +50,11 @@ const removeFromWl = catchAsync(async (req, res, next) => {
 
 const getImageLink = (req, imges, pImg) => {
   if (imges === '' || imges === null) {
-    return `${req.protocol}://${req.get('host')}/product/images/${pImg}`;
+    return `${req.protocol}://${req.get('host')}/api/images/product/${pImg}`;
   }
-  return `${req.protocol}://${req.get('host')}/product/variantimage/${
-    JSON.parse(imges)[1]
-  }`;
+  return `${req.protocol}://${req.get(
+    'host'
+  )}/api/images/product/variantimage/${JSON.parse(imges)[1]}`;
 };
 
 const getWhishlist = catchAsync(async (req, res, next) => {

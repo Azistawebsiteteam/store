@@ -65,7 +65,7 @@ exports.updateImage = catchAsync(async (req, res, next) => {
 });
 
 const getProductImageLink = (req, i) =>
-  `${req.protocol}://${req.get('host')}/product/variantimage/${i}`;
+  `${req.protocol}://${req.get('host')}/api/images/product/variantimage/${i}`;
 
 exports.getProductDetalis = catchAsync(async (req, res, next) => {
   const { productId } = req.body;
@@ -86,12 +86,14 @@ exports.getProductDetalis = catchAsync(async (req, res, next) => {
 
   const productDetails = {
     ...product,
-    image_src: `${req.protocol}://${req.get('host')}/product/images/${
+    image_src: `${req.protocol}://${req.get('host')}/api/images/product/${
       product.image_src
     }`,
     product_images: JSON.parse(product.product_images).map(
       (product_image) =>
-        `${req.protocol}://${req.get('host')}/product/images/${product_image}`
+        `${req.protocol}://${req.get(
+          'host'
+        )}/api/images/product/${product_image}`
     ),
   };
 
@@ -568,7 +570,9 @@ exports.deleteProductImages = catchAsync(async (req, res, next) => {
   res.status(200).send({
     updatedImgs: filteredImages.map(
       (product_image) =>
-        `${req.protocol}://${req.get('host')}/product/images/${product_image}`
+        `${req.protocol}://${req.get(
+          'host'
+        )}/api/images/product/${product_image}`
     ),
     message: 'Success updating product images',
   });

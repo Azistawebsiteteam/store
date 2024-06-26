@@ -26,8 +26,8 @@ const getCartData = catchAsync(async (req, res, next) => {
     ...product,
     variant_image: `${req.protocol}://${req.get(
       'host'
-    )}/product/variantimage/${getImageName(product.variant_image)}`,
-    image_src: `${req.protocol}://${req.get('host')}/product/images/${
+    )}/api/images/product/variantimage/${getImageName(product.variant_image)}`,
+    image_src: `${req.protocol}://${req.get('host')}/api/images/product/${
       product.image_src
     }`,
   }));

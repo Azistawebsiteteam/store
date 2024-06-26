@@ -123,7 +123,7 @@ exports.updatestorebanner = catchAsync(async (req, res, next) => {
 });
 
 const getBannerImageLink = (req, img) =>
-  `${req.protocol}://${req.get('host')}/banners/${img}`;
+  `${req.protocol}://${req.get('host')}/api/images/banners/${img}`;
 
 exports.getbanners = catchAsync(async (req, res, next) => {
   const date = moment().format('YYYY-MM-DD HH:mm:ss');

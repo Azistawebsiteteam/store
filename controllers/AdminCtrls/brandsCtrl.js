@@ -69,9 +69,9 @@ exports.updateImage = catchAsync(async (req, res, next) => {
 const modifyBrandData = (req, brand) => ({
   azst_brands_id: brand.azst_brands_id,
   azst_brand_name: brand.azst_brand_name,
-  azst_brand_logo: `${req.protocol}://${req.get('host')}/brand/logs/${
-    brand.azst_brand_logo
-  }`,
+  azst_brand_logo: `${req.protocol}://${req.get(
+    'host'
+  )}/api/images/brand/logs/${brand.azst_brand_logo}`,
 });
 
 exports.getbrands = catchAsync(async (req, res, next) => {

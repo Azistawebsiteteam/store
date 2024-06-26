@@ -172,7 +172,8 @@ const getReviewImageLink = (req, images) => {
   const parsedImages = JSON.parse(images);
   if (parsedImages && parsedImages.length > 0) {
     return parsedImages.map(
-      (image) => `${req.protocol}://${req.get('host')}/review/images/${image}`
+      (image) =>
+        `${req.protocol}://${req.get('host')}/api/images/review/${image}`
     );
   } else {
     return [];
@@ -253,7 +254,7 @@ exports.getAllReviews = catchAsync(async (req, res, next) => {
   const modifiedReview = results.map((review) => ({
     ...review,
     review_images: getReviewImageLink(req, review.review_images),
-    product_image: `${req.protocol}://${req.get('host')}/product/images/${
+    product_image: `${req.protocol}://${req.get('host')}/api/images/product/${
       review.product_image
     }`,
   }));

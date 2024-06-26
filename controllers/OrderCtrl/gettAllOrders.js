@@ -128,7 +128,7 @@ exports.getCustomerOrders = catchAsync(async (req, res, next) => {
     ...order,
     products_details: order.products_details.map((product) => ({
       ...product,
-      product_image: `${req.protocol}://${req.get('host')}/product/images/${
+      product_image: `${req.protocol}://${req.get('host')}/api/images/product/${
         product.product_image
       }`,
     })),
@@ -178,7 +178,7 @@ exports.getOrderDetails = catchAsync(async (req, res, next) => {
     ...orderDetails,
     products_details: orderDetails.products_details.map((order) => ({
       ...order,
-      product_image: `${req.protocol}://${req.get('host')}/product/images/${
+      product_image: `${req.protocol}://${req.get('host')}/api/images/product/${
         order.product_image
       }`,
     })),

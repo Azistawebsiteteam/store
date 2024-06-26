@@ -76,7 +76,7 @@ const modifyBrandData = (req, popup) => ({
   id: popup.id,
   popup_name: popup.popup_name,
   popup_url: popup.popup_url,
-  popup_image: `${req.protocol}://${req.get('host')}/popup/image/${
+  popup_image: `${req.protocol}://${req.get('host')}/api/images/popup/${
     popup.popup_image
   }`,
 });

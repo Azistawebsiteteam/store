@@ -146,7 +146,7 @@ exports.getUserDetailsAndLastOrder = catchAsync(async (req, res, next) => {
     ...orderDetails,
     products_details: orderDetails.products_details.map((order) => ({
       ...order,
-      product_image: `${req.protocol}://${req.get('host')}/product/images/${
+      product_image: `${req.protocol}://${req.get('host')}/api/images/product/${
         order.product_image
       }`,
     })),

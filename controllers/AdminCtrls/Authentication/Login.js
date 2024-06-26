@@ -37,7 +37,7 @@ exports.getAdminDetails = catchAsync(async (req, res) => {
     ...adm,
     azst_admin_details_profile_photo: `${req.protocol}://${req.get(
       'host'
-    )}/admin/profile/${adm.azst_admin_details_profile_photo}`,
+    )}/api/images/admin/profile/${adm.azst_admin_details_profile_photo}`,
   };
   res.status(200).json({ admin_details: adminDetails });
 });
@@ -63,7 +63,7 @@ exports.login = catchAsync(async (req, res, next) => {
     ...admin,
     azst_admin_details_profile_photo: `${req.protocol}://${req.get(
       'host'
-    )}/admin/profile/${admin.azst_admin_details_profile_photo}`,
+    )}/api/images/admin/profile/${admin.azst_admin_details_profile_photo}`,
   };
   //enterLoginLogs(azst_customer_id, token);
   res.status(200).json({
