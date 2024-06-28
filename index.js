@@ -3,7 +3,6 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const xss = require('xss-clean');
 const compression = require('compression');
-const path = require('path');
 
 require('dotenv').config();
 require('./dbconfig');
