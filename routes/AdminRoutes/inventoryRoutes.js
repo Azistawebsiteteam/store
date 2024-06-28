@@ -1,9 +1,11 @@
 const router = require('express').Router();
 const multer = require('multer');
 
-const incLcCtrl = require('../../controllers/AdminCtrls/inventoryCtrl/locationsCtrl');
 const validationCtrl = require('../../Models/inventory');
 const authCtrl = require('../../controllers/authController');
+
+const incLcCtrl = require('../../controllers/AdminCtrls/inventoryCtrl/locationsCtrl');
+const invtQtyCtrl = require('../../controllers/AdminCtrls/inventoryCtrl/inventoryCtrl');
 
 router.use(multer().any());
 
@@ -13,6 +15,8 @@ router.use(authCtrl.protect(key));
 
 router.get('/locations', incLcCtrl.getinventories);
 router.post('/add-location', validationCtrl, incLcCtrl.addInvetroyLoation);
+
+router.post('/qty/product-location', invtQtyCtrl.getInventoryQty);
 
 router.use(incLcCtrl.isInventoryExsit);
 router
