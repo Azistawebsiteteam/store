@@ -139,13 +139,14 @@ exports.checkOtpExisting = catchAsync(async (req, res, next) => {
 exports.updateOtpDetails = catchAsync(async (req, res, next) => {
   const { verificationId, reason } = req.otpDetails;
 
-  const { azst_customer_id } = req.userDetails;
+  let azst_customer_id = req.userDetails?.azst_customer_id ?? 0;
 
   const updateOtpSDetais = `UPDATE azst_otp_verification
                             SET azst_otp_verification_userid = ?, azst_otp_verification_status = ?
                             WHERE azst_otp_verification_id = ?`;
 
   const otpValues = [azst_customer_id, 0, verificationId];
+
   // if the reason is forgot password go to authcontroll and update the password with the new password
   if (reason === 'forgot password') {
     return next();
@@ -153,7 +154,9 @@ exports.updateOtpDetails = catchAsync(async (req, res, next) => {
 
   await db(updateOtpSDetais, otpValues);
   const key = process.env.JWT_SECRET;
-  const jwtToken = createSendToken(azst_customer_id, key);
+  // if the Reason is Registration no need to send the Token
+  const jwtToken =
+    reason === 'Registration' ? '' : createSendToken(azst_customer_id, key);
 
   // if the reason is Login create a login log here
   if (reason === 'Login') {

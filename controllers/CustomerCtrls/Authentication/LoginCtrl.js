@@ -25,6 +25,19 @@ exports.isUserExisit = catchAsync(async (req, res, next) => {
   next();
 });
 
+exports.googleLogin = catchAsync(async (req, res, next) => {
+  const key = process.env.JWT_SECRET;
+  const { azst_customer_id } = req.userDetails;
+  const token = createSendToken(azst_customer_id, key);
+  const user_details = organizeUserData(req.userDetails);
+
+  res.status(200).json({
+    jwtToken: token,
+    user_details,
+    message: 'User logged in successfully!',
+  });
+});
+
 exports.login = catchAsync(async (req, res, next) => {
   const { password } = req.body;
 

@@ -8,54 +8,69 @@ const createSendToken = require('../../../Utils/jwtToken');
 
 exports.checkExistingUser = catchAsync(async (req, res, next) => {
   const { customerMobileNum, customerEmail, mailOrMobile } = req.body;
+
   const mobileNum = customerMobileNum || mailOrMobile;
   const email = customerEmail || mailOrMobile;
   const checkQuery =
     'SELECT azst_customer_id FROM  azst_customer  WHERE azst_customer_mobile = ? OR azst_customer_email = ? ';
 
   const result = await db(checkQuery, [mobileNum, email]);
+
   if (result.length > 0)
     return next(new AppError('You have already an account', 400));
+
   next();
 });
 
 exports.signup = catchAsync(async (req, res, next) => {
-  const {
-    customerFirstName,
-    customerLastName,
-    customerMobileNum,
-    customerEmail,
-    customerPassword,
-  } = req.body;
+  const { mailOrMobile, customerName, password } = req.body;
 
-  const today = moment().format('YYYY-MM-DD HH:mm:ss');
+  // Validate inputs
+  if (!mailOrMobile || !customerName || !password) {
+    return res.status(400).json({ message: 'All fields are required.' });
+  }
 
-  const registerQuery = `INSERT INTO azst_customer (azst_customer_fname,azst_customer_lname,azst_customer_mobile,azst_customer_email,
-                          azst_customer_pwd,azst_customer_updatedon)
-                          VALUES(?,?,?,?,?,?)`;
+  // Hash the password
+  const hashedPassword = await bcrypt.hash(password, 10);
 
-  const hashedPassword = await bcrypt.hash(customerPassword, 10);
+  // Determine if input is mobile number or email
+  let mobileNum = '';
+  let email = '';
+  if (/^[6-9]\d{9}$/.test(mailOrMobile)) {
+    mobileNum = mailOrMobile;
+  } else {
+    email = mailOrMobile.toLowerCase();
+  }
 
-  const values = [
-    customerFirstName,
-    customerLastName,
-    customerMobileNum,
-    customerEmail.toLowerCase(),
-    hashedPassword,
-    today,
-  ];
+  // Split customer name into first and last name
+  const [firstName = '', lastName = ''] = customerName.split(' ');
 
+  const registerQuery = `
+    INSERT INTO azst_customer (
+      azst_customer_fname,
+      azst_customer_lname,
+      azst_customer_mobile,
+      azst_customer_email,
+      azst_customer_pwd
+    ) VALUES (?, ?, ?, ?, ?)
+  `;
+
+  const values = [firstName, lastName, mobileNum, email, hashedPassword];
+
+  // Execute the database query
   const results = await db(registerQuery, values);
-  // Add any further logic or response handling here
-  const key = process.env.JWT_SECRET;
-  const token = createSendToken(results.insertId, key);
+
+  // Generate JWT token
+  const token = createSendToken(results.insertId, process.env.JWT_SECRET);
+
+  // Send response
   res.status(201).json({
     jwtToken: token,
     user_details: {
       azst_customer_id: results.insertId,
-      azst_customer_name: `${customerFirstName} ${customerLastName}`,
-      azst_customer_mobile: customerMobileNum,
-      azst_customer_email: customerEmail,
+      azst_customer_name: customerName,
+      azst_customer_mobile: mobileNum,
+      azst_customer_email: email,
     },
     message: 'User registered successfully!',
   });
@@ -67,7 +82,7 @@ exports.mobileSignup = catchAsync(async (req, res, next) => {
 });
 
 exports.mobileSignupInsert = catchAsync(async (req, res, next) => {
-  const { mailOrMobile, customerName } = req.body;
+  const { mailOrMobile, customerName, password } = req.body;
 
   const today = moment().format('YYYY-MM-DD HH:mm:ss');
 
