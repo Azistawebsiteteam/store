@@ -67,19 +67,21 @@ exports.mobileSignup = catchAsync(async (req, res, next) => {
 });
 
 exports.mobileSignupInsert = catchAsync(async (req, res, next) => {
-  const { mailOrMobile } = req.body;
+  const { mailOrMobile, customerName } = req.body;
 
   const today = moment().format('YYYY-MM-DD HH:mm:ss');
 
-  const registerQuery = `INSERT INTO azst_customer (azst_customer_mobile,azst_customer_email,azst_customer_updatedon)
-                          VALUES(?,?,?)`;
+  const registerQuery = `INSERT INTO azst_customer (azst_customer_fname,azst_customer_lname,azst_customer_mobile,azst_customer_email,azst_customer_updatedon)
+                          VALUES(?,?,?,?,?)`;
 
   let values = [];
   const isMobileNumber = /^[6-9]\d{9}$/.test(mailOrMobile);
+  const firstName = customerName ? customerName.split(' ')[0] : '';
+  const lastName = customerName ? customerName.split(' ')[1] : '';
   if (isMobileNumber) {
-    values = [mailOrMobile, '', today];
+    values = [firstName, lastName, mailOrMobile, '', today];
   } else {
-    values = ['', mailOrMobile, today];
+    values = [firstName, lastName, '', mailOrMobile, today];
   }
 
   const result = await db(registerQuery, values);

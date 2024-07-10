@@ -17,12 +17,14 @@ router.post(
   registerCtrl.checkExistingUser,
   registerCtrl.signup
 );
+
 router.post(
   '/register/otp',
   registerCtrl.checkExistingUser,
   registerCtrl.mobileSignup,
   otpCtrl.sendOtp
 );
+
 router.post(
   '/register/verify-otp',
   otpCtrl.checkOtpExisting,

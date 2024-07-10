@@ -43,6 +43,11 @@ const sendingOTPMobile = async (mailOrMobile, otp) => {
   }
 };
 
+const sendingOTPEmail = () => {
+  // Emial Logic for sending otpmail
+  return 0;
+};
+
 exports.sendOtp = catchAsync(async (req, res, next) => {
   const { mailOrMobile } = req.body;
   const otpReason = req.reason;
@@ -55,7 +60,12 @@ exports.sendOtp = catchAsync(async (req, res, next) => {
   const otp = generateOTP();
 
   try {
-    await sendingOTPMobile(mailOrMobile, otp);
+    const isMobileNumber = /^[6-9]\d{9}$/.test(mailOrMobile);
+    if (isMobileNumber) {
+      await sendingOTPMobile(mailOrMobile, otp);
+    } else {
+      sendingOTPEmail(mailOrMobile, otp);
+    }
   } catch (error) {
     return next(new AppError('Error Occurred OTP Sending', 400));
   }

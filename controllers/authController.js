@@ -117,7 +117,7 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
   const values = [hashedPassword, azst_customer_id];
   await db(changePasswordAfterReset, values);
   const key = process.env.JWT_SECRET;
-  const token = createSendToken(customerId, key);
+  const token = createSendToken(azst_customer_id, key);
   const user_details = organizUserData(req.userDetails);
   res.status(200).json({
     jwtToken: token,
