@@ -87,7 +87,25 @@ exports.getInventoryQty = catchAsync(async (req, res, next) => {
 });
 
 exports.updateInventory = catchAsync(async (req, res, next) => {
-  const { inventoryId } = req.body;
+  const { changedInventories } = req.body;
+
+  const handleQtyQuery = `UPDATE azst_inventory_product_mapping 
+                          SET azst_ipm_onhand_quantity = ?, azst_ipm_avbl_quantity = ? 
+                          WHERE azst_ipm_id = ?`;
+
+  // Use a loop that handles asynchronous operations correctly
+  for (const inv of changedInventories) {
+    const { ipmId, onHandQty, availableQty } = inv;
+    const values = [onHandQty, availableQty, ipmId];
+
+    const result = await db(handleQtyQuery, values);
+
+    if (result.affectedRows === 0) {
+      return next(new AppError('opps something went wrong', 400));
+    }
+  }
+
+  res.status(200).json({ message: 'Quantity Updated successfully' });
 });
 
 // azst_ipm_id,

@@ -41,8 +41,8 @@ exports.getAllCustomers = catchAsync(async (req, res, next) => {
   const getUsers = `
     SELECT 
       azst_customer_id,
-      azst_customer_fname,
-      azst_customer_lname,
+      CONCAT(azst_customer_fname, " ",
+      azst_customer_lname) AS azst_customer_name,
       azst_customer_mobile,
       azst_customer_email,
       azst_customer_acceptemail_marketing,

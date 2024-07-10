@@ -1,6 +1,6 @@
 const router = require('express').Router();
 
-const productCtrl = require('../../controllers/ProductCtrl/productaddCtrl');
+const productCtrl = require('../../controllers/ProductCtrl/addProductctrl');
 const productDataCtrl = require('../../controllers/ProductCtrl/productDetailsCtrl');
 const productUpdateCtrl = require('../../controllers/ProductCtrl/editProduct');
 const authCtrl = require('../../controllers/authController');
@@ -31,7 +31,7 @@ router.post(
   productModel.productValidation,
   productCtrl.storeImage,
   productCtrl.addProduct,
-  productCtrl.skuvarientsProduct
+  productCtrl.skuVariantsProduct
 );
 
 router.post(
@@ -61,7 +61,14 @@ router.delete(
 router.patch('/delete/images', productUpdateCtrl.deleteProductImages);
 
 router.post('/all-products', productDataCtrl.getAllProducts);
-router.post('/get/details', editCtrl.getProductDetalis);
+router.post(
+  '/get/details',
+  editCtrl.getProductDetails,
+  editCtrl.getVariantsDetails
+);
+
+// editCtrl.getProductDetails,
+//editCtrl.getVariantsDetails
 
 router.post('/whish-list', getWhishlist);
 router.post('/add-wl', isExistInWl, addToWl);

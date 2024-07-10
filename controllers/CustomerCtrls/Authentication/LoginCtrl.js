@@ -17,7 +17,7 @@ exports.isUserExisit = catchAsync(async (req, res, next) => {
                       WHERE azst_customer_mobile = ? OR azst_customer_email = ?
                       AND azst_customer_status = 1`;
   const result = await db(loginQuery, [userMailOrMobile, userMailOrMobile]);
-  console.log(result);
+
   if (result.length === 0) {
     return next(new AppError('You dont have an account ? Please Register'));
   }
@@ -32,7 +32,7 @@ exports.login = catchAsync(async (req, res, next) => {
   if (azst_customer_pwd === null) {
     return next(new AppError("Please Setup your password , it Doesn't Exist "));
   }
-  console.log(password, azst_customer_pwd);
+
   const isPasswordMatched = await bcrypt.compare(password, azst_customer_pwd);
 
   if (!isPasswordMatched) {

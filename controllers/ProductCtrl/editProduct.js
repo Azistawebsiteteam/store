@@ -60,29 +60,38 @@ exports.updateImage = catchAsync(async (req, res, next) => {
     .toFormat('jpeg')
     .jpeg({ quality: 100 })
     .toFile(`uploads/variantImage/${imageName}`);
+
   req.body.variantImage = imageName;
   next();
 });
 
-const getProductImageLink = (req, i) =>
-  `${req.protocol}://${req.get('host')}/api/images/product/variantimage/${i}`;
-
-exports.getProductDetalis = catchAsync(async (req, res, next) => {
+exports.getProductDetails = catchAsync(async (req, res, next) => {
   const { productId } = req.body;
 
-  const getproductDetails = `SELECT * FROM azst_products  WHERE id = ? `;
+  const getproductDetails = `
+    SELECT azst_products.*,
+      JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'inventory_id', ipm.azst_ipm_inventory_id,
+          'product_qty', ipm.azst_ipm_onhand_quantity
+        )
+      ) AS product_qtys
+    FROM azst_products
+    LEFT JOIN azst_inventory_product_mapping ipm
+      ON ipm.azst_ipm_product_id = azst_products.id
+    WHERE azst_products.id = ?
+    GROUP BY azst_products.id
+  `;
 
-  const getVariants = `SELECT  * FROM  azst_sku_variant_info WHERE product_id = ? `;
+  const productResults = await db(getproductDetails, [productId]);
 
-  const results = await db(getproductDetails, [productId]);
-
-  if (results.length === 0)
+  if (productResults.length === 0) {
     return res
       .status(404)
       .json({ productDetails: {}, message: 'No product found' });
+  }
 
-  const product = results[0];
-  const productIdd = product.id;
+  const product = productResults[0];
 
   const productDetails = {
     ...product,
@@ -97,48 +106,635 @@ exports.getProductDetalis = catchAsync(async (req, res, next) => {
     ),
   };
 
-  const storeOrder = JSON.parse(product.variant_store_order);
-
-  const result = await db(getVariants, [productIdd]);
-
-  const variantsData = [];
-  if (storeOrder && storeOrder.length > 0) {
-    storeOrder.forEach((element) => {
-      variantsData.push({ UOM: element, values: [] });
+  if (productDetails.is_varaints_aval === 0) {
+    return res.status(200).json({
+      productDetails,
+      variants: [],
+      availableVariants: [],
+      message: 'Data retrieved successfully.',
     });
   }
+  req.product = productDetails;
+  next();
+});
 
-  // Push unique values from result into variantsData
-  if (result && result.length > 0) {
-    result.forEach((variant) => {
+exports.getVariantsDetails = catchAsync(async (req, res, next) => {
+  const { productId, inventoryIds } = req.body;
+  const product = req.product;
+
+  const invIds =
+    inventoryIds && inventoryIds.length > 0
+      ? `AND ipm.azst_ipm_inventory_id IN (${inventoryIds
+          .map((inv) => `'${inv}'`)
+          .join(', ')})`
+      : '';
+
+  const getVariants = `
+    SELECT svi.*, SUM(ipm.azst_ipm_onhand_quantity) as variant_qty
+    FROM azst_sku_variant_info svi
+    LEFT JOIN azst_inventory_product_mapping ipm ON ipm.azst_ipm_variant_id = svi.id
+    WHERE svi.product_id = ? ${invIds}
+    GROUP BY svi.id
+  `;
+
+  const variantResults = await db(getVariants, [productId]);
+
+  const storeOrder = JSON.parse(product.variant_store_order || '[]');
+
+  const variantsData = storeOrder.map((element) => ({
+    UOM: element,
+    values: [],
+  }));
+
+  if (variantResults && variantResults.length > 0) {
+    variantResults.forEach((variant) => {
       for (let i = 0; i < variantsData.length; i++) {
-        variantsData[i].values.push(variant[`option${i + 1}`]);
+        if (variant[`option${i + 1}`] !== null) {
+          variantsData[i].values.push(variant[`option${i + 1}`]);
+        }
       }
     });
   }
 
-  // Remove duplicate values using set
   variantsData.forEach((variant) => {
     variant.values = Array.from(new Set(variant.values));
-    variant.values = variant.values.filter((value) => value !== null);
   });
 
-  const avalaibleVariants = result.map((variant) => ({
+  const availableVariants = variantResults.map((variant) => ({
     ...variant,
     variant_image: variant.variant_image
-      ? JSON.parse(variant.variant_image).map((i) =>
-          getProductImageLink(req, i)
+      ? JSON.parse(variant.variant_image).map(
+          (i) =>
+            `${req.protocol}://${req.get(
+              'host'
+            )}/api/images/product/variantimage/${i}`
         )
       : '',
   }));
 
   res.status(200).json({
-    productDetails,
+    productDetails: product,
     variants: variantsData,
-    avalaibleVariants,
+    availableVariants,
     message: 'Data retrieved successfully.',
   });
 });
+
+// const updateInventory = async (
+//   inventoryId,
+//   productId,
+//   variantId,
+//   quantity,
+//   empId
+// ) => {
+//   const getInventoryQuery = `
+//     SELECT azst_ipm_onhand_quantity, azst_ipm_avbl_quantity
+//     FROM azst_inventory_product_mapping
+//     WHERE azst_ipm_inventory_id = ?
+//       AND azst_ipm_product_id = ?
+//       AND azst_ipm_variant_id = ?;
+//   `;
+
+//   const updateInventoryQuery = `
+//     UPDATE azst_inventory_product_mapping
+//     SET azst_ipm_onhand_quantity = ?,
+//         azst_ipm_avbl_quantity = ?,
+//         azst_ipm_updated_by = ?
+//     WHERE azst_ipm_inventory_id = ?
+//       AND azst_ipm_product_id = ?
+//       AND azst_ipm_variant_id = ?;
+//   `;
+
+//   try {
+//     // Fetch the current values
+//     const [currentInventory] = await db(getInventoryQuery, [
+//       inventoryId,
+//       productId,
+//       variantId,
+//     ]);
+
+//     if (currentInventory) {
+//       const { azst_ipm_onhand_quantity, azst_ipm_avbl_quantity } =
+//         currentInventory;
+
+//       // Calculate the new available quantity
+//       const newAvblQuantity =
+//         quantity - azst_ipm_onhand_quantity + azst_ipm_avbl_quantity;
+
+//       // Prepare the values for the update query
+//       const invValues = [
+//         quantity,
+//         newAvblQuantity,
+//         empId,
+//         inventoryId,
+//         productId,
+//         variantId,
+//       ];
+
+//       // Execute the update query
+//       await db(updateInventoryQuery, invValues);
+//     } else {
+//       throw new Error(
+//         `Inventory not found for inventoryId: ${inventoryId}, productId: ${productId}, variantId: ${variantId}`
+//       );
+//     }
+//   } catch (error) {
+//     console.error(error);
+//     throw error;
+//   }
+// };
+
+// const updateTheInventory = async (inventory, productId, empId) => {
+//   const inventoryPromises = inventory.map(({ inventoryId, qty }) =>
+//     updateInventory(inventoryId, productId, 0, qty, empId)
+//   );
+
+//   // Wait for all promises to complete
+//   await Promise.all(inventoryPromises);
+// };
+
+// const updateVariantInventory = async (
+//   inventory,
+//   productId,
+//   variantId,
+//   quantity,
+//   empId
+// ) => {
+//   const inventoryPromises = inventory.map((inventoryId) =>
+//     updateInventory(inventoryId, productId, variantId, quantity, empId)
+//   );
+
+//   // Wait for all promises to complete
+//   await Promise.all(inventoryPromises);
+// };
+
+// const insertVariantInventory = async (
+//   vInventoryInfo,
+//   productId,
+//   variantId,
+//   quantity,
+//   empId
+// ) => {
+//   const inventoryQuery = `INSERT INTO azst_inventory_product_mapping (azst_ipm_inventory_id, azst_ipm_product_id,
+//                            azst_ipm_variant_id, azst_ipm_onhand_quantity, azst_ipm_avbl_quantity, azst_ipm_created_by)
+//                            VALUES (?, ?, ?, ?, ?, ? )`;
+
+//   const inventoryPromises = JSON.parse(vInventoryInfo).map((inventoryId) => {
+//     const invValues = [
+//       inventoryId,
+//       productId,
+//       variantId,
+//       quantity,
+//       quantity,
+//       empId,
+//     ];
+
+//     return db(inventoryQuery, invValues);
+//   });
+
+//   await Promise.all(inventoryPromises);
+// };
+
+// exports.updateProduct = catchAsync(async (req, res, next) => {
+//   const {
+//     productId,
+//     productTitle,
+//     productInfo,
+//     variantsOrder,
+//     productPrice,
+//     productComparePrice,
+//     productIsTaxable,
+//     productCostPerItem,
+//     inventoryInfo,
+//     vendor,
+//     cwos,
+//     skuCode,
+//     skuBarcode,
+//     productWeight,
+//     productActiveStatus,
+//     category,
+//     productType,
+//     collections,
+//     tags,
+//     metaTitle,
+//     metaDescription,
+//     urlHandle,
+//     productImages,
+//     variantsThere,
+//     variants,
+//     brand,
+//   } = req.body;
+
+//   const newProductImages = productImages.map((url) => {
+//     const startIndex = url.lastIndexOf('/') + 1; // Find the last '/' to get the start index of the filename
+//     return url.substring(startIndex); // Extract the filename from the URL
+//   });
+
+//   const parsedVariants = variantsThere ? JSON.parse(variants) : null;
+//   const firstVariant = parsedVariants ? getPricess(parsedVariants[0]) : null;
+
+//   const price = firstVariant ? firstVariant.offer_price : productPrice;
+//   const comparePrice = firstVariant
+//     ? firstVariant.comparePrice
+//     : productComparePrice;
+
+//   const urlTitle = productTitle.replace(/ /g, '-');
+
+//   const inventory = !variantsThere ? JSON.parse(inventoryInfo) : [];
+
+//   const productImage = newProductImages[0];
+
+//   const productUpdatequery = `
+//     UPDATE azst_products
+//     SET product_title = ?,product_info = ?,vendor_id = ?,product_category = ?,
+//         type = ?,tags = ?,collections = ?,image_src = ?,product_images = ?,
+//         variant_store_order = ?,image_alt_text = ?,seo_title = ?,seo_description = ?,
+//         cost_per_item = ?,price = ?,compare_at_price = ?,sku_code = ?,
+//         sku_bar_code = ?,is_taxable = ?,product_weight = ?,out_of_stock_sale = ?,
+//         url_handle = ?,status = ?,azst_updatedby = ?,
+//         product_url_title = ?, brand_id = ? ,is_varaints_aval = ?
+//     WHERE id = ?;
+//   `;
+
+//   const values = [
+//     productTitle,
+//     productInfo,
+//     vendor,
+//     category,
+//     productType,
+//     tags,
+//     collections,
+//     productImage,
+//     JSON.stringify(productImages),
+//     variantsOrder,
+//     productImage.split('-')[1],
+//     metaTitle,
+//     metaDescription,
+//     productCostPerItem,
+//     price,
+//     comparePrice,
+//     skuCode,
+//     skuBarcode,
+//     productIsTaxable,
+//     productWeight,
+//     cwos,
+//     urlHandle,
+//     productActiveStatus,
+//     req.empId,
+//     urlTitle,
+//     brand,
+//     variantsThere,
+//     productId,
+//   ];
+
+//   await db(productUpdatequery, values);
+//   if (!variantsThere) {
+//     await updateTheInventory(inventory, productId, req.empId);
+//     return res.status(200).json({
+//       message: 'Product updated successfully',
+//     });
+//   }
+//   next();
+// });
+
+// exports.skuvarientsUpdate = catchAsync(async (req, res, next) => {
+//   const { productActiveStatus, variants, productId, vInventoryInfo } = req.body;
+
+//   const insert_product_varients = `INSERT INTO azst_sku_variant_info (product_id,
+//                                     variant_image,
+//                                     variant_weight_unit,
+//                                     variant_HS_code,
+//                                     variant_barcode,
+//                                     variant_sku,
+//                                     variant_weight,
+//                                     variant_inventory_tracker,
+//                                     variant_inventory_policy,
+//                                     variant_fulfillment_service,
+//                                     variant_requires_shipping,
+//                                     variant_taxable,
+//                                     compare_at_price,
+//                                     offer_price,
+//                                     offer_percentage,
+//                                     status,
+//                                     variant_quantity,
+//                                     option1,
+//                                     option2,
+//                                     option3)
+//                                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+
+//   const update_product_varients = `UPDATE  azst_sku_variant_info SET product_id = ?,
+//                                     variant_image= ?,
+//                                     variant_weight_unit= ?,
+//                                     variant_HS_code= ?,
+//                                     variant_barcode= ?,
+//                                     variant_sku= ?,
+//                                     variant_weight= ?,
+//                                     variant_inventory_tracker= ?,
+//                                     variant_inventory_policy= ?,
+//                                     variant_fulfillment_service= ?,
+//                                     variant_requires_shipping= ?,
+//                                     variant_taxable= ?,
+//                                     compare_at_price= ?,
+//                                     offer_price= ?,
+//                                     offer_percentage= ?,
+//                                     status= ?,
+//                                     variant_quantity= ?,
+//                                     option1= ?,
+//                                     option2= ?,
+//                                     option3= ? where id = ?
+//                                  `;
+
+//   const deleteMainVariant = `DELETE FROM  azst_sku_variant_info where id = ?`;
+
+//   const insertVariant = async (values, variantId, quantity) => {
+//     await db(insert_product_varients, values);
+//     insertVariantInventory(
+//       vInventoryInfo,
+//       productId,
+//       variantId,
+//       quantity,
+//       req.empId
+//     );
+//   };
+
+//   const updateVariant = async (values, variantId, quantity) => {
+//     await db(update_product_varients, values);
+//     const inventory = JSON.parse(vInventoryInfo);
+//     updateVariantInventory(
+//       inventory,
+//       productId,
+//       variantId,
+//       quantity,
+//       req.empId
+//     );
+//   };
+
+//   const deleteOldMainVariants = async (id) => {
+//     await db(deleteMainVariant, [id]);
+//   };
+
+//   const variantsData = JSON.parse(variants);
+
+//   const newVariantImages = (productImages) => {
+//     const imageNames = productImages.map((url) => {
+//       const startIndex = url.lastIndexOf('/') + 1; // Find the last '/' to get the start index of the filename
+//       return url.substring(startIndex); // Extract the filename from the URL
+//     });
+//     return imageNames;
+//   };
+
+//   for (let variant of variantsData) {
+//     let mainVariant = variant.main;
+//     let subvariants = variant.sub;
+
+//     if (subvariants.length > 1) {
+//       await deleteOldMainVariants(mainVariant.variantId);
+//       mainVariant.variantId = 0;
+//     }
+//     if (subvariants.length > 0) {
+//       const updatedVariants = [];
+//       for (let subvariant of subvariants) {
+//         const updateId = updatedVariants.find(
+//           (v) => v.variantId === subvariant.variantId
+//         );
+//         if (parseInt(subvariant.variantId) !== 0) {
+//           updatedVariants.push(subvariant);
+//         }
+//         if (updateId) {
+//           subvariant.variantId = 0; // Corrected property access
+//         }
+
+//         let {
+//           variantId,
+//           variantImage,
+//           variantWeight,
+//           variantWeightUnit,
+//           value,
+//           offer_price,
+//           comparePrice,
+//           quantity,
+//           hsCode,
+//           barCode,
+//           skuCode,
+//           isTaxable,
+//           shippingRequired,
+//           inventoryId,
+//           inventoryPolicy,
+//           variantService,
+//         } = subvariant;
+
+//         const subValues = value.split('-');
+//         const option2 = subValues[0];
+//         const option3 = subValues.length > 1 ? subValues[1] : null;
+
+//         if (!comparePrice) {
+//           comparePrice = offer_price;
+//         }
+//         const offerPercentage = getofferPercentage(comparePrice, offer_price);
+//         const values = [
+//           productId,
+//           JSON.stringify(
+//             newVariantImages([mainVariant.variantImage, variantImage])
+//           ),
+//           variantWeightUnit,
+//           hsCode,
+//           barCode,
+//           skuCode,
+//           variantWeight,
+//           inventoryId,
+//           inventoryPolicy,
+//           variantService,
+//           shippingRequired,
+//           isTaxable,
+//           comparePrice,
+//           offer_price,
+//           offerPercentage,
+//           productActiveStatus,
+//           quantity,
+//           mainVariant.value,
+//           option2,
+//           option3,
+//         ];
+
+//         if (
+//           subvariants.length > 1 &&
+//           parseInt(mainVariant.variantId) === 0 &&
+//           parseInt(variantId) === 0
+//         ) {
+//           await insertVariant(values, variantId, quantity);
+//         } else {
+//           values.push(variantId);
+//           await updateVariant(values, variantId, quantity);
+//         }
+//       }
+//     } else {
+//       let {
+//         variantId,
+//         variantImage,
+//         variantWeight,
+//         variantWeightUnit,
+//         value,
+//         comparePrice,
+//         offer_price,
+//         quantity,
+//         hsCode,
+//         barCode,
+//         skuCode,
+//         isTaxable,
+//         shippingRequired,
+//         inventoryId,
+//         inventoryPolicy,
+//         variantService,
+//       } = mainVariant;
+
+//       if (!comparePrice) {
+//         comparePrice = offer_price;
+//       }
+//       const offerPercentage = getofferPercentage(comparePrice, offer_price);
+
+//       const values = [
+//         productId,
+//         JSON.stringify(newVariantImages([variantImage])),
+//         variantWeightUnit,
+//         hsCode,
+//         barCode,
+//         skuCode,
+//         variantWeight,
+//         inventoryId,
+//         inventoryPolicy,
+//         variantService,
+//         shippingRequired,
+//         isTaxable,
+//         comparePrice,
+//         offer_price,
+//         offerPercentage,
+//         productActiveStatus,
+//         quantity,
+//         value,
+//         null,
+//         null,
+//       ];
+
+//       if (variantId && parseInt(variantId) !== 0) {
+//         values.push(variantId);
+//         await updateVariant(values, variantId, quantity);
+//       } else {
+//         await insertVariant(values, variantId, quantity);
+//       }
+//     }
+//   }
+//   res.status(200).json({ message: 'Product & variants inserted successfully' });
+// });
+
+const updateInventory = async (
+  inventoryId,
+  productId,
+  variantId,
+  quantity,
+  empId
+) => {
+  const getInventoryQuery = `
+    SELECT azst_ipm_onhand_quantity, azst_ipm_avbl_quantity 
+    FROM azst_inventory_product_mapping 
+    WHERE azst_ipm_inventory_id = ? 
+      AND azst_ipm_product_id = ? 
+      AND azst_ipm_variant_id = ?;
+  `;
+
+  const updateInventoryQuery = `
+    UPDATE azst_inventory_product_mapping 
+    SET azst_ipm_onhand_quantity = ?, 
+        azst_ipm_avbl_quantity = ?, 
+        azst_ipm_updated_by = ?
+    WHERE azst_ipm_inventory_id = ? 
+      AND azst_ipm_product_id = ? 
+      AND azst_ipm_variant_id = ?;
+  `;
+
+  try {
+    const [currentInventory] = await db(getInventoryQuery, [
+      inventoryId,
+      productId,
+      variantId,
+    ]);
+
+    if (currentInventory) {
+      const { azst_ipm_onhand_quantity, azst_ipm_avbl_quantity } =
+        currentInventory;
+      const newAvblQuantity =
+        quantity - azst_ipm_onhand_quantity + azst_ipm_avbl_quantity;
+
+      const invValues = [
+        quantity,
+        newAvblQuantity,
+        empId,
+        inventoryId,
+        productId,
+        variantId,
+      ];
+      await db(updateInventoryQuery, invValues);
+    } else {
+      throw new Error(
+        `Inventory not found for inventoryId: ${inventoryId}, productId: ${productId}, variantId: ${variantId}`
+      );
+    }
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
+};
+
+const updateTheInventory = async (inventory, productId, empId) => {
+  const inventoryPromises = inventory.map(({ inventoryId, qty }) =>
+    updateInventory(inventoryId, productId, 0, qty, empId)
+  );
+  await Promise.all(inventoryPromises);
+};
+
+const updateVariantInventory = async (
+  inventory,
+  productId,
+  variantId,
+  quantity,
+  empId
+) => {
+  const inventoryPromises = inventory.map((inventoryId) =>
+    updateInventory(inventoryId, productId, variantId, quantity, empId)
+  );
+  await Promise.all(inventoryPromises);
+};
+
+const insertVariantInventory = async (
+  vInventoryInfo,
+  productId,
+  variantId,
+  quantity,
+  empId
+) => {
+  const inventoryQuery = `
+    INSERT INTO azst_inventory_product_mapping (azst_ipm_inventory_id, azst_ipm_product_id, 
+      azst_ipm_variant_id, azst_ipm_onhand_quantity, azst_ipm_avbl_quantity, azst_ipm_created_by) 
+    VALUES (?, ?, ?, ?, ?, ?);
+  `;
+
+  const inventoryPromises = JSON.parse(vInventoryInfo).map((inventoryId) => {
+    const invValues = [
+      inventoryId,
+      productId,
+      variantId,
+      quantity,
+      quantity,
+      empId,
+    ];
+    return db(inventoryQuery, invValues);
+  });
+
+  await Promise.all(inventoryPromises);
+};
+
+const newVariantImages = (productImages) => {
+  return productImages.map((url) => url.substring(url.lastIndexOf('/') + 1));
+};
 
 exports.updateProduct = catchAsync(async (req, res, next) => {
   const {
@@ -156,7 +752,6 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
     skuCode,
     skuBarcode,
     productWeight,
-    originCountry,
     productActiveStatus,
     category,
     productType,
@@ -171,36 +766,30 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
     brand,
   } = req.body;
 
-  const newProductImages = productImages.map((url) => {
-    const startIndex = url.lastIndexOf('/') + 1; // Find the last '/' to get the start index of the filename
-    return url.substring(startIndex); // Extract the filename from the URL
-  });
+  const newProductImages = productImages.map((url) =>
+    url.substring(url.lastIndexOf('/') + 1)
+  );
 
-  const price = variantsThere
-    ? getPricess(JSON.parse(variants)[0]).offer_price
-    : productPrice;
-  const comparePrice = variantsThere
-    ? getPricess(JSON.parse(variants)[0]).comparePrice
+  const parsedVariants = variantsThere ? JSON.parse(variants) : null;
+  const firstVariant = parsedVariants ? getPricess(parsedVariants[0]) : null;
+
+  const price = firstVariant ? firstVariant.offer_price : productPrice;
+  const comparePrice = firstVariant
+    ? firstVariant.comparePrice
     : productComparePrice;
-
-  const url_title = productTitle.replace(/ /g, '-');
-
+  const urlTitle = productTitle.replace(/ /g, '-');
+  const inventory = !variantsThere ? JSON.parse(inventoryInfo) : [];
   const productImage = newProductImages[0];
-  let inventory = { coc: null, coh: null, inventoryIds: [] };
-  if (inventoryInfo) {
-    inventory = JSON.parse(inventoryInfo);
-  }
 
-  const productUpdatequery = `UPDATE azst_products 
-                              SET product_title = ?,product_info = ?,vendor_id = ?,product_category = ?,
-                                type = ?,tags = ?,collections = ?,image_src = ?,product_images = ?,
-                                variant_store_order = ?,image_alt_text = ?,seo_title = ?,seo_description = ?,
-                                cost_per_item = ?,price = ?,compare_at_price = ?,inventory_id = ?,sku_code = ?,
-                                sku_bar_code = ?,is_taxable = ?,product_weight = ?,out_of_stock_sale = ?,
-                                url_handle = ?,status = ?,azst_updatedby = ?,origin_country = ?,
-                                product_url_title = ?,chintal_quantity = ?,corporate_office_quantity = ? , brand_id = ? ,is_varaints_aval = ?
-                              WHERE id = ?;
-                              `;
+  const productUpdatequery = `
+    UPDATE azst_products 
+    SET product_title = ?, product_info = ?, vendor_id = ?, product_category = ?, type = ?, tags = ?, collections = ?, 
+        image_src = ?, product_images = ?, variant_store_order = ?, image_alt_text = ?, seo_title = ?, seo_description = ?, 
+        cost_per_item = ?, price = ?, compare_at_price = ?, sku_code = ?, sku_bar_code = ?, is_taxable = ?, product_weight = ?, 
+        out_of_stock_sale = ?, url_handle = ?, status = ?, azst_updatedby = ?, product_url_title = ?, brand_id = ?, 
+        is_varaints_aval = ? 
+    WHERE id = ?;
+  `;
 
   const values = [
     productTitle,
@@ -211,7 +800,7 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
     tags,
     collections,
     productImage,
-    JSON.stringify(newProductImages),
+    JSON.stringify(productImages),
     variantsOrder,
     productImage.split('-')[1],
     metaTitle,
@@ -219,7 +808,6 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
     productCostPerItem,
     price,
     comparePrice,
-    JSON.stringify(inventory.inventoryIds),
     skuCode,
     skuBarcode,
     productIsTaxable,
@@ -228,10 +816,7 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
     urlHandle,
     productActiveStatus,
     req.empId,
-    originCountry,
-    url_title,
-    inventory.coc,
-    inventory.coh,
+    urlTitle,
     brand,
     variantsThere,
     productId,
@@ -240,84 +825,62 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
   await db(productUpdatequery, values);
 
   if (!variantsThere) {
-    res.status(200).json({
-      message: 'Product updated successfully',
-    });
-    return;
+    await updateTheInventory(inventory, productId, req.empId);
+    return res.status(200).json({ message: 'Product updated successfully' });
   }
   next();
 });
 
 exports.skuvarientsUpdate = catchAsync(async (req, res, next) => {
-  const { productActiveStatus, variants, productId } = req.body;
+  const { productActiveStatus, variants, productId, vInventoryInfo } = req.body;
 
-  const insert_product_varients = `INSERT INTO azst_sku_variant_info (product_id,
-                                    variant_image,
-                                    variant_weight_unit,
-                                    variant_HS_code,
-                                    variant_barcode,
-                                    variant_sku,
-                                    variant_weight,
-                                    variant_inventory_tracker,
-                                    variant_inventory_policy,
-                                    variant_fulfillment_service,
-                                    variant_requires_shipping,
-                                    variant_taxable,
-                                    compare_at_price,
-                                    offer_price,
-                                    offer_percentage,
-                                    status,
-                                    variant_quantity,
-                                    option1,
-                                    option2,
-                                    option3)
-                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+  const insertProductVariantsQuery = `
+    INSERT INTO azst_sku_variant_info (product_id, variant_image, variant_weight_unit, variant_HS_code, variant_barcode,
+      variant_sku, variant_weight, variant_inventory_tracker, variant_inventory_policy, variant_fulfillment_service,
+      variant_requires_shipping, variant_taxable, compare_at_price, offer_price, offer_percentage, status, variant_quantity,
+      option1, option2, option3)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+  `;
 
-  const update_product_varients = `UPDATE  azst_sku_variant_info SET product_id = ?,
-                                    variant_image= ?,
-                                    variant_weight_unit= ?,
-                                    variant_HS_code= ?,
-                                    variant_barcode= ?,
-                                    variant_sku= ?,
-                                    variant_weight= ?,
-                                    variant_inventory_tracker= ?,
-                                    variant_inventory_policy= ?,
-                                    variant_fulfillment_service= ?,
-                                    variant_requires_shipping= ?,
-                                    variant_taxable= ?,
-                                    compare_at_price= ?,
-                                    offer_price= ?,
-                                    offer_percentage= ?,
-                                    status= ?,
-                                    variant_quantity= ?,
-                                    option1= ?,
-                                    option2= ?,
-                                    option3= ? where id = ?
-                                 `;
+  const updateProductVariantsQuery = `
+    UPDATE azst_sku_variant_info
+    SET product_id = ?, variant_image = ?, variant_weight_unit = ?, variant_HS_code = ?, variant_barcode = ?, variant_sku = ?,
+      variant_weight = ?, variant_inventory_tracker = ?, variant_inventory_policy = ?, variant_fulfillment_service = ?,
+      variant_requires_shipping = ?, variant_taxable = ?, compare_at_price = ?, offer_price = ?, offer_percentage = ?, 
+      status = ?, variant_quantity = ?, option1 = ?, option2 = ?, option3 = ?
+    WHERE id = ?;
+  `;
 
-  const deleteMainVariant = `DELETE FROM  azst_sku_variant_info where id = ?`;
+  const deleteMainVariantQuery = `DELETE FROM azst_sku_variant_info WHERE id = ?`;
 
-  const insertVariant = async (values) => {
-    await db(insert_product_varients, values);
+  const insertVariant = async (values, quantity) => {
+    const variant = await db(insertProductVariantsQuery, values);
+    await insertVariantInventory(
+      vInventoryInfo,
+      productId,
+      variant.insertId,
+      quantity,
+      req.empId
+    );
   };
 
-  const updateVariant = async (values) => {
-    await db(update_product_varients, values);
+  const updateVariant = async (values, variantId, quantity) => {
+    await db(updateProductVariantsQuery, values);
+    const inventory = JSON.parse(vInventoryInfo);
+    await updateVariantInventory(
+      inventory,
+      productId,
+      variantId,
+      quantity,
+      req.empId
+    );
   };
 
   const deleteOldMainVariants = async (id) => {
-    await db(deleteMainVariant, [id]);
+    await db(deleteMainVariantQuery, [id]);
   };
 
   const variantsData = JSON.parse(variants);
-
-  const newVariantImages = (productImages) => {
-    const imageNames = productImages.map((url) => {
-      const startIndex = url.lastIndexOf('/') + 1; // Find the last '/' to get the start index of the filename
-      return url.substring(startIndex); // Extract the filename from the URL
-    });
-    return imageNames;
-  };
 
   for (let variant of variantsData) {
     let mainVariant = variant.main;
@@ -337,7 +900,7 @@ exports.skuvarientsUpdate = catchAsync(async (req, res, next) => {
           updatedVariants.push(subvariant);
         }
         if (updateId) {
-          subvariant.variantId = 0; // Corrected property access
+          subvariant.variantId = 0;
         }
 
         let {
@@ -397,10 +960,10 @@ exports.skuvarientsUpdate = catchAsync(async (req, res, next) => {
           parseInt(mainVariant.variantId) === 0 &&
           parseInt(variantId) === 0
         ) {
-          await insertVariant(values);
+          await insertVariant(values, quantity);
         } else {
           values.push(variantId);
-          await updateVariant(values);
+          await updateVariant(values, variantId, quantity);
         }
       }
     } else {
@@ -453,9 +1016,9 @@ exports.skuvarientsUpdate = catchAsync(async (req, res, next) => {
 
       if (variantId && parseInt(variantId) !== 0) {
         values.push(variantId);
-        await updateVariant(values);
+        await updateVariant(values, variantId, quantity);
       } else {
-        await insertVariant(values);
+        await insertVariant(values, quantity);
       }
     }
   }
@@ -518,6 +1081,7 @@ exports.variantUpdate = catchAsync(async (req, res, next) => {
                   variant_fulfillment_service=?, variant_requires_shipping=?, variant_taxable=?,
                   compare_at_price=?, offer_price=?, offer_percentage=?, variant_quantity=?
                  WHERE id = ? `;
+
   await db(query, values);
 
   res.status(200).json({ message: 'Variant data updated successfully' });
@@ -542,6 +1106,7 @@ exports.deleteProductImages = catchAsync(async (req, res, next) => {
   }
 
   const productImages = JSON.parse(result[0].product_images);
+
   const mainImage = result[0].image_src;
   // // Filter pImages to remove elements that match any element in oldImages
   // const filteredImages = pImages.filter((image) => {

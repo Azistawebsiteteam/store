@@ -51,6 +51,7 @@ router.post(
   loginCtrl.forgotPassword,
   otpCtrl.sendOtp
 );
+
 router.post(
   '/forgot-password/verifyotp',
   loginCtrl.isUserExisit,

@@ -13,6 +13,7 @@ const tagRoute = require('./AdminRoutes/tagsRoutes');
 const bannerRoute = require('./AdminRoutes/bannersRoutes');
 const popupRoute = require('./AdminRoutes/popupRoute');
 const inventroyRoute = require('./AdminRoutes/inventoryRoutes');
+const discountRoute = require('./AdminRoutes/discountRoutes');
 
 const productsRoute = require('./Products/ProductsRoute');
 const cartRoute = require('./Products/cartRoute');
@@ -22,6 +23,7 @@ const reviewsRouteAdmin = require('./AdminRoutes/ReviewsRoutes');
 const adminUsersRoute = require('./AdminRoutes/customerRoutes');
 const announcementsRoute = require('./AdminRoutes/announcementBarRoutes');
 const orderRoutes = require('./ordersRoutes/orderRoute');
+const customerDiscountRoute = require('./CustomerRoutes/discountRoutes');
 
 router.use('/auth', authRoute);
 router.use('/address', adderessRoute);
@@ -45,5 +47,7 @@ router.use('/admin/reviews', reviewsRouteAdmin);
 router.use('/users', adminUsersRoute);
 router.use('/announcement', announcementsRoute);
 router.use('/orders', orderRoutes);
+router.use('/discount', discountRoute);
+router.use('/customer/discount', customerDiscountRoute);
 
 module.exports = router;

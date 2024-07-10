@@ -71,7 +71,7 @@ exports.sendOtp = catchAsync(async (req, res, next) => {
   await db(insertOtp, values);
   res
     .status(200)
-    .json({ message: 'OTP sent to your registered mobile number' });
+    .json({ message: 'OTP sent to your registered mobile number', otp });
 });
 
 exports.checkOtpExisting = catchAsync(async (req, res, next) => {

@@ -10,13 +10,15 @@ const invtQtyCtrl = require('../../controllers/AdminCtrls/inventoryCtrl/inventor
 router.use(multer().any());
 
 const key = process.env.JWT_SECRET_ADMIN;
+router.get('/', incLcCtrl.getinventories);
 
 router.use(authCtrl.protect(key));
 
 router.get('/locations', incLcCtrl.getinventories);
 router.post('/add-location', validationCtrl, incLcCtrl.addInvetroyLoation);
 
-router.post('/qty/product-location', invtQtyCtrl.getInventoryQty);
+router.post('/get/product-qty', invtQtyCtrl.getInventoryQty);
+router.post('/update/product-qty', invtQtyCtrl.updateInventory);
 
 router.use(incLcCtrl.isInventoryExsit);
 router

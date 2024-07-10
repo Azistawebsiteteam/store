@@ -110,13 +110,14 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
 
 exports.forgotPassword = catchAsync(async (req, res, next) => {
   const { newPassword } = req.body;
-
+  const { azst_customer_id } = req.userDetails;
   const hashedPassword = await bcrypt.hash(newPassword, 10);
   const changePasswordAfterReset = `UPDATE azst_customer SET azst_customer_pwd = ? WHERE azst_customer_id = ?`;
-  const values = [hashedPassword, req.userDetails.azst_customer_id];
+
+  const values = [hashedPassword, azst_customer_id];
   await db(changePasswordAfterReset, values);
   const key = process.env.JWT_SECRET;
-  const token = createSendToken(req.empId, key);
+  const token = createSendToken(customerId, key);
   const user_details = organizUserData(req.userDetails);
   res.status(200).json({
     jwtToken: token,

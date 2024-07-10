@@ -80,6 +80,7 @@ const productSchemaWithoutVariants = baseProductSchema.keys({
 
 const productSchemaWithVariants = baseProductSchema.keys({
   variantsThere: Joi.boolean().required().valid(true),
+  vInventoryInfo: Joi.string().required(),
   variants: Joi.custom((value, helpers) => {
     return validateJSONArray(value, 'Variants must be an Array');
   }).required(),
@@ -141,7 +142,8 @@ const validateProduct = async (reqBody, schema) => {
 };
 
 const productValidation = catchAsync(async (req, res, next) => {
-  const { variantsThere, productImages } = req.body;
+  const { variantsThere, productImages, vInventoryInfo } = req.body;
+
 
   req.body.variantsThere = JSON.parse(variantsThere);
 
@@ -150,7 +152,7 @@ const productValidation = catchAsync(async (req, res, next) => {
   }
 
   if (variantsThere && variantsThere.toLowerCase() === 'true') {
-    const { variants } = req.body;
+    const { variants, vInventoryInfo } = req.body;
 
     await validateProduct(req.body, productSchemaWithVariants);
     const variantsData = JSON.parse(variants);
