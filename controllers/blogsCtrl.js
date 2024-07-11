@@ -40,6 +40,7 @@ exports.storeImage = catchAsync(async (req, res, next) => {
 
 exports.updateImage = catchAsync(async (req, res, next) => {
   const { azst_blg_img } = req.blog;
+  console.log(req.file);
   if (!req.file) {
     req.body.blogImg = azst_blg_img;
     return next();
@@ -51,7 +52,7 @@ exports.updateImage = catchAsync(async (req, res, next) => {
   const imageName = `${Date.now()}-${req.file.originalname.replace(/ /g, '-')}`;
   await sharp(req.file.buffer)
     .resize(500, 700)
-    .toFile(`Uploads/CollectionImages/${imageName}`);
+    .toFile(`Uploads/blogImages/${imageName}`);
   req.body.blogImg = imageName;
   next();
 });
