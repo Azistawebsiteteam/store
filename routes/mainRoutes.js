@@ -24,6 +24,8 @@ const adminUsersRoute = require('./AdminRoutes/customerRoutes');
 const announcementsRoute = require('./AdminRoutes/announcementBarRoutes');
 const orderRoutes = require('./ordersRoutes/orderRoute');
 const customerDiscountRoute = require('./CustomerRoutes/discountRoutes');
+const blogRoute = require('./blogsRoutes');
+const faqRoute = require('./faqRoute');
 
 router.use('/auth', authRoute);
 router.use('/address', adderessRoute);
@@ -49,5 +51,8 @@ router.use('/announcement', announcementsRoute);
 router.use('/orders', orderRoutes);
 router.use('/discount', discountRoute);
 router.use('/customer/discount', customerDiscountRoute);
+
+router.use('/blogs', blogRoute);
+router.use('/faqs', faqRoute);
 
 module.exports = router;

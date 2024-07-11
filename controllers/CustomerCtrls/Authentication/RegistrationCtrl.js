@@ -82,7 +82,7 @@ exports.mobileSignup = catchAsync(async (req, res, next) => {
 });
 
 exports.mobileSignupInsert = catchAsync(async (req, res, next) => {
-  const { mailOrMobile, customerName, password } = req.body;
+  const { mailOrMobile, customerName } = req.body;
 
   const today = moment().format('YYYY-MM-DD HH:mm:ss');
 

@@ -19,5 +19,6 @@ setupStaticRoute('/admin/profile', 'AdminImages');
 setupStaticRoute('/popup', 'PopupImages');
 setupStaticRoute('/review', 'reviewImages');
 setupStaticRoute('/product', 'productImages');
+setupStaticRoute('/blog', 'blogImages');
 
 module.exports = router;
