@@ -15,6 +15,7 @@ setupStaticRoute('/product/thumbnail', 'productImages');
 setupStaticRoute('/product/variantimage', 'variantImage');
 setupStaticRoute('/banners', 'bannerImages');
 setupStaticRoute('/collection', 'CollectionImages');
+setupStaticRoute('/category', 'categoryImages');
 setupStaticRoute('/admin/profile', 'AdminImages');
 setupStaticRoute('/popup', 'PopupImages');
 setupStaticRoute('/review', 'reviewImages');

@@ -71,6 +71,7 @@ exports.updateImage = catchAsync(async (req, res, next) => {
   req.body.collectionImg = imageName;
   next();
 });
+
 // azst_collection_img: `${req.protocol}://${req.get('host')}/collection/${
 exports.collections = catchAsync(async (req, res, next) => {
   const collectiosrQuery = `SELECT azst_collection_id,azst_collection_name,collection_url_title,

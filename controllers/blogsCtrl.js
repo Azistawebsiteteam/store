@@ -31,16 +31,14 @@ exports.storeImage = catchAsync(async (req, res, next) => {
     next(new AppError('Upload blog image is required', 400));
   }
   const imageName = `${Date.now()}-${req.file.originalname.replace(/ /g, '-')}`;
-  await sharp(req.file.buffer)
-    .resize(500, 700)
-    .toFile(`Uploads/blogImages/${imageName}`);
+  await sharp(req.file.buffer).toFile(`Uploads/blogImages/${imageName}`);
   req.body.blogImg = imageName;
   next();
 });
 
 exports.updateImage = catchAsync(async (req, res, next) => {
   const { azst_blg_img } = req.blog;
-  console.log(req.file);
+
   if (!req.file) {
     req.body.blogImg = azst_blg_img;
     return next();
@@ -50,9 +48,7 @@ exports.updateImage = catchAsync(async (req, res, next) => {
   fs.unlink(imagePath, (err) => {});
 
   const imageName = `${Date.now()}-${req.file.originalname.replace(/ /g, '-')}`;
-  await sharp(req.file.buffer)
-    .resize(500, 700)
-    .toFile(`Uploads/blogImages/${imageName}`);
+  await sharp(req.file.buffer).toFile(`Uploads/blogImages/${imageName}`);
   req.body.blogImg = imageName;
   next();
 });
@@ -61,18 +57,27 @@ const getBlogImgLink = (req, img) =>
   `${req.protocol}://${req.get('host')}/api/images/blog/${img}`;
 
 exports.createBlog = catchAsync(async (req, res, next) => {
-  const { title, content, product, type, blogImg } = req.body;
+  const { title, description, content, product, type, blogImg } = req.body;
   const createdBy = req.empId;
 
   const query = `INSERT INTO azst_blogs_tbl (
                         azst_blg_title,
+                        azst_blg_description,
                         azst_blg_content,
                         azst_blg_product,
                         azst_blg_img,
                         azst_blg_type,
                         azst_blg_created_by) 
-                 VALUES (?,?,?,?,?,?)`;
-  const values = [title, content, product, blogImg, type, createdBy];
+                 VALUES (?,?,?,?,?,?,?)`;
+  const values = [
+    title,
+    description,
+    content,
+    product,
+    blogImg,
+    type,
+    createdBy,
+  ];
 
   await db(query, values);
   res.status(201).json({
@@ -87,6 +92,7 @@ exports.isBlogExist = catchAsync(async (req, res, next) => {
   if (!id) return next(new AppError('Blog Id Required', 400));
   const query =
     'SELECT * FROM azst_blogs_tbl WHERE azst_blg_status = 1 AND azst_blg_id = ?  ';
+
   const blog = await db(query, [id]);
 
   if (!blog.length) {
@@ -107,6 +113,7 @@ exports.getAllBlogs = catchAsync(async (req, res, next) => {
   const formattedBlogs = blogs.map((blog) => ({
     azst_blg_id: blog.azst_blg_id,
     azst_blg_title: blog.azst_blg_title,
+    azst_blg_description: blog.azst_blg_description,
     azst_blg_content: blog.azst_blg_content,
     azst_blg_product: blog.azst_blg_product,
     azst_blg_type: blog.azst_blg_type,
@@ -135,10 +142,11 @@ exports.getBlogById = catchAsync(async (req, res, next) => {
 
 exports.updateBlog = catchAsync(async (req, res, next) => {
   const { id } = req.body;
-  const { title, content, product, type, blogImg } = req.body;
+  const { title, description, content, product, type, blogImg } = req.body;
 
   const fields = {
     azst_blg_title: title,
+    azst_blg_description: description,
     azst_blg_content: content,
     azst_blg_product: product,
     azst_blg_img: blogImg,
@@ -178,3 +186,16 @@ exports.deleteBlog = catchAsync(async (req, res, next) => {
     message: 'Blog deleted successfully',
   });
 });
+
+// azst_blg_id,
+//   azst_blg_title,
+//   azst_blg_content,
+//   azst_blg_product,
+//   azst_blg_type,
+//   azst_blg_created_on,
+//   azst_blg_updated_on,
+//   azst_blg_created_by,
+//   azst_blg_updated_by,
+//   azst_blg_status,
+//   azst_blg_img,
+//   azst_blg_description;
