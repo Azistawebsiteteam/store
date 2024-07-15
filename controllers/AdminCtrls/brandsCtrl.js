@@ -12,7 +12,8 @@ exports.isBrandExit = catchAsync(async (req, res, next) => {
   const { brandId } = req.body;
   if (!brandId) return next(new AppError('Brand Id is Required', 400));
 
-  const getbrand = `SELECT * FROM azst_brands_tbl WHERE  azst_brands_id = ${brandId} AND status = 1`;
+  const getbrand = `SELECT azst_brands_id,azst_brand_name,azst_brand_description,azst_brand_logo
+                 FROM azst_brands_tbl WHERE  azst_brands_id = ${brandId} AND status = 1`;
   const brand = await db(getbrand);
   if (brand.length === 0) return next(new AppError('No brand found', 404));
   req.brand = brand[0];
@@ -67,8 +68,7 @@ exports.updateImage = catchAsync(async (req, res, next) => {
 });
 
 const modifyBrandData = (req, brand) => ({
-  azst_brands_id: brand.azst_brands_id,
-  azst_brand_name: brand.azst_brand_name,
+  ...brand,
   azst_brand_logo: `${req.protocol}://${req.get(
     'host'
   )}/api/images/brand/logs/${brand.azst_brand_logo}`,
@@ -89,16 +89,16 @@ exports.getbrand = catchAsync(async (req, res, next) => {
 });
 
 exports.addBrnad = catchAsync(async (req, res, next) => {
-  const { brandName, image } = req.body;
+  const { brandName, image, description } = req.body;
 
   if (!brandName) return next(new AppError('Brand Name Required', 400));
 
   const today = moment().format('YYYY-MM-DD HH:mm:ss');
 
   const imnsertQuery =
-    'INSERT INTO  azst_brands_tbl (azst_brand_name,azst_brand_logo,createdon,updatedby) VALUES (?,?,?,?)';
+    'INSERT INTO  azst_brands_tbl (azst_brand_name,azst_brand_logo,azst_brand_description,createdon,updatedby) VALUES (?,?,?,?,?)';
 
-  const values = [brandName, image, today, req.empId];
+  const values = [brandName, image, description, today, req.empId];
 
   const result = await db(imnsertQuery, values);
   res.status(200).json({
@@ -108,22 +108,27 @@ exports.addBrnad = catchAsync(async (req, res, next) => {
 });
 
 exports.updateBrand = catchAsync(async (req, res, next) => {
-  const { brandId, brandName, image } = req.body;
+  const { brandId, brandName, image, description } = req.body;
 
-  if (!brandName) return next(new AppError('Brand Name Required', 400));
+  if (!brandName) {
+    return next(new AppError('Brand Name Required', 400));
+  }
 
-  let updateQuery =
-    'UPDATE azst_brands_tbl SET azst_brand_name=?, azst_brand_logo =? ,updatedby=? where azst_brands_id =? ';
-  let values = [brandName, image, req.empId, brandId];
+  let updateQuery;
+  let values;
 
   if (image === '') {
     updateQuery =
-      'UPDATE azst_brands_tbl SET azst_brand_name=? ,updatedby=? where azst_brands_id =? ';
-    values = [brandName, req.empId, brandId];
+      'UPDATE azst_brands_tbl SET azst_brand_name=?, azst_brand_description=? ,updatedby=? WHERE azst_brands_id=?';
+    values = [brandName, description, req.empId, brandId];
+  } else {
+    updateQuery =
+      'UPDATE azst_brands_tbl SET azst_brand_name=?, azst_brand_logo=?, azst_brand_description=?, updatedby=? WHERE azst_brands_id=?';
+    values = [brandName, image, description, req.empId, brandId];
   }
 
   await db(updateQuery, values);
-  res.status(200).json({ message: 'Updated brand ' + brandName });
+  res.status(200).json({ message: `Updated brand ${brandName}` });
 });
 
 exports.deleteBrand = catchAsync(async (req, res, next) => {

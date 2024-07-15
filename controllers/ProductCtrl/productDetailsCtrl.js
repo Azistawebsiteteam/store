@@ -11,42 +11,42 @@ const getProductImageLink = (req, product) => ({
 });
 
 exports.getCollectionProducts = catchAsync(async (req, res, next) => {
-  const { collectionId } = req.body; // Assuming collectionId is a single value
+  const { collectionId, categoryId, brandId } = req.body; // Assuming collectionId is a single value
+
+  const filters = [];
+  const values = [];
+
+  if (collectionId)
+    filters.push(`collections ->> '$[*]' LIKE CONCAT('%', ?, '%')`),
+      values.push(collectionId);
+  if (categoryId) filters.push(`product_category = ?`), values.push(categoryId);
+  if (brandId) filters.push(`brand_id = ?`), values.push(brandId);
+
+  const filterQuery = `WHERE status = 1 AND  ${filters.join(' OR ')}`;
 
   const getProducts = `SELECT id as product_id, product_title, image_src,
-                       image_alt_text, price, compare_at_price,product_url_title
-                       FROM azst_products
-                       WHERE collections ->> '$[*]' LIKE CONCAT('%', ?, '%')  AND azst_products.status = 1`;
+                        image_alt_text, price, compare_at_price,product_url_title
+                       FROM azst_products ${filterQuery} `;
 
   const getCollectionData = `SELECT azst_collection_id,azst_collection_name,azst_collection_content,azst_collection_img 
                               FROM azst_collections_tbl where collection_url_title =? `;
 
-  const results = await db(getProducts, [collectionId]);
+  const results = await db(getProducts, values);
 
   let collectiondata = await db(getCollectionData, [collectionId]);
 
-  if (collectiondata.length === 0)
-    return res.status(404).json({
-      products: [],
-      collection_data: {},
-      message: 'No Collection found',
-    });
+  if (collectiondata.length > 0) {
+    const collection = collectiondata[0];
 
-  if (results.length === 0)
-    return res.status(404).json({
-      products: [],
-      collection_data: collectiondata,
-      message: 'No product found',
-    });
-
-  const collection = collectiondata[0];
-
-  collectiondata = {
-    ...collection,
-    azst_collection_img: `${req.protocol}://${req.get(
-      'host'
-    )}/api/images/collection/${collection.azst_collection_img}`,
-  };
+    collectiondata = {
+      ...collection,
+      azst_collection_img: `${req.protocol}://${req.get(
+        'host'
+      )}/api/images/collection/${collection.azst_collection_img}`,
+    };
+  } else {
+    collectiondata = {};
+  }
 
   const products = results.map((product) => getProductImageLink(req, product));
   res.status(200).json({

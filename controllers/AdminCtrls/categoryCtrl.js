@@ -57,7 +57,7 @@ exports.updateImage = catchAsync(async (req, res, next) => {
 exports.isCategoryExit = catchAsync(async (req, res, next) => {
   const { categoryId } = req.body;
   if (!categoryId) return next(new AppError('Category Id is Required', 400));
-  const getCategory = `SELECT azst_category_id,azst_category_name,azst_category_img
+  const getCategory = `SELECT azst_category_id,azst_category_name,azst_category_img,azst_category_description
                         FROM azst_category_tbl
                         WHERE  azst_category_id = ${categoryId} AND azst_category_status = 1`;
   const category = await db(getCategory);
@@ -120,15 +120,15 @@ exports.getSubCategory = catchAsync(async (req, res, next) => {
 });
 
 exports.addcategory = catchAsync(async (req, res, next) => {
-  const { categoryName, categoryImg } = req.body;
+  const { categoryName, categoryImg, description } = req.body;
 
   if (!categoryName)
     return next(new AppError('Category Name is Required', 400));
 
   const insertQuery =
-    'INSERT INTO  azst_category_tbl (azst_category_name,azst_category_img,azst_updated_by) VALUES (?,?,?)';
+    'INSERT INTO  azst_category_tbl (azst_category_name,azst_category_img,azst_category_description,azst_updated_by) VALUES (?,?,?,?)';
 
-  const values = [categoryName, categoryImg, req.empId];
+  const values = [categoryName, categoryImg, description, req.empId];
 
   const result = await db(insertQuery, values);
   res.status(200).json({ azst_category_id: result.insertId });
@@ -150,15 +150,21 @@ exports.addSubCategory = catchAsync(async (req, res, next) => {
 });
 
 exports.updatecategory = catchAsync(async (req, res, next) => {
-  const { categoryId, categoryName, categoryImg } = req.body;
+  const { categoryId, categoryName, categoryImg, description } = req.body;
 
   if (!categoryName)
     return next(new AppError('Category Name is Required', 400));
 
   const updateQuery = `UPDATE azst_category_tbl 
-    SET azst_category_name =?, azst_category_img =? , azst_updated_by =?
+    SET azst_category_name =?, azst_category_img =? ,azst_category_description =?, azst_updated_by =?
     where azst_category_id =? `;
-  const values = [categoryName, categoryImg, req.empId, categoryId];
+  const values = [
+    categoryName,
+    categoryImg,
+    description,
+    req.empId,
+    categoryId,
+  ];
 
   await db(updateQuery, values);
   res.status(200).json({ message: 'Updated category ' + categoryName });
