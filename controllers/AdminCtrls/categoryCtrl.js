@@ -71,10 +71,29 @@ const categoryImgLink = (req, img) =>
   `${req.protocol}://${req.get('host')}/api/images/category/${img}`;
 
 exports.getcategories = catchAsync(async (req, res, next) => {
-  const categoryQuery = `SELECT azst_category_id,azst_category_name, azst_category_img
-                       FROM azst_category_tbl WHERE azst_category_status = 1`;
+  const categoryQuery = `SELECT 
+                              azst_category_tbl.azst_category_id,
+                              azst_category_tbl.azst_category_name,
+                              azst_category_tbl.azst_category_img,
+                              COUNT(azst_products.id) AS no_products
+                          FROM 
+                              azst_category_tbl
+                          LEFT JOIN 
+                              azst_products 
+                          ON 
+                              azst_category_tbl.azst_category_id = azst_products.product_category
+                          WHERE 
+                              azst_category_tbl.azst_category_status = 1
+                          GROUP BY 
+                              azst_category_tbl.azst_category_id,
+                              azst_category_tbl.azst_category_name,
+                              azst_category_tbl.azst_category_img
+                          ORDER BY 
+                              azst_category_tbl.azst_category_name;
+                          `;
 
   const result = await db(categoryQuery);
+
   const categories = result.map((category) => ({
     ...category,
     azst_category_img: categoryImgLink(req, category.azst_category_img),

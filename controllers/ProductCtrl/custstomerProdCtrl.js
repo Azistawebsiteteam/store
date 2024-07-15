@@ -10,48 +10,60 @@ const getProductImageLink = (req, product) => ({
   }`,
 });
 
+//,azst_collection_img  AS azst_collection_img
+
 exports.getCollectionProducts = catchAsync(async (req, res, next) => {
-  const { collectionId, categoryId, brandId } = req.body; // Assuming collectionId is a single value
+  const { collectionId, categoryId, brandId } = req.body;
 
   const filters = [];
   const values = [];
 
-  if (collectionId)
-    filters.push(`collections ->> '$[*]' LIKE CONCAT('%', ?, '%')`),
-      values.push(collectionId);
-  if (categoryId) filters.push(`product_category = ?`), values.push(categoryId);
-  if (brandId) filters.push(`brand_id = ?`), values.push(brandId);
+  if (collectionId) {
+    filters.push(`collections ->> '$[*]' LIKE CONCAT('%', ?, '%')`);
+    values.push(collectionId);
+  }
+  if (categoryId) {
+    filters.push(`product_category = ?`);
+    values.push(categoryId);
+  }
+  if (brandId) {
+    filters.push(`brand_id = ?`);
+    values.push(brandId);
+  }
 
-  const filterQuery = `WHERE status = 1 AND  ${filters.join(' OR ')}`;
+  const filterQuery = `WHERE status = 1 AND ${filters.join(' OR ')}`;
 
   const getProducts = `SELECT id as product_id, product_title, image_src,
-                        image_alt_text, price, compare_at_price,product_url_title
-                       FROM azst_products ${filterQuery} `;
+                        image_alt_text, price, compare_at_price, product_url_title
+                       FROM azst_products ${filterQuery}`;
 
-  const getCollectionData = `SELECT azst_collection_id,azst_collection_name,azst_collection_content,azst_collection_img 
-                              FROM azst_collections_tbl where collection_url_title =? `;
+  let collectionQuery = '';
+  let filtValue = '';
+
+  if (categoryId) {
+    collectionQuery = `SELECT azst_category_name AS azst_collection_title, azst_category_description AS azst_collection_description
+                       FROM azst_category_tbl WHERE azst_category_id = ?`;
+    filtValue = categoryId;
+  } else if (brandId) {
+    collectionQuery = `SELECT azst_brand_name AS azst_collection_title, azst_brand_description AS azst_collection_description
+                       FROM azst_brands_tbl WHERE azst_brands_id = ?`;
+    filtValue = brandId;
+  } else {
+    collectionQuery = `SELECT azst_collection_name AS azst_collection_title, azst_collection_content AS azst_collection_description
+                       FROM azst_collections_tbl WHERE collection_url_title = ?`;
+    filtValue = collectionId;
+  }
 
   const results = await db(getProducts, values);
 
-  let collectiondata = await db(getCollectionData, [collectionId]);
+  let collectiondata = await db(collectionQuery, [filtValue]);
 
-  if (collectiondata.length > 0) {
-    const collection = collectiondata[0];
-
-    collectiondata = {
-      ...collection,
-      azst_collection_img: `${req.protocol}://${req.get(
-        'host'
-      )}/api/images/collection/${collection.azst_collection_img}`,
-    };
-  } else {
-    collectiondata = {};
-  }
+  const collection = collectiondata.length > 0 ? collectiondata[0] : {};
 
   const products = results.map((product) => getProductImageLink(req, product));
   res.status(200).json({
     products,
-    collection_data: collectiondata,
+    collection_data: collection,
     message: 'Data retrieved successfully.',
   });
 });
@@ -84,6 +96,34 @@ exports.getProductsSerach = catchAsync(async (req, res, next) => {
     }`,
   }));
   res.status(200).json({ products, message: 'Data retrieved successfully.' });
+});
+
+exports.shop99Products = catchAsync(async (req, res, next) => {
+  const getProducts = `SELECT id as product_id, product_title, image_src,
+                        image_alt_text, price, compare_at_price, product_url_title
+                       FROM azst_products
+                       WHERE status = 1 AND collections ->> '$[*]' LIKE CONCAT('%', 'shop@99', '%')`;
+
+  const products = await db(getProducts);
+
+  res.status(200).json(products);
+});
+
+exports.getBestSeller = catchAsync(async (req, res, next) => {
+  const query = `SELECT id as product_id, product_title, image_src,
+                    image_alt_text, price, compare_at_price, product_url_title,
+                    COUNT(azst_ordersummary_tbl.azst_order_product_id) AS no_of_orders
+                 FROM azst_ordersummary_tbl
+                 LEFT JOIN azst_products ON azst_products.id = azst_ordersummary_tbl.azst_order_product_id
+                 WHERE  azst_products.status = 1
+                 GROUP BY azst_ordersummary_tbl.azst_order_product_id
+                 ORDER BY  no_of_orders DESC
+                 Limit 10
+                 `;
+
+  const product = await db(query);
+
+  res.status(200).json(product);
 });
 
 exports.getProductDetalis = catchAsync(async (req, res, next) => {

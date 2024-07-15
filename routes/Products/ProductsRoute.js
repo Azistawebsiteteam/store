@@ -1,7 +1,7 @@
 const router = require('express').Router();
 
 const productCtrl = require('../../controllers/ProductCtrl/addProductctrl');
-const productDataCtrl = require('../../controllers/ProductCtrl/productDetailsCtrl');
+const productDataCtrl = require('../../controllers/ProductCtrl/custstomerProdCtrl');
 const productUpdateCtrl = require('../../controllers/ProductCtrl/editProduct');
 const authCtrl = require('../../controllers/authController');
 const editCtrl = require('../../controllers/ProductCtrl/editProduct');
@@ -17,6 +17,8 @@ const {
 
 router.post('/collection-products', productDataCtrl.getCollectionProducts);
 router.post('/search', productDataCtrl.getProductsSerach);
+router.post('/shop@99', productDataCtrl.shop99Products);
+router.post('/bestseller', productDataCtrl.getBestSeller);
 
 router.post('/details', productDataCtrl.getProductDetalis);
 router.post('/variants', productDataCtrl.getProductVariant);
