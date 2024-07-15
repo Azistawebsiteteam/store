@@ -53,11 +53,12 @@ exports.storeImage = catchAsync(async (req, res, next) => {
 });
 
 exports.updateImage = catchAsync(async (req, res, next) => {
+  const { azst_brand_logo } = req.brand;
   if (!req.file) {
-    req.body.image = '';
+    req.body.image = azst_brand_logo;
     return next();
   }
-  const imagePath = `Uploads/brandlogos/${req.brand.azst_brand_logo}`;
+  const imagePath = `Uploads/brandlogos/${azst_brand_logo}`;
 
   fs.unlink(imagePath, (err) => {});
 
@@ -93,12 +94,10 @@ exports.addBrnad = catchAsync(async (req, res, next) => {
 
   if (!brandName) return next(new AppError('Brand Name Required', 400));
 
-  const today = moment().format('YYYY-MM-DD HH:mm:ss');
-
   const imnsertQuery =
-    'INSERT INTO  azst_brands_tbl (azst_brand_name,azst_brand_logo,azst_brand_description,createdon,updatedby) VALUES (?,?,?,?,?)';
+    'INSERT INTO  azst_brands_tbl (azst_brand_name,azst_brand_logo,azst_brand_description,updatedby) VALUES (?,?,?,?)';
 
-  const values = [brandName, image, description, today, req.empId];
+  const values = [brandName, image, description, req.empId];
 
   const result = await db(imnsertQuery, values);
   res.status(200).json({
@@ -114,18 +113,11 @@ exports.updateBrand = catchAsync(async (req, res, next) => {
     return next(new AppError('Brand Name Required', 400));
   }
 
-  let updateQuery;
-  let values;
+  const updateQuery = `UPDATE azst_brands_tbl 
+    SET azst_brand_name =?, azst_brand_logo =?, azst_brand_description =?, updatedby =? 
+    WHERE azst_brands_id =? `;
 
-  if (image === '') {
-    updateQuery =
-      'UPDATE azst_brands_tbl SET azst_brand_name=?, azst_brand_description=? ,updatedby=? WHERE azst_brands_id=?';
-    values = [brandName, description, req.empId, brandId];
-  } else {
-    updateQuery =
-      'UPDATE azst_brands_tbl SET azst_brand_name=?, azst_brand_logo=?, azst_brand_description=?, updatedby=? WHERE azst_brands_id=?';
-    values = [brandName, image, description, req.empId, brandId];
-  }
+  const values = [brandName, image, description, req.empId, brandId];
 
   await db(updateQuery, values);
   res.status(200).json({ message: `Updated brand ${brandName}` });
