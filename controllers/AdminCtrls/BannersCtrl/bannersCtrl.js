@@ -4,9 +4,9 @@ const sharp = require('sharp');
 const Joi = require('joi');
 const fs = require('fs').promises; // Import the promises-based version of the fs module
 
-const db = require('../../dbconfig');
-const catchAsync = require('../../Utils/catchAsync');
-const AppError = require('../../Utils/appError');
+const db = require('../../../dbconfig');
+const catchAsync = require('../../../Utils/catchAsync');
+const AppError = require('../../../Utils/appError');
 
 const multerStorage = multer.memoryStorage();
 

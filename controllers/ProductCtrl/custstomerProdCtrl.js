@@ -89,12 +89,8 @@ exports.getProductsSerach = catchAsync(async (req, res, next) => {
   if (results.length === 0)
     return res.status(200).json({ products: [], message: 'No product found' });
 
-  const products = results.map((product) => ({
-    ...product,
-    image_src: `${req.protocol}://${req.get('host')}/api/images/product/${
-      product.image_src
-    }`,
-  }));
+  const products = results.map((product) => getProductImageLink(req, product));
+
   res.status(200).json({ products, message: 'Data retrieved successfully.' });
 });
 
@@ -104,7 +100,8 @@ exports.shop99Products = catchAsync(async (req, res, next) => {
                        FROM azst_products
                        WHERE status = 1 AND collections ->> '$[*]' LIKE CONCAT('%', 'shop@99', '%')`;
 
-  const products = await db(getProducts);
+  const results = await db(getProducts);
+  const products = results.map((product) => getProductImageLink(req, product));
 
   res.status(200).json(products);
 });
@@ -118,12 +115,12 @@ exports.getBestSeller = catchAsync(async (req, res, next) => {
                  WHERE  azst_products.status = 1
                  GROUP BY azst_ordersummary_tbl.azst_order_product_id
                  ORDER BY  no_of_orders DESC
-                 Limit 10
+                 Limit 8
                  `;
 
-  const product = await db(query);
-
-  res.status(200).json(product);
+  const results = await db(query);
+  const products = results.map((product) => getProductImageLink(req, product));
+  res.status(200).json(products);
 });
 
 exports.getProductDetalis = catchAsync(async (req, res, next) => {
@@ -145,15 +142,16 @@ exports.getProductDetalis = catchAsync(async (req, res, next) => {
   const product = results[0];
   const productIdd = product.id;
 
-  const productDetails = {
-    ...product,
-    product_images: JSON.parse(product.product_images).map(
-      (product_image) =>
-        `${req.protocol}://${req.get(
-          'host'
-        )}/api/images/product/${product_image}`
-    ),
-  };
+  const productDetails = getProductImageLink(req, product);
+  // {
+  //   ...product,
+  //   product_images: JSON.parse(product.product_images).map(
+  //     (product_image) =>
+  //       `${req.protocol}://${req.get(
+  //         'host'
+  //       )}/api/images/product/${product_image}`
+  //   ),
+  // };
 
   const storeOrder = JSON.parse(product.variant_store_order);
 

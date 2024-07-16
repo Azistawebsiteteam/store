@@ -1,6 +1,6 @@
 const router = require('express').Router();
 
-const bannerCtrl = require('../../controllers/AdminCtrls/bannersCtrl');
+const bannerCtrl = require('../../controllers/AdminCtrls/BannersCtrl/bannersCtrl');
 const authCtrl = require('../../controllers/authController');
 
 router.get('/data', bannerCtrl.getbanners);
