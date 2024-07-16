@@ -74,9 +74,31 @@ exports.updateImage = catchAsync(async (req, res, next) => {
 
 // azst_collection_img: `${req.protocol}://${req.get('host')}/collection/${
 exports.collections = catchAsync(async (req, res, next) => {
-  const collectiosrQuery = `SELECT azst_collection_id,azst_collection_name,collection_url_title,
+  const collectiosrQuer = `SELECT azst_collection_id,azst_collection_name,collection_url_title,
                             azst_collection_img 
                             FROM azst_collections_tbl WHERE azst_collection_status = 1`;
+  const collectiosrQuery = `SELECT 
+                              azst_collections_tbl.azst_collection_id,
+                              azst_collections_tbl.azst_collection_name,
+                              azst_collections_tbl.collection_url_title,
+                              azst_collections_tbl.azst_collection_img,
+                              COUNT(azst_products.id) AS no_products
+                            FROM 
+                                azst_collections_tbl
+                            LEFT JOIN 
+                                azst_products 
+                            ON 
+                                JSON_CONTAINS(azst_products.collections, CONCAT('"', azst_collections_tbl.collection_url_title, '"'))
+                            WHERE 
+                                azst_collections_tbl.azst_collection_status = 1
+                            GROUP BY 
+                                azst_collections_tbl.azst_collection_id,
+                                azst_collections_tbl.azst_collection_name,
+                                azst_collections_tbl.collection_url_title,
+                                azst_collections_tbl.azst_collection_img
+                            ORDER BY 
+                                azst_collections_tbl.azst_collection_name;
+                          `;
 
   let collections = await db(collectiosrQuery);
   collections = collections.map((cl) => ({

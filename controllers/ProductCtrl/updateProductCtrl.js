@@ -310,6 +310,7 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
   const newProductImages = productImages.map((url) =>
     url.substring(url.lastIndexOf('/') + 1)
   );
+  console.log(newProductImages);
   const parsedVariants = variantsThere ? JSON.parse(variants) : null;
   const firstVariant = parsedVariants ? getPricess(parsedVariants[0]) : null;
   const price = firstVariant ? firstVariant.offer_price : productPrice;

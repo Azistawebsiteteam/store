@@ -141,17 +141,19 @@ exports.getProductDetalis = catchAsync(async (req, res, next) => {
 
   const product = results[0];
   const productIdd = product.id;
-
-  const productDetails = getProductImageLink(req, product);
-  // {
-  //   ...product,
-  //   product_images: JSON.parse(product.product_images).map(
-  //     (product_image) =>
-  //       `${req.protocol}://${req.get(
-  //         'host'
-  //       )}/api/images/product/${product_image}`
-  //   ),
-  // };
+  console.log(product);
+  const productDetails = {
+    ...product,
+    image_src: `${req.protocol}://${req.get('host')}/api/images/product/${
+      product.image_src
+    }`,
+    product_images: JSON.parse(product.product_images).map(
+      (product_image) =>
+        `${req.protocol}://${req.get(
+          'host'
+        )}/api/images/product/${product_image}`
+    ),
+  };
 
   const storeOrder = JSON.parse(product.variant_store_order);
 
