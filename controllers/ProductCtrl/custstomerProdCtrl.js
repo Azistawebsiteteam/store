@@ -10,8 +10,6 @@ const getProductImageLink = (req, product) => ({
   }`,
 });
 
-//,azst_collection_img  AS azst_collection_img
-
 exports.getCollectionProducts = catchAsync(async (req, res, next) => {
   const { collectionId, categoryId, brandId } = req.body;
 
@@ -19,8 +17,8 @@ exports.getCollectionProducts = catchAsync(async (req, res, next) => {
   const values = [];
 
   if (collectionId) {
-    filters.push(`collections ->> '$[*]' LIKE CONCAT('%', ?, '%')`);
-    values.push(collectionId);
+    filters.push(`JSON_CONTAINS(collections, JSON_QUOTE(?), '$')`);
+    values.push(collectionId.toString());
   }
   if (categoryId) {
     filters.push(`product_category = ?`);
@@ -31,11 +29,29 @@ exports.getCollectionProducts = catchAsync(async (req, res, next) => {
     values.push(brandId);
   }
 
-  const filterQuery = `WHERE status = 1 AND ${filters.join(' OR ')}`;
+  const filterQuery = `WHERE azst_products.status = 1 ${
+    filters.length > 0 ? 'AND ' + filters.join(' OR ') : ''
+  }`;
 
-  const getProducts = `SELECT id as product_id,product_main_title, product_title, image_src,
-                        image_alt_text, price, compare_at_price, product_url_title
-                       FROM azst_products ${filterQuery}`;
+  const getProducts = `
+    SELECT 
+      id AS product_id,
+      product_main_title,
+      product_title,
+      image_src,
+      image_alt_text,
+      price,
+      compare_at_price,
+      product_url_title,
+      CASE 
+        WHEN azst_wishlist.azst_product_id IS NOT NULL THEN true
+        ELSE false
+      END AS in_wishlist
+    FROM azst_products
+    LEFT JOIN azst_wishlist 
+      ON azst_products.id = azst_wishlist.azst_product_id
+    ${filterQuery}
+  `;
 
   let collectionQuery = '';
   let filtValue = '';
@@ -56,9 +72,9 @@ exports.getCollectionProducts = catchAsync(async (req, res, next) => {
 
   const results = await db(getProducts, values);
 
-  let collectiondata = await db(collectionQuery, [filtValue]);
+  const collectionData = await db(collectionQuery, [filtValue]);
 
-  const collection = collectiondata.length > 0 ? collectiondata[0] : {};
+  const collection = collectionData.length > 0 ? collectionData[0] : {};
 
   const products = results.map((product) => getProductImageLink(req, product));
   res.status(200).json({
@@ -66,6 +82,46 @@ exports.getCollectionProducts = catchAsync(async (req, res, next) => {
     collection_data: collection,
     message: 'Data retrieved successfully.',
   });
+});
+
+exports.shop99Products = catchAsync(async (req, res, next) => {
+  const getProducts = `SELECT id as product_id, product_main_title, product_title, image_src,
+                        image_alt_text, price, compare_at_price, product_url_title,
+                        CASE 
+                          WHEN azst_wishlist.azst_product_id IS NOT NULL THEN true
+                          ELSE false
+                        END AS in_wishlist
+                       FROM azst_products
+                       LEFT JOIN azst_wishlist ON azst_products.id = azst_wishlist.azst_product_id
+                       WHERE azst_products.status = 1 
+                       AND JSON_CONTAINS(collections, JSON_QUOTE('25'), '$')`;
+
+  const results = await db(getProducts);
+  const products = results.map((product) => getProductImageLink(req, product));
+
+  res.status(200).json(products);
+});
+
+exports.getBestSeller = catchAsync(async (req, res, next) => {
+  const query = `SELECT id as product_id, product_title,product_main_title, image_src,
+                    image_alt_text, price, compare_at_price, product_url_title,
+                    COUNT(azst_ordersummary_tbl.azst_order_product_id) AS no_of_orders,
+                    CASE 
+                      WHEN azst_wishlist.azst_product_id IS NOT NULL THEN true
+                      ELSE false
+                    END AS in_wishlist
+                 FROM azst_ordersummary_tbl
+                 LEFT JOIN azst_products ON azst_products.id = azst_ordersummary_tbl.azst_order_product_id
+                 LEFT JOIN azst_wishlist ON azst_products.id = azst_wishlist.azst_product_id
+                 WHERE  azst_products.status = 1
+                 GROUP BY azst_ordersummary_tbl.azst_order_product_id
+                 ORDER BY  no_of_orders DESC
+                 Limit 8
+                 `;
+
+  const results = await db(query);
+  const products = results.map((product) => getProductImageLink(req, product));
+  res.status(200).json(products);
 });
 
 exports.getProductsSerach = catchAsync(async (req, res, next) => {
@@ -94,35 +150,6 @@ exports.getProductsSerach = catchAsync(async (req, res, next) => {
   res.status(200).json({ products, message: 'Data retrieved successfully.' });
 });
 
-exports.shop99Products = catchAsync(async (req, res, next) => {
-  const getProducts = `SELECT id as product_id, product_main_title, product_title, image_src,
-                        image_alt_text, price, compare_at_price, product_url_title
-                       FROM azst_products
-                       WHERE status = 1 AND collections ->> '$[*]' LIKE CONCAT('%', '25', '%')`;
-
-  const results = await db(getProducts);
-  const products = results.map((product) => getProductImageLink(req, product));
-
-  res.status(200).json(products);
-});
-
-exports.getBestSeller = catchAsync(async (req, res, next) => {
-  const query = `SELECT id as product_id, product_title,product_main_title, image_src,
-                    image_alt_text, price, compare_at_price, product_url_title,
-                    COUNT(azst_ordersummary_tbl.azst_order_product_id) AS no_of_orders
-                 FROM azst_ordersummary_tbl
-                 LEFT JOIN azst_products ON azst_products.id = azst_ordersummary_tbl.azst_order_product_id
-                 WHERE  azst_products.status = 1
-                 GROUP BY azst_ordersummary_tbl.azst_order_product_id
-                 ORDER BY  no_of_orders DESC
-                 Limit 8
-                 `;
-
-  const results = await db(query);
-  const products = results.map((product) => getProductImageLink(req, product));
-  res.status(200).json(products);
-});
-
 exports.getProductDetalis = catchAsync(async (req, res, next) => {
   const { productId } = req.body;
 
@@ -141,7 +168,7 @@ exports.getProductDetalis = catchAsync(async (req, res, next) => {
 
   const product = results[0];
   const productIdd = product.id;
-  console.log(product);
+
   const productDetails = {
     ...product,
     image_src: `${req.protocol}://${req.get('host')}/api/images/product/${
