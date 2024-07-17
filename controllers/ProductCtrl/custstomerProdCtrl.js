@@ -33,7 +33,7 @@ exports.getCollectionProducts = catchAsync(async (req, res, next) => {
 
   const filterQuery = `WHERE status = 1 AND ${filters.join(' OR ')}`;
 
-  const getProducts = `SELECT id as product_id, product_title, image_src,
+  const getProducts = `SELECT id as product_id,product_main_title, product_title, image_src,
                         image_alt_text, price, compare_at_price, product_url_title
                        FROM azst_products ${filterQuery}`;
 
@@ -75,7 +75,7 @@ exports.getProductsSerach = catchAsync(async (req, res, next) => {
     return;
   }
 
-  const getProducts = `SELECT product_title,image_src,price,product_url_title
+  const getProducts = `SELECT product_title,image_src,price,product_main_title,product_url_title
                         FROM azst_products
                         WHERE (product_title LIKE '%${searchText}%' OR 
                             product_category LIKE '%${searchText}%' OR 
@@ -95,10 +95,10 @@ exports.getProductsSerach = catchAsync(async (req, res, next) => {
 });
 
 exports.shop99Products = catchAsync(async (req, res, next) => {
-  const getProducts = `SELECT id as product_id, product_title, image_src,
+  const getProducts = `SELECT id as product_id, product_main_title, product_title, image_src,
                         image_alt_text, price, compare_at_price, product_url_title
                        FROM azst_products
-                       WHERE status = 1 AND collections ->> '$[*]' LIKE CONCAT('%', 'shop@99', '%')`;
+                       WHERE status = 1 AND collections ->> '$[*]' LIKE CONCAT('%', '25', '%')`;
 
   const results = await db(getProducts);
   const products = results.map((product) => getProductImageLink(req, product));
@@ -107,7 +107,7 @@ exports.shop99Products = catchAsync(async (req, res, next) => {
 });
 
 exports.getBestSeller = catchAsync(async (req, res, next) => {
-  const query = `SELECT id as product_id, product_title, image_src,
+  const query = `SELECT id as product_id, product_title,product_main_title, image_src,
                     image_alt_text, price, compare_at_price, product_url_title,
                     COUNT(azst_ordersummary_tbl.azst_order_product_id) AS no_of_orders
                  FROM azst_ordersummary_tbl
