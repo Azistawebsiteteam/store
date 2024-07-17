@@ -74,9 +74,6 @@ exports.updateImage = catchAsync(async (req, res, next) => {
 
 // azst_collection_img: `${req.protocol}://${req.get('host')}/collection/${
 exports.collections = catchAsync(async (req, res, next) => {
-  const collectiosrQuer = `SELECT azst_collection_id,azst_collection_name,collection_url_title,
-                            azst_collection_img 
-                            FROM azst_collections_tbl WHERE azst_collection_status = 1`;
   const collectiosrQuery = `SELECT 
                               azst_collections_tbl.azst_collection_id,
                               azst_collections_tbl.azst_collection_name,
@@ -88,7 +85,7 @@ exports.collections = catchAsync(async (req, res, next) => {
                             LEFT JOIN 
                                 azst_products 
                             ON 
-                                JSON_CONTAINS(azst_products.collections, CONCAT('"', azst_collections_tbl.collection_url_title, '"'))
+                                JSON_CONTAINS(azst_products.collections, CONCAT('"', azst_collections_tbl.azst_collection_id, '"'))
                             WHERE 
                                 azst_collections_tbl.azst_collection_status = 1
                             GROUP BY 

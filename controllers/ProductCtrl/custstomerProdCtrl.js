@@ -50,7 +50,7 @@ exports.getCollectionProducts = catchAsync(async (req, res, next) => {
     filtValue = brandId;
   } else {
     collectionQuery = `SELECT azst_collection_name AS azst_collection_title, azst_collection_content AS azst_collection_description
-                       FROM azst_collections_tbl WHERE collection_url_title = ?`;
+                       FROM azst_collections_tbl WHERE azst_collection_id = ?`;
     filtValue = collectionId;
   }
 
