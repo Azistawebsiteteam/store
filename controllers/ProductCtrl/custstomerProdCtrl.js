@@ -35,8 +35,11 @@ exports.getCollectionProducts = catchAsync(async (req, res, next) => {
     productQty,
   } = req.body;
 
+  // Initialize arrays to store SQL filter conditions and values
   const filters = [];
   const values = [];
+
+  // Build filters based on provided parameters
 
   // Filter by collectionId if provided
   if (collectionId) {
@@ -56,68 +59,75 @@ exports.getCollectionProducts = catchAsync(async (req, res, next) => {
     values.push(brandId);
   }
 
-  // Filter by inStock if productQty is set to 'inStock'
-  if (productQty === 'inStock') {
-    filters.push(`pi.azst_ipm_onhand_quantity > 0`);
-  }
-
-  // Build the WHERE clause for SQL query
+  // Construct the WHERE clause for SQL query
   const filterQuery = `WHERE azst_products.status = 1 ${
-    filters.length > 0 ? 'AND ' + filters.join('  OR ') : ''
+    filters.length > 0 ? 'AND ' + filters.join(' OR ') : ''
   }`;
 
-  // Define the ORDER BY clause
+  // Define the ORDER BY clause for SQL query
   const sortByQuery = `ORDER BY price ${orderBy}`;
 
-  // Initialize HAVING clause for review points
-  let havingQuery = '';
+  // Initialize array for HAVING clause conditions
+  const havingValues = [];
+
+  // Filter by reviewpoint if provided
   if (reviewpoint) {
-    havingQuery = `HAVING AVG(prt.review_points) >= ${reviewpoint}`;
+    havingValues.push(`AVG(prt.review_points) >= ?`);
+    values.push(reviewpoint);
   }
 
-  // SQL query to fetch products with applied filters and sorting
+  // Filter by productQty if set to 'inStock'
+  if (productQty === 'inStock') {
+    havingValues.push(`SUM(pi.azst_ipm_onhand_quantity) > 0`);
+  }
+
+  // Construct the HAVING clause for SQL query
+  const havingQuery =
+    havingValues.length > 0 ? 'HAVING ' + havingValues.join(' AND ') : '';
+
+  // Construct the main SQL query to fetch products with applied filters and sorting
   const getProducts = `
-  SELECT 
-    azst_products.id AS product_id,
-    product_main_title,
-    product_title,
-    image_src,
-    image_alt_text,
-    price,
-    compare_at_price,
-    product_url_title,
-    CASE 
-      WHEN azst_wishlist.azst_product_id IS NOT NULL THEN true
-      ELSE false
-    END AS in_wishlist,
-    COALESCE(AVG(prt.review_points), 0) AS product_review_points,
-    COALESCE(SUM(pi.azst_ipm_onhand_quantity), 0) AS product_qty
-  FROM azst_products
-  LEFT JOIN azst_wishlist 
-    ON azst_products.id = azst_wishlist.azst_product_id
-  LEFT JOIN product_review_rating_tbl  as prt
-    ON azst_products.id = prt.product_id
-  LEFT JOIN azst_inventory_product_mapping as pi 
-    ON azst_products.id = pi.azst_ipm_product_id
-  
-  ${filterQuery}
-  GROUP BY 
-    azst_products.id,
-    product_main_title,
-    product_title,
-    image_src,
-    image_alt_text,
-    price,
-    compare_at_price,
-    product_url_title
-  ${havingQuery}
-  ${sortByQuery}
-`;
+    SELECT 
+      azst_products.id AS product_id,
+      product_main_title,
+      product_title,
+      image_src,
+      image_alt_text,
+      price,
+      compare_at_price,
+      product_url_title,
+      CASE 
+        WHEN azst_wishlist.azst_product_id IS NOT NULL THEN true
+        ELSE false
+      END AS in_wishlist,
+      COALESCE(AVG(prt.review_points), 0) AS product_review_points,
+      COALESCE(SUM(pi.azst_ipm_onhand_quantity), 0) AS product_qty
+    FROM azst_products
+    LEFT JOIN azst_wishlist 
+      ON azst_products.id = azst_wishlist.azst_product_id
+    LEFT JOIN product_review_rating_tbl AS prt
+      ON azst_products.id = prt.product_id
+    LEFT JOIN azst_inventory_product_mapping AS pi 
+      ON azst_products.id = pi.azst_ipm_product_id
+    ${filterQuery}
+    GROUP BY 
+      azst_products.id,
+      product_main_title,
+      product_title,
+      image_src,
+      image_alt_text,
+      price,
+      compare_at_price,
+      product_url_title
+    ${havingQuery}
+    ${sortByQuery}
+  `;
 
   // Determine which collection to query for additional collection data
   let collectionQuery = '';
   let filtValue = '';
 
+  // Construct collection data query based on categoryId, brandId, or collectionId
   if (categoryId) {
     collectionQuery = `SELECT azst_category_name AS azst_collection_title, azst_category_description AS azst_collection_description
                        FROM azst_category_tbl WHERE azst_category_id = ?`;

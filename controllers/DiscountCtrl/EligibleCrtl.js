@@ -112,8 +112,6 @@ exports.getEligibleDiscounts = catchAsync(async (req, res, next) => {
 exports.getDiscounts = catchAsync(async (req, res, next) => {
   const { discountId, discountType, productsId } = req.body; // Fixed typo in discountType
 
-  console.log(discountId, productsId, discountType);
-
   let query;
   if (discountType === 'discount') {
     query = `SELECT * FROM azst_discount_tbl WHERE azst_dsc_id = ?`;
@@ -124,6 +122,7 @@ exports.getDiscounts = catchAsync(async (req, res, next) => {
   }
 
   const discount = await db(query, [discountId]);
+
   res.status(200).json(discount);
 });
 
