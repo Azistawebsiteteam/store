@@ -739,6 +739,7 @@ const newVariantImages = (productImages) => {
 exports.updateProduct = catchAsync(async (req, res, next) => {
   const {
     productId,
+    productMainTitle,
     productTitle,
     productInfo,
     variantsOrder,
@@ -764,6 +765,8 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
     variantsThere,
     variants,
     brand,
+    minCartQty,
+    maxCartQty,
   } = req.body;
 
   const newProductImages = productImages.map((url) =>
@@ -783,15 +786,16 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
 
   const productUpdatequery = `
     UPDATE azst_products 
-    SET product_title = ?, product_info = ?, vendor_id = ?, product_category = ?, type = ?, tags = ?, collections = ?, 
+    SET product_main_title = ? , product_title = ?, product_info = ?, vendor_id = ?, product_category = ?, type = ?, tags = ?, collections = ?, 
         image_src = ?, product_images = ?, variant_store_order = ?, image_alt_text = ?, seo_title = ?, seo_description = ?, 
         cost_per_item = ?, price = ?, compare_at_price = ?, sku_code = ?, sku_bar_code = ?, is_taxable = ?, product_weight = ?, 
         out_of_stock_sale = ?, url_handle = ?, status = ?, azst_updatedby = ?, product_url_title = ?, brand_id = ?, 
-        is_varaints_aval = ? 
+        is_varaints_aval = ?,min_cart_quantity = ?,max_cart_quantity = ?
     WHERE id = ?;
   `;
 
   const values = [
+    productMainTitle,
     productTitle,
     productInfo,
     vendor,
@@ -819,6 +823,8 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
     urlTitle,
     brand,
     variantsThere,
+    minCartQty,
+    maxCartQty,
     productId,
   ];
 

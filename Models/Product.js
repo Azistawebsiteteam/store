@@ -4,6 +4,7 @@ const AppError = require('../Utils/appError');
 
 // Define a reusable function to validate JSON array format
 // Define a custom validation function to check for non-empty array
+
 const validateJSONArray = (value, message) => {
   try {
     const parsedValue = JSON.parse(value);
@@ -16,28 +17,11 @@ const validateJSONArray = (value, message) => {
   }
 };
 
-// function validateNonEmptyArray(value, helpers) {
-//   if (!Array.isArray(value) || value.length === 0) {
-//     return helpers.error('any.invalid');
-//   }
-//   return value; // If validation passes, return the value
-// }
-// variants: Joi.custom((value, helpers) => {
-//   const validatedValue = validateNonEmptyArray(value, helpers);
-//   if (validatedValue === undefined) {
-//     return helpers.error('any.invalid');
-//   }
-//   return validatedValue;
-// })
-//   .required()
-//   .messages({
-//     'any.invalid': 'Variants must be a non-empty array',
-//   }),
-
 // Define Joi schemas for products
 
 const baseProductSchema = Joi.object({
   productId: Joi.string().allow(''),
+  productMainTitle: Joi.string().min(3).required(),
   productTitle: Joi.string().min(3).required(),
   productInfo: Joi.string().min(3).required(),
   productImages: Joi.array().items(
@@ -62,6 +46,8 @@ const baseProductSchema = Joi.object({
     'any.required': 'please select a brand',
     'number.base': 'please select a valid brand',
   }),
+  minCartQty: Joi.number().optional(),
+  maxCartQty: Joi.number().optional(),
 });
 
 const productSchemaWithoutVariants = baseProductSchema.keys({
@@ -86,7 +72,7 @@ const productSchemaWithVariants = baseProductSchema.keys({
   }).required(),
   variantImage: Joi.alternatives().try(
     Joi.string().allow(''), // Allow string type
-    Joi.object(), // Allow number type
+    Joi.object(), // Allow object type
     Joi.array()
   ),
   variantsOrder: Joi.string().allow('[]'),
@@ -142,8 +128,7 @@ const validateProduct = async (reqBody, schema) => {
 };
 
 const productValidation = catchAsync(async (req, res, next) => {
-  const { variantsThere, productImages, vInventoryInfo } = req.body;
-
+  const { variantsThere, productImages } = req.body;
 
   req.body.variantsThere = JSON.parse(variantsThere);
 
@@ -152,7 +137,7 @@ const productValidation = catchAsync(async (req, res, next) => {
   }
 
   if (variantsThere && variantsThere.toLowerCase() === 'true') {
-    const { variants, vInventoryInfo } = req.body;
+    const { variants } = req.body;
 
     await validateProduct(req.body, productSchemaWithVariants);
     const variantsData = JSON.parse(variants);

@@ -2,6 +2,7 @@ const express = require('express');
 
 const blogController = require('../controllers/blogsCtrl');
 const authCtrl = require('../controllers/authController');
+const blogValidationCtrl = require('../Models/blog');
 
 const router = express.Router();
 
@@ -32,6 +33,7 @@ router.get('/:id', blogController.getBlogById);
 router.post(
   '/',
   blogController.uploadImage,
+  blogValidationCtrl,
   blogController.storeImage,
   blogController.createBlog
 );
@@ -40,6 +42,7 @@ router.post(
 router.put(
   '/',
   blogController.uploadImage,
+  blogValidationCtrl,
   blogController.isBlogExist,
   blogController.updateImage,
   blogController.updateBlog

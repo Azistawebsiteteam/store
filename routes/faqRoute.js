@@ -3,6 +3,7 @@ const multer = require('multer');
 
 const faqCtrl = require('../controllers/faqCtrl');
 const authCtrl = require('../controllers/authController');
+const faqValidation = require('../Models/faq');
 
 const key = process.env.JWT_SECRET_ADMIN;
 
@@ -19,8 +20,8 @@ router.post('/faq', faqCtrl.isExist, faqCtrl.getFaq);
 router
   .route('/')
   .get(faqCtrl.getFaqs)
-  .post(faqCtrl.createFaq)
-  .put(faqCtrl.isExist, faqCtrl.updateFaq)
+  .post(faqValidation, faqCtrl.createFaq)
+  .put(faqValidation, faqCtrl.isExist, faqCtrl.updateFaq)
   .patch(faqCtrl.isExist, faqCtrl.deleteFaq);
 
 module.exports = router;

@@ -9,9 +9,11 @@ exports.getEligibleDiscounts = catchAsync(async (req, res, next) => {
   const id = req.empId;
 
   // Query for azst_discount_tbl
+
   const query1 = `
     SELECT 
       azst_dsc_id AS discount_id,
+       'discount' AS discount_use_type, 
       azst_dsc_title AS discount_title,
       azst_dsc_code AS discount_code,
       azst_dsc_mode AS discount_mode,
@@ -52,6 +54,7 @@ exports.getEligibleDiscounts = catchAsync(async (req, res, next) => {
   const query2 = `
     SELECT 
       azst_x_y_dsc_id AS discount_id,
+      'xydiscount' AS discount_use_type, 
       azst_x_y_dsc_title AS discount_title,
       azst_x_y_dsc_code AS discount_code,
       azst_x_y_dsc_applyto AS discount_applyto,
@@ -106,7 +109,25 @@ exports.getEligibleDiscounts = catchAsync(async (req, res, next) => {
   res.status(200).json(mergedResults);
 });
 
-// azst_x_y_dsc_id,
+exports.getDiscounts = catchAsync(async (req, res, next) => {
+  const { discountId, discountType, productsId } = req.body; // Fixed typo in discountType
+
+  console.log(discountId, productsId, discountType);
+
+  let query;
+  if (discountType === 'discount') {
+    query = `SELECT * FROM azst_discount_tbl WHERE azst_dsc_id = ?`;
+  } else if (discountType === 'xydiscount') {
+    query = `SELECT * FROM azst_buy_x_get_y_discount_tbl WHERE azst_x_y_dsc_id = ?`;
+  } else {
+    return res.status(400).json({ error: 'Invalid discountType' });
+  }
+
+  const discount = await db(query, [discountId]);
+  res.status(200).json(discount);
+});
+
+//   azst_x_y_dsc_id,
 //   azst_x_y_dsc_title,
 //   azst_x_y_dsc_code, discount code
 //   azst_x_y_dsc_applyto, products or collections

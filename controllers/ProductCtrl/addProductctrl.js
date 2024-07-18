@@ -114,6 +114,7 @@ const inventoryQuery = `INSERT INTO azst_inventory_product_mapping (azst_ipm_inv
 
 exports.addProduct = catchAsync(async (req, res, next) => {
   const {
+    productMainTitle,
     productTitle,
     productInfo,
     variantsOrder,
@@ -140,6 +141,8 @@ exports.addProduct = catchAsync(async (req, res, next) => {
     variantsThere,
     variants,
     brand,
+    minCartQty,
+    maxCartQty,
   } = req.body;
 
   const parsedVariants = variantsThere ? JSON.parse(variants) : null;
@@ -152,16 +155,17 @@ exports.addProduct = catchAsync(async (req, res, next) => {
 
   const urlTitle = productTitle.replace(/ /g, '-');
   const productImage = productImages[0];
-  const inventory = !variantsThere ? JSON.parse(inventoryInfo) : [];
 
-  const productQuery = `INSERT INTO azst_products (
+  const productQuery = `INSERT INTO azst_products (product_main_title,
                             product_title, product_info, vendor_id, product_category, type, tags, collections, image_src,
                             product_images, variant_store_order, image_alt_text, seo_title, seo_description, cost_per_item,
                             price, compare_at_price, sku_code, sku_bar_code, is_taxable, product_weight, out_of_stock_sale,
-                            url_handle, status, azst_updatedby, origin_country, product_url_title, is_varaints_aval,brand_id)
-                          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? , ?)`;
+                            url_handle, status, azst_updatedby, origin_country, product_url_title, is_varaints_aval,brand_id
+                            min_cart_quantity ,max_cart_quantity )
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ,?, ?, ?, ?)`;
 
   const values = [
+    productMainTitle,
     productTitle,
     productInfo,
     vendor,
@@ -190,11 +194,14 @@ exports.addProduct = catchAsync(async (req, res, next) => {
     urlTitle,
     variantsThere,
     brand,
+    minCartQty,
+    maxCartQty,
   ];
 
   const product = await db(productQuery, values);
 
   if (!variantsThere) {
+    const inventory = JSON.parse(inventoryInfo);
     const inventoryPromises = inventory.map(({ inventoryId, qty }) => {
       const invValues = [inventoryId, product.insertId, 0, qty, qty, req.empId];
       return db(inventoryQuery, invValues);

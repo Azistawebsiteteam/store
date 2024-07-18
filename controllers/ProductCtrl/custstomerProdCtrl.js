@@ -1,4 +1,5 @@
 const db = require('../../dbconfig');
+const Joi = require('joi');
 const AppError = require('../../Utils/appError');
 
 const catchAsync = require('../../Utils/catchAsync');
@@ -10,49 +11,110 @@ const getProductImageLink = (req, product) => ({
   }`,
 });
 
+const filtersSchema = Joi.object({
+  collectionId: Joi.number().optional(),
+  categoryId: Joi.number().optional(),
+  brandId: Joi.number().optional(),
+  productQty: Joi.string().optional().valid('All', 'inStock'),
+  orderBy: Joi.string().optional().valid('ASC', 'DESC'),
+  reviewpoint: Joi.number().optional(),
+});
+
 exports.getCollectionProducts = catchAsync(async (req, res, next) => {
-  const { collectionId, categoryId, brandId } = req.body;
+  // Validate request body using filtersSchema
+  const { error } = filtersSchema.validate(req.body);
+  if (error) return next(new AppError(error.message, 400));
+
+  // Destructure filters and default values from request body
+  const {
+    collectionId,
+    categoryId,
+    brandId,
+    orderBy = 'ASC',
+    reviewpoint,
+    productQty,
+  } = req.body;
 
   const filters = [];
   const values = [];
 
+  // Filter by collectionId if provided
   if (collectionId) {
     filters.push(`JSON_CONTAINS(collections, JSON_QUOTE(?), '$')`);
     values.push(collectionId.toString());
   }
+
+  // Filter by categoryId if provided
   if (categoryId) {
     filters.push(`product_category = ?`);
     values.push(categoryId);
   }
+
+  // Filter by brandId if provided
   if (brandId) {
     filters.push(`brand_id = ?`);
     values.push(brandId);
   }
 
+  // Filter by inStock if productQty is set to 'inStock'
+  if (productQty === 'inStock') {
+    filters.push(`pi.azst_ipm_onhand_quantity > 0`);
+  }
+
+  // Build the WHERE clause for SQL query
   const filterQuery = `WHERE azst_products.status = 1 ${
-    filters.length > 0 ? 'AND ' + filters.join(' OR ') : ''
+    filters.length > 0 ? 'AND ' + filters.join('  OR ') : ''
   }`;
 
-  const getProducts = `
-    SELECT 
-      id AS product_id,
-      product_main_title,
-      product_title,
-      image_src,
-      image_alt_text,
-      price,
-      compare_at_price,
-      product_url_title,
-      CASE 
-        WHEN azst_wishlist.azst_product_id IS NOT NULL THEN true
-        ELSE false
-      END AS in_wishlist
-    FROM azst_products
-    LEFT JOIN azst_wishlist 
-      ON azst_products.id = azst_wishlist.azst_product_id
-    ${filterQuery}
-  `;
+  // Define the ORDER BY clause
+  const sortByQuery = `ORDER BY price ${orderBy}`;
 
+  // Initialize HAVING clause for review points
+  let havingQuery = '';
+  if (reviewpoint) {
+    havingQuery = `HAVING AVG(prt.review_points) >= ${reviewpoint}`;
+  }
+
+  // SQL query to fetch products with applied filters and sorting
+  const getProducts = `
+  SELECT 
+    azst_products.id AS product_id,
+    product_main_title,
+    product_title,
+    image_src,
+    image_alt_text,
+    price,
+    compare_at_price,
+    product_url_title,
+    CASE 
+      WHEN azst_wishlist.azst_product_id IS NOT NULL THEN true
+      ELSE false
+    END AS in_wishlist,
+    COALESCE(AVG(prt.review_points), 0) AS product_review_points,
+    COALESCE(SUM(pi.azst_ipm_onhand_quantity), 0) AS product_qty
+  FROM azst_products
+  LEFT JOIN azst_wishlist 
+    ON azst_products.id = azst_wishlist.azst_product_id
+  LEFT JOIN product_review_rating_tbl  as prt
+    ON azst_products.id = prt.product_id
+  LEFT JOIN azst_inventory_product_mapping as pi 
+    ON azst_products.id = pi.azst_ipm_product_id
+  
+  ${filterQuery}
+  GROUP BY 
+    azst_products.id,
+    product_main_title,
+    product_title,
+    image_src,
+    image_alt_text,
+    price,
+    compare_at_price,
+    product_url_title
+  ${havingQuery}
+  ${sortByQuery}
+`;
+
+  // Determine which collection to query for additional collection data
   let collectionQuery = '';
   let filtValue = '';
 
@@ -70,13 +132,19 @@ exports.getCollectionProducts = catchAsync(async (req, res, next) => {
     filtValue = collectionId;
   }
 
+  // Execute the main product query with filters and sorting
   const results = await db(getProducts, values);
 
+  // Execute the query to get collection data
   const collectionData = await db(collectionQuery, [filtValue]);
 
+  // Prepare the collection data response
   const collection = collectionData.length > 0 ? collectionData[0] : {};
 
+  // Process the product results to include image links
   const products = results.map((product) => getProductImageLink(req, product));
+
+  // Send the final response
   res.status(200).json({
     products,
     collection_data: collection,
@@ -223,11 +291,10 @@ exports.getProductVariant = catchAsync(async (req, res, next) => {
   const variantData = await db(query, [variantId]);
 
   if (variantData.length < 1) {
-    res.status(404).send({
+    return res.status(404).send({
       variant: {},
       message: 'No such variant found',
     });
-    return;
   }
   const getImageLink = (img) =>
     `${req.protocol}://${req.get(

@@ -11,5 +11,6 @@ router.use(authCtrl.protect(key));
 router.use(multer().any());
 
 router.post('/', discCtrl.getEligibleDiscounts);
+router.post('/apply', discCtrl.getDiscounts);
 
 module.exports = router;

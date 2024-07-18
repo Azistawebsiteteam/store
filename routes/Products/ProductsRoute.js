@@ -1,4 +1,5 @@
 const router = require('express').Router();
+const multer = require('multer');
 
 const productCtrl = require('../../controllers/ProductCtrl/addProductctrl');
 const productDataCtrl = require('../../controllers/ProductCtrl/custstomerProdCtrl');
@@ -15,7 +16,11 @@ const {
   getWhishlist,
 } = require('../../controllers/wishLIstCtrl');
 
-router.post('/collection-products', productDataCtrl.getCollectionProducts);
+router.post(
+  '/collection-products',
+  multer().any(),
+  productDataCtrl.getCollectionProducts
+);
 router.post('/search', productDataCtrl.getProductsSerach);
 router.post('/shop@99', productDataCtrl.shop99Products);
 router.post('/bestseller', productDataCtrl.getBestSeller);
