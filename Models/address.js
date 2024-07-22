@@ -17,8 +17,6 @@ const addressSchema = Joi.object({
     }),
   customerEmail: Joi.string().trim().email().required(),
   housenumber: Joi.string().allow(''),
-  // area: Joi.string().min(3).max(20).required(),
-  // city: Joi.string().min(3).max(20).required(),
   district: Joi.string().min(3).max(20).required(),
   state: Joi.string().min(2).max(20).required(),
   country: Joi.string().min(3).max(20).required(),
@@ -31,11 +29,13 @@ const addressSchema = Joi.object({
   isDefault: Joi.boolean(),
 });
 
+// area: Joi.string().min(3).max(20).required(),
+// city: Joi.string().min(3).max(20).required(),
+
 const addressValidation = async (req, res, next) => {
   const payload = req.body;
 
   const { error } = addressSchema.validate(payload);
-  console.log(error);
   if (error) return next(new AppError(error.message, 400));
   next();
 };

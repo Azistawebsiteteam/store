@@ -32,7 +32,6 @@ exports.updateProfile = catchAsync(async (req, res, next) => {
     mobileNum,
     email,
     houseNumber,
-
     district,
     state,
     country,
@@ -43,9 +42,7 @@ exports.updateProfile = catchAsync(async (req, res, next) => {
     address1,
     address2,
     marketingSmsAccept,
-
     taxExempts,
-
     gender,
     dob,
   } = req.body;
@@ -82,7 +79,7 @@ exports.updateProfile = catchAsync(async (req, res, next) => {
     dob,
     req.empId,
   ];
-
   await db(profile, values);
+
   res.status(200).send({ message: 'Profile updated successfully' });
 });
