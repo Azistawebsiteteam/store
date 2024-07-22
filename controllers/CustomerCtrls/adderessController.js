@@ -106,7 +106,7 @@ exports.createNewAddress = catchAsync(async (req, res, next) => {
                            azst_customer_adressbook_state,azst_customer_adressbook_country,
                            azst_customer_adressbook_zip,azst_customer_adressbook_home_company,azst_customer_adressbook_address1,azst_customer_adressbook_address2,
                            azst_customer_adressbook_landmark,azst_customer_adressbook_default,azst_customer_adressbook_available_time)
-                         VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
+                         VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
   const addAddressValues = [
     customerId,
     customerFirstName,

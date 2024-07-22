@@ -20,7 +20,7 @@ const addressSchema = Joi.object({
   // area: Joi.string().min(3).max(20).required(),
   // city: Joi.string().min(3).max(20).required(),
   district: Joi.string().min(3).max(20).required(),
-  state: Joi.string().min(3).max(20).required(),
+  state: Joi.string().min(2).max(20).required(),
   country: Joi.string().min(3).max(20).required(),
   zipCode: Joi.number().integer().min(100000).max(999999), // Zip code as number and length as 6
   landmark: Joi.string().min(3),
@@ -35,6 +35,7 @@ const addressValidation = async (req, res, next) => {
   const payload = req.body;
 
   const { error } = addressSchema.validate(payload);
+  console.log(error);
   if (error) return next(new AppError(error.message, 400));
   next();
 };
