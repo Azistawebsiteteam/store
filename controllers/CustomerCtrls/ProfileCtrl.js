@@ -32,8 +32,7 @@ exports.updateProfile = catchAsync(async (req, res, next) => {
     mobileNum,
     email,
     houseNumber,
-    area,
-    city,
+
     district,
     state,
     country,
@@ -44,21 +43,19 @@ exports.updateProfile = catchAsync(async (req, res, next) => {
     address1,
     address2,
     marketingSmsAccept,
-    customerNote,
+
     taxExempts,
-    tags,
+
     gender,
     dob,
   } = req.body;
   const profile = `UPDATE azst_customer SET  azst_customer_fname = ?, azst_customer_lname = ?, 
                         azst_customer_mobile = ?, azst_customer_email = ?, azst_customer_hno = ?,
-                        azst_customer_area = ?, azst_customer_city = ?, azst_customer_district = ?,
-                        azst_customer_state = ?, azst_customer_country = ?, azst_customer_zip = ?,
-                        azst_customer_landmark = ?, azst_customer_acceptemail_marketing = ?,
+                        azst_customer_district = ?,azst_customer_state = ?, azst_customer_country = ?,
+                        azst_customer_zip = ?,azst_customer_landmark = ?, azst_customer_acceptemail_marketing = ?,
                         azst_customer_company = ?, azst_customer_address1 = ?, azst_customer_address2 = ?,
-                        azst_customer_acceptsms_marketing = ?, azst_customer_note = ?, 
-                        azst_customer_taxexempts = ?, azst_customer_tags = ?,azst_customer_updatedon  = ?,
-                        azst_customer_gender = ?, azst_customer_DOB = ?
+                        azst_customer_acceptsms_marketing = ?,azst_customer_taxexempts = ?,
+                        azst_customer_updatedon  = ?,azst_customer_gender = ?, azst_customer_DOB = ?
                     WHERE azst_customer_id  = ?`;
 
   const today = moment().format('YYYY-MM-DD HH:mm:ss');
@@ -69,8 +66,6 @@ exports.updateProfile = catchAsync(async (req, res, next) => {
     mobileNum,
     email.toLowerCase(),
     houseNumber,
-    area,
-    city,
     district,
     state,
     country,
@@ -81,9 +76,7 @@ exports.updateProfile = catchAsync(async (req, res, next) => {
     address1,
     address2,
     marketingSmsAccept,
-    customerNote,
     taxExempts,
-    tags,
     today,
     gender,
     dob,

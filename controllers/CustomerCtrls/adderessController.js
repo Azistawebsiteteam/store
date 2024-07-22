@@ -81,8 +81,7 @@ exports.createNewAddress = catchAsync(async (req, res, next) => {
     customerMobileNum,
     customerEmail,
     housenumber,
-    area,
-    city,
+
     district,
     state,
     country,
@@ -103,8 +102,8 @@ exports.createNewAddress = catchAsync(async (req, res, next) => {
   }
 
   const insertAddress = `INSERT INTO azst_customer_adressbook (azst_customer_adressbook_customer_id,azst_customer_adressbook_fname,azst_customer_adressbook_lname,
-                           azst_customer_adressbook_mobile, azst_customer_adressbook_email,azst_customer_adressbook_hno,azst_customer_adressbook_area,
-                           azst_customer_adressbook_city,azst_customer_adressbook_district,azst_customer_adressbook_state,azst_customer_adressbook_country,
+                           azst_customer_adressbook_mobile, azst_customer_adressbook_email,azst_customer_adressbook_hno,azst_customer_adressbook_district,
+                           azst_customer_adressbook_state,azst_customer_adressbook_country,
                            azst_customer_adressbook_zip,azst_customer_adressbook_home_company,azst_customer_adressbook_address1,azst_customer_adressbook_address2,
                            azst_customer_adressbook_landmark,azst_customer_adressbook_default,azst_customer_adressbook_available_time)
                          VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
@@ -115,8 +114,6 @@ exports.createNewAddress = catchAsync(async (req, res, next) => {
     customerMobileNum,
     customerEmail,
     housenumber,
-    area,
-    city,
     district,
     state,
     country,
@@ -159,8 +156,6 @@ exports.updateAddress = catchAsync(async (req, res, next) => {
     customerMobileNum,
     customerEmail,
     housenumber,
-    area,
-    city,
     district,
     state,
     country,
@@ -178,7 +173,6 @@ exports.updateAddress = catchAsync(async (req, res, next) => {
                           SET azst_customer_adressbook_customer_id = ?, azst_customer_adressbook_fname = ?,
                               azst_customer_adressbook_lname = ?, azst_customer_adressbook_mobile = ?,
                               azst_customer_adressbook_email = ?, azst_customer_adressbook_hno = ?,
-                              azst_customer_adressbook_area = ?,azst_customer_adressbook_city = ?,
                               azst_customer_adressbook_district = ?,azst_customer_adressbook_state = ?,
                               azst_customer_adressbook_country = ?,azst_customer_adressbook_zip = ?,
                               azst_customer_adressbook_home_company = ?,azst_customer_adressbook_address1 = ?,
@@ -193,8 +187,6 @@ exports.updateAddress = catchAsync(async (req, res, next) => {
     customerMobileNum,
     customerEmail,
     housenumber,
-    area,
-    city,
     district,
     state,
     country,

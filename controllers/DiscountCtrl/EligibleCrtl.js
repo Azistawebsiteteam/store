@@ -109,22 +109,232 @@ exports.getEligibleDiscounts = catchAsync(async (req, res, next) => {
   res.status(200).json(mergedResults);
 });
 
-exports.getDiscounts = catchAsync(async (req, res, next) => {
-  const { discountId, discountType, productsId } = req.body; // Fixed typo in discountType
+// const { items, discountCode } = req.body;
 
-  let query;
+// let totalAmount = items.reduce(
+//   (sum, item) => sum + item.price * item.quantity,
+//   0
+// );
+// let discount = 0;
+
+// if (discountCode === 'DISCOUNT10') {
+//   discount = 0.1 * totalAmount;
+// }
+
+// let finalAmount = totalAmount - discount;
+
+// // Insert order into MySQL
+// const orderQuery = `INSERT INTO orders (totalAmount, discount, finalAmount) VALUES (?, ?, ?)`;
+// connection.query(
+//   orderQuery,
+//   [totalAmount, discount, finalAmount],
+//   (error, results) => {
+//     if (error) throw error;
+
+//     const orderId = results.insertId;
+
+//     // Insert order items into MySQL
+//     const orderItemsQuery = `INSERT INTO orderItems (orderId, productId, name, price, quantity) VALUES ?`;
+//     const orderItemsData = items.map((item) => [
+//       orderId,
+//       item.productId,
+//       item.name,
+//       item.price,
+//       item.quantity,
+//     ]);
+
+//     connection.query(orderItemsQuery, [orderItemsData], (err) => {
+//       if (err) throw err;
+
+//       // Retrieve the complete order with items
+//       const getOrderQuery = `
+//         SELECT * FROM orders WHERE id = ?;
+//         SELECT * FROM orderItems WHERE orderId = ?;
+//       `;
+
+//       connection.query(getOrderQuery, [orderId, orderId], (err, results) => {
+//         if (err) throw err;
+
+//         const order = results[0][0];
+//         order.items = results[1];
+
+//         res.send(order);
+//       });
+//     });
+//   }
+// );
+
+const calculateNormalDiscount = async (discountCode, products, next) => {
+  const query = `SELECT * FROM azst_discount_tbl WHERE azst_dsc_code = ?`;
+  const discountResult = await db(query, [discountCode]);
+
+  if (!discountResult.length) {
+    return next(new AppError('Invalid discount', 400));
+  }
+
+  const {
+    azst_dsc_prc_value,
+    azst_dsc_usage_cnt,
+    azst_dsc_apply_qty,
+    azst_dsc_mode,
+    azst_dsc_value,
+    azst_dsc_apply_mode,
+    azst_dsc_prc_mode,
+    azst_dsc_apply_id,
+  } = discountResult[0];
+  console.log(discountResult[0]);
+
+  let product;
+  if (azst_dsc_apply_mode === 'product') {
+    console.log(products, 'product based');
+    product = products.find((p) => p.product_id === azst_dsc_apply_id);
+  } else {
+    product = products.find((p) =>
+      JSON.parse(p.collection_id).includes(azst_dsc_apply_id)
+    );
+  }
+
+  if (!product) {
+    return next(new AppError('You are not eligible for this discount', 400));
+  }
+
+  const totalAmt = products.reduce((acc, p) => acc + p.quantity * p.price, 0);
+
+  if (
+    azst_dsc_prc_mode === 'quantity' &&
+    product.quantity < azst_dsc_prc_value
+  ) {
+    return next(
+      new AppError(
+        `Please add ${
+          azst_dsc_prc_value - product.quantity
+        } more to get the discount`,
+        400
+      )
+    );
+  }
+
+  if (azst_dsc_prc_mode === 'amount' && totalAmt < azst_dsc_prc_value) {
+    return next(
+      new AppError(
+        `Please add ${
+          azst_dsc_prc_value - totalAmt
+        } more value get the discount`,
+        400
+      )
+    );
+  }
+
+  let totalPrice = 0;
+
+  let discountAmt = 0;
+  if (azst_dsc_mode === 'amount') {
+    discountAmt = azst_dsc_value;
+    totalPrice = totalAmt - azst_dsc_value;
+  } else {
+    const applyQty = Math.min(product.quantity, azst_dsc_apply_qty);
+    discountAmt = ((product.price * applyQty) / 100) * azst_dsc_value;
+    totalPrice = totalAmt - discountAmt;
+  }
+
+  return { totalAmt, discountAmt, totalPrice };
+};
+
+const calculateXYDiscount = async (discountCode, products, next) => {
+  const query = `SELECT * FROM azst_buy_x_get_y_discount_tbl WHERE azst_x_y_dsc_id = ?`;
+  const discountResult = await db(query, [discountCode]);
+
+  if (!discountResult.length) {
+    return next(new AppError('Invalid discount', 400));
+  }
+
+  const discount = discountResult[0];
+  const eligibleProducts = discount.azst_x_y_dsc_applid.split(',');
+
+  const applicableProducts = products.filter((p) => {
+    if (discount.azst_x_y_dsc_applyto === 'product') {
+      return eligibleProducts.includes(p.product_id);
+    } else {
+      return eligibleProducts.includes(p.collection_id);
+    }
+  });
+
+  const totalEligibleQty = applicableProducts.reduce(
+    (acc, p) => acc + p.quantity,
+    0
+  );
+
+  if (totalEligibleQty < discount.azst_x_y_dsc_min_qty) {
+    return next(
+      new AppError(
+        `Please add more products to meet the minimum quantity for the discount`,
+        400
+      )
+    );
+  }
+
+  let discountValue = 0;
+  if (discount.azst_x_y_dsc_type === 'percentage') {
+    discountValue =
+      (totalEligibleQty * products[0].price * discount.azst_x_y_dsc_value) /
+      100;
+  } else if (discount.azst_x_y_dsc_type === 'amount') {
+    discountValue = discount.azst_x_y_dsc_value;
+  } else if (discount.azst_x_y_dsc_type === 'free') {
+    discountValue = products[0].price;
+  }
+
+  const totalAmt = products.reduce((acc, p) => acc + p.quantity * p.price, 0);
+  const totalPrice = totalAmt - discountValue;
+
+  return totalPrice;
+};
+
+exports.getDiscounts = catchAsync(async (req, res, next) => {
+  const { discountCode, discountType, products } = req.body;
+  const cartProducts = JSON.parse(products);
+  let billingDetails;
+
   if (discountType === 'discount') {
-    query = `SELECT * FROM azst_discount_tbl WHERE azst_dsc_id = ?`;
+    billingDetails = await calculateNormalDiscount(
+      discountCode,
+      cartProducts,
+      next
+    );
   } else if (discountType === 'xydiscount') {
-    query = `SELECT * FROM azst_buy_x_get_y_discount_tbl WHERE azst_x_y_dsc_id = ?`;
+    billingDetails = await calculateXYDiscount(
+      discountCode,
+      cartProducts,
+      next
+    );
   } else {
     return res.status(400).json({ error: 'Invalid discountType' });
   }
 
-  const discount = await db(query, [discountId]);
+  if (billingDetails === undefined) return; // next() should have been called already if there's an error
 
-  res.status(200).json(discount);
+  res.status(200).json(billingDetails);
 });
+
+// azst_dsc_id,
+//   azst_dsc_title,
+//   azst_dsc_code,
+//   azst_dsc_mode,
+//   azst_dsc_value,
+// azst_dsc_apply_mode,
+// azst_dsc_apply_id,
+// azst_dsc_prc_value,
+//   azst_dsc_elg_cus,
+//   azst_dsc_apply_qty,
+//   azst_dsc_usage_cnt,
+//   azst_dsc_start_tm,
+//   azst_dsc_end_tm,
+//   azst_dsc_cr_by,
+//   azst_dsc_up_by,
+//   azst_dsc_cr_on,
+//   azst_dsc_up_on,
+//   azst_dsc_status,
+//   azst_dsc_prc_mode;
 
 //   azst_x_y_dsc_id,
 //   azst_x_y_dsc_title,
