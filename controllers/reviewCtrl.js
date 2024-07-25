@@ -181,7 +181,7 @@ const getReviewImageLink = (req, images) => {
 };
 
 exports.getProductReviews = catchAsync(async (req, res, next) => {
-  const { productId } = req.body;
+  const { productId, orderby = 'DESC' } = req.body;
   if (!productId) return next(new AppError('Product Id Is Required', 400));
 
   const values = [productId];
@@ -201,7 +201,7 @@ exports.getProductReviews = catchAsync(async (req, res, next) => {
                         FROM product_review_rating_tbl
                         LEFT JOIN azst_customer ON product_review_rating_tbl.customer_id = azst_customer.azst_customer_id
                         WHERE review_status = 1   AND  review_approval_status = 1 AND product_id = ?
-                        ORDER BY created_on DESC;
+                        ORDER BY created_on ${orderby};
                       `;
 
   const result = await db(reviewQuery, values);

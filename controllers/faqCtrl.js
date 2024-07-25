@@ -5,8 +5,9 @@ const catchAsync = require('../Utils/catchAsync');
 
 exports.getFaqs = catchAsync(async (req, res, next) => {
   const query = `SELECT azst_faq_id,azst_faq_question,azst_faq_ans,azst_faq_type
-                     FROM azst_faq_tbl WHERE azst_faq_status = 1
-                     ORDER BY azst_faq_type ,azst_faq_updated_on DESC `;
+                  FROM azst_faq_tbl
+                  WHERE azst_faq_status = 1
+                  ORDER BY azst_faq_type ,azst_faq_updated_on DESC `;
 
   const faqs = await db(query);
 
@@ -24,9 +25,9 @@ exports.getProductFaq = catchAsync(async (req, res, next) => {
 
   if (!productId) return next(new AppError('Product id Required', 404));
 
-  const query = `SELECT azst_faq_question,azst_faq_ans
+  const query = `SELECT azst_faq_id,azst_faq_question,azst_faq_ans
                   FROM azst_faq_tbl
-                  WHERE azst_faq_status = 1 AND azst_faq_type = 'product' AND azst_faq_product_id = ?
+                  WHERE azst_faq_status = 1 AND azst_faq_type = 'Product' AND azst_faq_product_id = ?
                   ORDER BY azst_faq_type ,azst_faq_updated_on DESC `;
 
   const faqs = await db(query, [productId]);
@@ -35,12 +36,13 @@ exports.getProductFaq = catchAsync(async (req, res, next) => {
 });
 
 exports.createFaq = catchAsync(async (req, res, next) => {
-  const { question, answer, type } = req.body;
+  const { question, answer, type, productId } = req.body;
 
-  const query = `INSERT INTO azst_faq_tbl (  azst_faq_question,
-                    azst_faq_ans,
-                    azst_faq_type,azst_faq_created_by) VALUES(?,?,?,?) `;
-  const values = [question, answer, type, req.empId];
+  const query = `INSERT INTO azst_faq_tbl 
+                  (azst_faq_question,azst_faq_ans,azst_faq_type,azst_faq_product_id,azst_faq_created_by)
+                  VALUES(?,?,?,?,?) `;
+
+  const values = [question, answer, type, productId, req.empId];
 
   const result = await db(query, values);
 
@@ -57,9 +59,10 @@ exports.isExist = catchAsync(async (req, res, next) => {
 
   if (!id) return next(new AppError('faqId is Required', 400));
 
-  const query = `SELECT azst_faq_id,azst_faq_question,azst_faq_ans,azst_faq_type
-                    FROM azst_faq_tbl
-                    WHERE  azst_faq_id = ? AND  azst_faq_status = 1 `;
+  const query = `SELECT azst_faq_id,azst_faq_question,azst_faq_ans,
+                        azst_faq_type,azst_faq_product_id
+                  FROM azst_faq_tbl
+                  WHERE  azst_faq_id = ? AND  azst_faq_status = 1 `;
   const faqs = await db(query, [id]);
   if (faqs.length === 0)
     return next(new AppError('No faqs found with id ', 404));
@@ -73,13 +76,14 @@ exports.getFaq = catchAsync(async (req, res, next) => {
 });
 
 exports.updateFaq = catchAsync(async (req, res, next) => {
-  const { question, answer, type, id } = req.body;
+  const { question, answer, type, id, productId } = req.body;
 
   const query = `UPDATE azst_faq_tbl 
-                    SET  azst_faq_question = ?, azst_faq_ans =? , azst_faq_type = ? , azst_faq_updated_by = ?
-                    WHERE  azst_faq_id = ?`;
+                  SET azst_faq_question = ?, azst_faq_ans =? , azst_faq_type = ?,
+                      azst_faq_product_id =? , azst_faq_updated_by = ?
+                  WHERE  azst_faq_id = ? `;
 
-  const values = [question, answer, type, req.empId, id];
+  const values = [question, answer, type, productId, req.empId, id];
 
   const result = await db(query, values);
 
