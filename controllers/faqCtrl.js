@@ -14,47 +14,35 @@ exports.getFaqs = catchAsync(async (req, res, next) => {
   res.status(200).json(faqs);
 });
 
-// exports.getFaqsCustomer = catchAsync(async (req, res, next) => {
-//   const query = `SELECT azst_faq_id, azst_faq_question, azst_faq_ans, azst_faq_type
-//                   FROM azst_faq_tbl
-//                   WHERE azst_faq_status = 1 AND azst_faq_type <> 'Product'
-//                   GROUP BY azst_faq_type, azst_faq_id, azst_faq_question, azst_faq_ans, azst_faq_updated_on
-//                   ORDER BY azst_faq_type, azst_faq_updated_on DESC;
-//                   `;
-
-//   const faqs = await db(query);
-
-//   let faqTypes = Array.from(new Set(faqs.map((faq) => faq.azst_faq_type)));
-//   res.status(200).json({ faqTypes, faqs });
-// });
-
 exports.getFaqsCustomer = catchAsync(async (req, res, next) => {
-  const query = `SELECT azst_faq_id, azst_faq_question, azst_faq_ans, azst_faq_type
-                  FROM azst_faq_tbl
-                  WHERE azst_faq_status = 1 AND azst_faq_type <> 'Product'
-                 
-                  ORDER BY azst_faq_type, azst_faq_updated_on DESC;
-                  `;
+  const query = `
+    SELECT azst_faq_id, azst_faq_question, azst_faq_ans, azst_faq_type
+    FROM azst_faq_tbl
+    WHERE azst_faq_status = 1 AND azst_faq_type <> 'Product'
+    ORDER BY azst_faq_type, azst_faq_updated_on DESC;
+  `;
 
   const faqs = await db(query);
 
-  // Process the FAQs to group them by type
-  const groupedFaqs = faqs.reduce((acc, faq) => {
-    const { azst_faq_type } = faq;
-    if (!acc[azst_faq_type]) {
-      acc[azst_faq_type] = [];
-    }
-    acc[azst_faq_type].push(faq);
-    return acc;
-  }, {});
+  // Use a Map to group FAQs by type for better performance
+  const groupedFaqsMap = new Map();
 
-  // Transform the grouped FAQs into the desired format
-  const result = Object.keys(groupedFaqs).map((type) => ({
+  faqs.forEach((faq) => {
+    const { azst_faq_type } = faq;
+    if (!groupedFaqsMap.has(azst_faq_type)) {
+      groupedFaqsMap.set(azst_faq_type, []);
+    }
+    groupedFaqsMap.get(azst_faq_type).push(faq);
+  });
+
+  // Transform the Map into the desired array format
+  const result = Array.from(groupedFaqsMap, ([type, type_faqs]) => ({
     azst_faq_type: type,
-    type_faqs: groupedFaqs[type],
+    type_faqs,
   }));
 
-  let faqTypes = Array.from(new Set(faqs.map((faq) => faq.azst_faq_type)));
+  const faqTypes = Array.from(groupedFaqsMap.keys());
+
   res.status(200).json({ faqTypes, faqs: result });
 });
 
