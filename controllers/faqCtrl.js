@@ -11,13 +11,51 @@ exports.getFaqs = catchAsync(async (req, res, next) => {
 
   const faqs = await db(query);
 
-  // if customer requested data unique blog types is reauired
-  if (req.path === '/customer') {
-    const faqTypes = Array.from(new Set(faqs.map((faq) => faq.azst_faq_type)));
-    return res.status(200).json({ faqTypes, faqs });
-  }
-
   res.status(200).json(faqs);
+});
+
+// exports.getFaqsCustomer = catchAsync(async (req, res, next) => {
+//   const query = `SELECT azst_faq_id, azst_faq_question, azst_faq_ans, azst_faq_type
+//                   FROM azst_faq_tbl
+//                   WHERE azst_faq_status = 1 AND azst_faq_type <> 'Product'
+//                   GROUP BY azst_faq_type, azst_faq_id, azst_faq_question, azst_faq_ans, azst_faq_updated_on
+//                   ORDER BY azst_faq_type, azst_faq_updated_on DESC;
+//                   `;
+
+//   const faqs = await db(query);
+
+//   let faqTypes = Array.from(new Set(faqs.map((faq) => faq.azst_faq_type)));
+//   res.status(200).json({ faqTypes, faqs });
+// });
+
+exports.getFaqsCustomer = catchAsync(async (req, res, next) => {
+  const query = `SELECT azst_faq_id, azst_faq_question, azst_faq_ans, azst_faq_type
+                  FROM azst_faq_tbl
+                  WHERE azst_faq_status = 1 AND azst_faq_type <> 'Product'
+                 
+                  ORDER BY azst_faq_type, azst_faq_updated_on DESC;
+                  `;
+
+  const faqs = await db(query);
+
+  // Process the FAQs to group them by type
+  const groupedFaqs = faqs.reduce((acc, faq) => {
+    const { azst_faq_type } = faq;
+    if (!acc[azst_faq_type]) {
+      acc[azst_faq_type] = [];
+    }
+    acc[azst_faq_type].push(faq);
+    return acc;
+  }, {});
+
+  // Transform the grouped FAQs into the desired format
+  const result = Object.keys(groupedFaqs).map((type) => ({
+    azst_faq_type: type,
+    type_faqs: groupedFaqs[type],
+  }));
+
+  let faqTypes = Array.from(new Set(faqs.map((faq) => faq.azst_faq_type)));
+  res.status(200).json({ faqTypes, faqs: result });
 });
 
 exports.getProductFaq = catchAsync(async (req, res, next) => {

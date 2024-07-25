@@ -9,7 +9,7 @@ const key = process.env.JWT_SECRET_ADMIN;
 
 router.use(multer().any());
 // Route to get all blogs by customer
-router.get('/customer', faqCtrl.getFaqs);
+router.get('/customer', faqCtrl.getFaqsCustomer);
 router.post('/customer/faq', faqCtrl.isExist, faqCtrl.getFaq);
 router.post('/customer/product', faqCtrl.getProductFaq);
 
