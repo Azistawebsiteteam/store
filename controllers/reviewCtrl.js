@@ -186,7 +186,8 @@ exports.getProductReviews = catchAsync(async (req, res, next) => {
 
   const values = [productId];
 
-  const reviewQuery = ` SELECT review_id,
+  const reviewQuery = `SELECT 
+                              review_id,
                               customer_id,
                               azst_customer_fname,
                               azst_customer_lname,

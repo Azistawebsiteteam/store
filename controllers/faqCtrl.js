@@ -19,6 +19,21 @@ exports.getFaqs = catchAsync(async (req, res, next) => {
   res.status(200).json(faqs);
 });
 
+exports.getProductFaq = catchAsync(async (req, res, next) => {
+  const { productId } = req.body;
+
+  if (!productId) return next(new AppError('Product id Required', 404));
+
+  const query = `SELECT azst_faq_question,azst_faq_ans
+                  FROM azst_faq_tbl
+                  WHERE azst_faq_status = 1 AND azst_faq_type = 'product' AND azst_faq_product_id = ?
+                  ORDER BY azst_faq_type ,azst_faq_updated_on DESC `;
+
+  const faqs = await db(query, [productId]);
+
+  res.status(200).json(faqs);
+});
+
 exports.createFaq = catchAsync(async (req, res, next) => {
   const { question, answer, type } = req.body;
 

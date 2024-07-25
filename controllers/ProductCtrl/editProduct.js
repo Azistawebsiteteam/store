@@ -804,7 +804,7 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
     tags,
     collections,
     productImage,
-    JSON.stringify(productImages),
+    JSON.stringify(newProductImages),
     variantsOrder,
     productImage.split('-')[1],
     metaTitle,

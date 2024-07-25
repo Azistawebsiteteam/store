@@ -59,8 +59,6 @@ const modifyAddress = (address) => {
     address_mobile: address.azst_customer_adressbook_mobile,
     address_email: address.azst_customer_adressbook_email,
     address_house_no: address.azst_customer_adressbook_hno,
-    address_area: address.azst_customer_adressbook_area,
-    address_city: address.azst_customer_adressbook_city,
     address_district: address.azst_customer_adressbook_district,
     address_state: address.azst_customer_adressbook_state,
     address_country: address.azst_customer_adressbook_country,

@@ -13,7 +13,7 @@ exports.getEligibleDiscounts = catchAsync(async (req, res, next) => {
   const query1 = `
     SELECT 
       azst_dsc_id AS discount_id,
-       'discount' AS discount_use_type, 
+      'discount' AS discount_use_type, 
       azst_dsc_title AS discount_title,
       azst_dsc_code AS discount_code,
       azst_dsc_mode AS discount_mode,
@@ -109,212 +109,294 @@ exports.getEligibleDiscounts = catchAsync(async (req, res, next) => {
   res.status(200).json(mergedResults);
 });
 
-// const { items, discountCode } = req.body;
+const getDiscountByCode = async (code, id, date) => {
+  const query = `
+    SELECT 
+      azst_discount_tbl.*,
+      COUNT(azst_cus_dsc_mapping_tbl.azst_cdm_dsc_id) AS discount_used 
+    FROM 
+      azst_discount_tbl
+    LEFT JOIN 
+      azst_cus_dsc_mapping_tbl 
+    ON 
+      azst_cus_dsc_mapping_tbl.azst_cdm_dsc_id = azst_discount_tbl.azst_dsc_id 
+      AND azst_cus_dsc_mapping_tbl.azst_cdm_cus_id = ?
+    WHERE 
+      azst_dsc_code = ? 
+      AND (azst_dsc_elg_cus = 'all' OR JSON_CONTAINS(azst_dsc_elg_cus, JSON_ARRAY(?)))
+      AND azst_dsc_status = 1 
+      AND ? BETWEEN azst_dsc_start_tm AND azst_dsc_end_tm
+    GROUP BY 
+      azst_dsc_id
+    HAVING 
+      discount_used < azst_dsc_usage_cnt
+  `;
+  const result = await db(query, [id, code, id, date]);
 
-// let totalAmount = items.reduce(
-//   (sum, item) => sum + item.price * item.quantity,
-//   0
-// );
-// let discount = 0;
+  return result.length ? result[0] : null;
+};
 
-// if (discountCode === 'DISCOUNT10') {
-//   discount = 0.1 * totalAmount;
-// }
+const getXyDiscountByCode = async (code, id, date) => {
+  const query = `
+    SELECT 
+      azst_x_y_dsc_applyto AS azst_dsc_apply_mode,
+      azst_x_y_dsc_applid AS azst_dsc_apply_id,
+      azst_x_y_dsc_buy_mode AS azst_dsc_prc_mode,
+      azst_x_y_dsc_min_add_qty AS azst_dsc_prc_value,
+      azst_x_y_dsc_apply_to AS discount_apply_to,
+      azst_x_y_dsc_apply_id AS discount_apply_id,
+      azst_x_y_dsc_min_prc_qty AS azst_dsc_apply_qty,
+      azst_x_y_dsc_type AS azst_dsc_mode,
+      azst_x_y_dsc_value AS azst_dsc_value,
+      azst_x_y_dsc_max_use, 
+      COUNT(azst_cus_dsc_mapping_tbl.azst_cdm_dsc_id) AS discount_used 
+    FROM 
+      azst_buy_x_get_y_discount_tbl
+    LEFT JOIN 
+      azst_cus_dsc_mapping_tbl 
+    ON 
+      azst_cus_dsc_mapping_tbl.azst_cdm_dsc_id = azst_buy_x_get_y_discount_tbl.azst_x_y_dsc_id 
+      AND azst_cus_dsc_mapping_tbl.azst_cdm_cus_id = ?
+    WHERE 
+      azst_buy_x_get_y_discount_tbl.azst_x_y_dsc_code = ?
+      AND (azst_buy_x_get_y_discount_tbl.azst_x_y_dsc_elg_cus = 'all' 
+      OR JSON_CONTAINS(azst_buy_x_get_y_discount_tbl.azst_x_y_dsc_elg_cus, JSON_ARRAY(?)))
+      AND azst_buy_x_get_y_discount_tbl.azst_x_y_dsc_status = 1
+      AND ? BETWEEN azst_buy_x_get_y_discount_tbl.azst_x_y_dsc_start_time AND azst_x_y_dsc_end_time
+    GROUP BY 
+      azst_buy_x_get_y_discount_tbl.azst_x_y_dsc_id
+    HAVING 
+      discount_used < azst_buy_x_get_y_discount_tbl.azst_x_y_dsc_max_use
+  `;
+  const result = await db(query, [id, code, id, date]);
+  return result.length ? result[0] : null;
+};
 
-// let finalAmount = totalAmount - discount;
-
-// // Insert order into MySQL
-// const orderQuery = `INSERT INTO orders (totalAmount, discount, finalAmount) VALUES (?, ?, ?)`;
-// connection.query(
-//   orderQuery,
-//   [totalAmount, discount, finalAmount],
-//   (error, results) => {
-//     if (error) throw error;
-
-//     const orderId = results.insertId;
-
-//     // Insert order items into MySQL
-//     const orderItemsQuery = `INSERT INTO orderItems (orderId, productId, name, price, quantity) VALUES ?`;
-//     const orderItemsData = items.map((item) => [
-//       orderId,
-//       item.productId,
-//       item.name,
-//       item.price,
-//       item.quantity,
-//     ]);
-
-//     connection.query(orderItemsQuery, [orderItemsData], (err) => {
-//       if (err) throw err;
-
-//       // Retrieve the complete order with items
-//       const getOrderQuery = `
-//         SELECT * FROM orders WHERE id = ?;
-//         SELECT * FROM orderItems WHERE orderId = ?;
-//       `;
-
-//       connection.query(getOrderQuery, [orderId, orderId], (err, results) => {
-//         if (err) throw err;
-
-//         const order = results[0][0];
-//         order.items = results[1];
-
-//         res.send(order);
-//       });
-//     });
-//   }
-// );
-
-const calculateNormalDiscount = async (discountCode, products, next) => {
-  const query = `SELECT * FROM azst_discount_tbl WHERE azst_dsc_code = ?`;
-  const discountResult = await db(query, [discountCode]);
-
-  if (!discountResult.length) {
-    return next(new AppError('Invalid discount', 400));
-  }
-
-  const {
-    azst_dsc_prc_value,
-    azst_dsc_usage_cnt,
-    azst_dsc_apply_qty,
-    azst_dsc_mode,
-    azst_dsc_value,
-    azst_dsc_apply_mode,
-    azst_dsc_prc_mode,
-    azst_dsc_apply_id,
-  } = discountResult[0];
-  console.log(discountResult[0]);
-
-  let product;
-  if (azst_dsc_apply_mode === 'product') {
-    console.log(products, 'product based');
-    product = products.find((p) => p.product_id === azst_dsc_apply_id);
-  } else {
-    product = products.find((p) =>
-      JSON.parse(p.collection_id).includes(azst_dsc_apply_id)
+const findApplicableProduct = (discount, products) => {
+  if (discount.azst_dsc_apply_mode === 'product') {
+    return products.filter(
+      (p) =>
+        p.product_id === discount.azst_dsc_apply_id &&
+        p.quantity >= discount.azst_dsc_apply_qty
     );
   }
 
-  if (!product) {
-    return next(new AppError('You are not eligible for this discount', 400));
-  }
+  const discountIds = JSON.parse(discount.azst_dsc_apply_id);
 
-  const totalAmt = products.reduce((acc, p) => acc + p.quantity * p.price, 0);
-
-  if (
-    azst_dsc_prc_mode === 'quantity' &&
-    product.quantity < azst_dsc_prc_value
-  ) {
-    return next(
-      new AppError(
-        `Please add ${
-          azst_dsc_prc_value - product.quantity
-        } more to get the discount`,
-        400
-      )
+  return products.filter((p) => {
+    const collectionIds = Array.isArray(p.collection_id)
+      ? p.collection_id
+      : JSON.parse(p.collection_id);
+    return (
+      collectionIds.some((id) => discountIds.includes(id)) &&
+      p.quantity >= discount.azst_dsc_apply_qty
     );
+  });
+};
+
+const calculateTotalAmount = (products) => {
+  return products.reduce((acc, p) => acc + p.quantity * p.price, 0);
+};
+
+const isEligibleForDiscount = (discount, products, next) => {
+  let message = '';
+  const isEligible = products.some((product) => {
+    if (discount.azst_dsc_prc_mode === 'quantity') {
+      message = `Please add ${
+        discount.azst_dsc_prc_value - product.quantity
+      } more quantity to get the discount`;
+      return product.quantity >= discount.azst_dsc_prc_value;
+    } else if (discount.azst_dsc_prc_mode === 'amount') {
+      // here one more Doubt it on total cart amount are the perticular product amount
+      message = `Please add  ${
+        discount.azst_dsc_prc_value - product.quantity * product.price
+      } Rs more value to get the discount`;
+      return product.quantity * product.price >= discount.azst_dsc_prc_value;
+    }
+    return false;
+  });
+
+  if (!isEligible) {
+    next(new AppError(message, 400));
   }
 
-  if (azst_dsc_prc_mode === 'amount' && totalAmt < azst_dsc_prc_value) {
-    return next(
-      new AppError(
-        `Please add ${
-          azst_dsc_prc_value - totalAmt
-        } more value get the discount`,
-        400
-      )
-    );
-  }
+  return isEligible;
+};
 
+const calculateDiscountAmount = (discount, product, totalAmt) => {
+  let discountAmt = 0;
   let totalPrice = 0;
 
-  let discountAmt = 0;
-  if (azst_dsc_mode === 'amount') {
-    discountAmt = azst_dsc_value;
-    totalPrice = totalAmt - azst_dsc_value;
+  if (discount.azst_dsc_mode === 'amount') {
+    discountAmt = discount.azst_dsc_value;
+    totalPrice = totalAmt - discountAmt;
   } else {
-    const applyQty = Math.min(product.quantity, azst_dsc_apply_qty);
-    discountAmt = ((product.price * applyQty) / 100) * azst_dsc_value;
+    const applyQty = Math.min(product.quantity, discount.azst_dsc_apply_qty);
+    discountAmt = ((product.price * applyQty) / 100) * discount.azst_dsc_value;
     totalPrice = totalAmt - discountAmt;
   }
 
-  return { totalAmt, discountAmt, totalPrice };
+  return { discountAmt, totalPrice };
 };
 
-const calculateXYDiscount = async (discountCode, products, next) => {
-  const query = `SELECT * FROM azst_buy_x_get_y_discount_tbl WHERE azst_x_y_dsc_id = ?`;
-  const discountResult = await db(query, [discountCode]);
+const calculateXyDiscountAmount = (
+  discount,
+  cartProducts,
+  product,
+  totalAmt,
+  next
+) => {
+  let discountAmt = 0;
+  let totalPrice = totalAmt;
 
-  if (!discountResult.length) {
-    return next(new AppError('Invalid discount', 400));
-  }
+  const products = cartProducts.filter(
+    (p) => p.product_id !== product.product_id
+  );
+  const discountIds = JSON.parse(discount.discount_apply_id);
 
-  const discount = discountResult[0];
-  const eligibleProducts = discount.azst_x_y_dsc_applid.split(',');
-
-  const applicableProducts = products.filter((p) => {
-    if (discount.azst_x_y_dsc_applyto === 'product') {
-      return eligibleProducts.includes(p.product_id);
-    } else {
-      return eligibleProducts.includes(p.collection_id);
+  const yProducts = products.filter((p) => {
+    if (discount.discount_apply_to === 'products') {
+      return (
+        discountIds.includes(`${p.product_id}`) &&
+        p.quantity >= discount.azst_dsc_apply_qty
+      );
+    } else if (discount.discount_apply_to === 'collections') {
+      const collectionIds = Array.isArray(p.collection_id)
+        ? p.collection_id
+        : JSON.parse(p.collection_id);
+      return (
+        collectionIds.some((id) => discountIds.includes(id)) &&
+        p.quantity >= discount.azst_dsc_apply_qty
+      );
     }
+    return false;
   });
 
-  const totalEligibleQty = applicableProducts.reduce(
-    (acc, p) => acc + p.quantity,
-    0
-  );
+  if (yProducts.length) {
+    return calculateDiscountAmount(discount, yProducts[0], totalAmt);
+  }
 
-  if (totalEligibleQty < discount.azst_x_y_dsc_min_qty) {
-    return next(
-      new AppError(
-        `Please add more products to meet the minimum quantity for the discount`,
-        400
-      )
+  return { discountAmt, totalPrice };
+};
+
+const calculateNormalDiscount = async (
+  discountCode,
+  cartProducts,
+  date,
+  id,
+  next
+) => {
+  try {
+    const discount = await getDiscountByCode(discountCode, id, date);
+
+    if (!discount) {
+      return next(new AppError('Invalid discount', 400));
+    }
+
+    const products = findApplicableProduct(discount, cartProducts);
+
+    if (!products.length) {
+      return next(new AppError('You are not eligible for this discount', 400));
+    }
+
+    const totalAmt = calculateTotalAmount(cartProducts);
+
+    if (!isEligibleForDiscount(discount, products, next)) {
+      return;
+    }
+
+    const { discountAmt, totalPrice } = calculateDiscountAmount(
+      discount,
+      products[0],
+      totalAmt
     );
+
+    return { totalAmt, discountAmt, totalPrice };
+  } catch (error) {
+    return next(new AppError(error.message, 500));
   }
+};
 
-  let discountValue = 0;
-  if (discount.azst_x_y_dsc_type === 'percentage') {
-    discountValue =
-      (totalEligibleQty * products[0].price * discount.azst_x_y_dsc_value) /
-      100;
-  } else if (discount.azst_x_y_dsc_type === 'amount') {
-    discountValue = discount.azst_x_y_dsc_value;
-  } else if (discount.azst_x_y_dsc_type === 'free') {
-    discountValue = products[0].price;
+const calculateXYDiscount = async (
+  discountCode,
+  cartProducts,
+  date,
+  id,
+  next
+) => {
+  try {
+    const discount = await getXyDiscountByCode(discountCode, id, date);
+
+    if (!discount) {
+      return next(new AppError('Invalid discount', 400));
+    }
+
+    const products = findApplicableProduct(discount, cartProducts);
+
+    if (!products.length) {
+      return next(new AppError('You are not eligible for this discount', 400));
+    }
+
+    const totalAmt = calculateTotalAmount(cartProducts);
+
+    if (!isEligibleForDiscount(discount, products, next)) {
+      return;
+    }
+
+    const { discountAmt, totalPrice } = calculateXyDiscountAmount(
+      discount,
+      cartProducts,
+      products[0],
+      totalAmt,
+      next
+    );
+
+    return { totalAmt, discountAmt, totalPrice };
+  } catch (error) {
+    return next(new AppError(error.message, 500));
   }
-
-  const totalAmt = products.reduce((acc, p) => acc + p.quantity * p.price, 0);
-  const totalPrice = totalAmt - discountValue;
-
-  return totalPrice;
 };
 
 exports.getDiscounts = catchAsync(async (req, res, next) => {
   const { discountCode, discountType, products } = req.body;
   const cartProducts = JSON.parse(products);
+  const date = moment().format('YYYY-MM-DD HH:mm:ss');
   let billingDetails;
 
   if (discountType === 'discount') {
     billingDetails = await calculateNormalDiscount(
       discountCode,
       cartProducts,
+      date,
+      req.empId,
       next
     );
   } else if (discountType === 'xydiscount') {
     billingDetails = await calculateXYDiscount(
       discountCode,
       cartProducts,
+      date,
+      req.empId,
       next
     );
   } else {
     return res.status(400).json({ error: 'Invalid discountType' });
   }
 
-  if (billingDetails === undefined) return; // next() should have been called already if there's an error
+  if (!billingDetails) return; // next() should have been called already if there's an error
 
   res.status(200).json(billingDetails);
 });
+
+//  azst_dsc_title,
+//    azst_dsc_code,
+//    azst_dsc_mode,
+//    azst_dsc_value,
+//    azst_dsc_apply_mode,
+//    azst_dsc_apply_id,
+//    azst_dsc_prc_value,
+//    azst_dsc_apply_qty,
+//    azst_dsc_usage_cnt;
 
 // azst_dsc_id,
 //   azst_dsc_title,

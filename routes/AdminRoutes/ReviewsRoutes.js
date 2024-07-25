@@ -11,6 +11,6 @@ router.use(authCtrl.protect(key));
 router.use(multer().any());
 
 router.post('/approve', reviewCtrl.hanldeReviewApproval);
-router.post('/get/reviews', reviewCtrl.getAllReviews);
+router.post('/all', reviewCtrl.getAllReviews);
 
 module.exports = router;

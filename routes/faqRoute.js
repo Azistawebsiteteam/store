@@ -11,6 +11,7 @@ router.use(multer().any());
 // Route to get all blogs by customer
 router.get('/customer', faqCtrl.getFaqs);
 router.post('/customer/faq', faqCtrl.isExist, faqCtrl.getFaq);
+router.post('/customer/product', faqCtrl.getProductFaq);
 
 // Middleware to protect all routes
 router.use(authCtrl.protect(key));
