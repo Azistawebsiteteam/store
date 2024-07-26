@@ -51,7 +51,7 @@ const updateBannerSchema = bannerSchema.keys({
 exports.getbanners = catchAsync(async (req, res, next) => {
   const date = moment().format('YYYY-MM-DD HH:mm:ss');
   const query = `SELECT banner_id,azst_web_image,azst_mobile_image,azst_background_url
-                 FROM azst_banners_tbl WHERE status = 1 AND azst_banner_type <> 'product' AND
+                 FROM azst_banners_tbl WHERE azst_banner_type <> 'product' AND is_default = 0 AND status = 1 AND 
                   '${date}' >= azst_start_time AND '${date}' <= azst_end_time
                  ORDER BY azst_createdon DESC`;
 
@@ -167,14 +167,41 @@ exports.updateStoreBanner = catchAsync(async (req, res, next) => {
   const { error } = updateBannerSchema.validate(req.body);
   if (error) return next(new AppError(error.message, 400));
 
-  if (!req.files || Object.keys(req.files).length < 2) {
-    const { azst_web_image, azst_mobile_image } = req.banner;
+  const { azst_web_image, azst_mobile_image } = req.banner;
+
+  if (!req.files || Object.keys(req.files).length === 0) {
+    // No files uploaded, use existing images
     req.body.webBanner = azst_web_image;
     req.body.mobileBanner = azst_mobile_image;
     return next();
   }
 
-  const { azst_web_image, azst_mobile_image } = req.banner;
+  if (req.files && Object.keys(req.files).length === 1) {
+    // One file uploaded, determine which one and handle it
+    for (const fieldName in req.files) {
+      const imagePath =
+        fieldName === 'webBanner'
+          ? `uploads/bannerImages/${azst_web_image}`
+          : `uploads/bannerImages/${azst_mobile_image}`;
+
+      fs.unlink(imagePath, (err) => {
+        if (err) console.error('Failed to delete old image:', err);
+      });
+
+      const images = await uploadBannerImage(req.files);
+      req.body[fieldName] = images[fieldName];
+
+      // Ensure the other banner image is retained
+      if (fieldName === 'webBanner') {
+        req.body.mobileBanner = azst_mobile_image;
+      } else {
+        req.body.webBanner = azst_web_image;
+      }
+    }
+    return next();
+  }
+
+  // Both files uploaded
   for (const fieldName in req.files) {
     const imagePath =
       fieldName === 'webBanner'
@@ -190,6 +217,7 @@ exports.updateStoreBanner = catchAsync(async (req, res, next) => {
   Object.keys(images).forEach((image) => {
     req.body[image] = images[image];
   });
+
   next();
 });
 
