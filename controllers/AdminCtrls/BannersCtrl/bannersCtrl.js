@@ -41,7 +41,7 @@ const bannerSchema = Joi.object({
   startTime: Joi.string().allow(''),
   endTime: Joi.string().allow(''),
   isDefault: Joi.string().required().valid('0', '1'),
-  bannerId: Joi.number().optional(),
+  bannerType: Joi.string().required().valid('slider', 'product'),
 });
 
 const updateBannerSchema = bannerSchema.keys({
@@ -128,19 +128,21 @@ const getBannerImageLink = (req, img) =>
 exports.getbanners = catchAsync(async (req, res, next) => {
   const date = moment().format('YYYY-MM-DD HH:mm:ss');
   const query = `SELECT banner_id,azst_web_image,azst_mobile_image,azst_background_url
-                 FROM azst_banners_tbl WHERE status = 1 AND 
+                 FROM azst_banners_tbl WHERE status = 1 AND azst_banner_type <> 'product' AND
                   '${date}' >= azst_start_time AND '${date}' <= azst_end_time
                  ORDER BY azst_createdon DESC`;
 
   const defaultsQuery = `SELECT banner_id,azst_web_image,azst_mobile_image,azst_background_url
-                         FROM azst_banners_tbl WHERE status = 1 AND is_default = 1 ORDER BY azst_createdon DESC`;
+                         FROM azst_banners_tbl
+                         WHERE azst_banner_type <> 'product' AND status = 1 AND is_default = 1
+                         ORDER BY azst_createdon DESC`;
 
   let result = await db(query);
-  if (result.length === 0) {
-    result = await db(defaultsQuery);
-  }
+  let defaults = await db(defaultsQuery);
 
-  const banners = result.map((b) => ({
+  const allBanners = [...result, ...defaults];
+
+  const banners = allBanners.map((b) => ({
     ...b,
     azst_web_image: getBannerImageLink(req, b.azst_web_image),
     azst_mobile_image: getBannerImageLink(req, b.azst_mobile_image),
@@ -151,10 +153,12 @@ exports.getbanners = catchAsync(async (req, res, next) => {
 exports.getAllBanners = catchAsync(async (req, res, next) => {
   const defaultsQuery = `SELECT banner_id,azst_banner_title,azst_banner_description,
                             azst_web_image,azst_alt_text,azst_background_url,
-                           DATE_FORMAT(azst_start_time, '%d-%m-%Y %H:%i:%s') as start_date,
+                            DATE_FORMAT(azst_start_time, '%d-%m-%Y %H:%i:%s') as start_date,
                             DATE_FORMAT( azst_end_time, '%d-%m-%Y %H:%i:%s') as end_date,
                             status,is_default
-                          FROM azst_banners_tbl  ORDER BY azst_createdon DESC`;
+                          FROM azst_banners_tbl
+                          WHERE azst_banner_type <> 'product'
+                          ORDER BY azst_createdon DESC`;
 
   let result = await db(defaultsQuery);
   if (result.length === 0) {
@@ -179,12 +183,13 @@ exports.addBanner = catchAsync(async (req, res, next) => {
     startTime,
     endTime,
     isDefault,
+    bannerType,
   } = req.body;
 
   const rowquery = `SELECT COUNT(*) as row_count FROM azst_banners_tbl`;
 
   const resultRows = await db(rowquery);
-  if (resultRows[0].row_count > 20)
+  if (resultRows[0].row_count > 25)
     return next(new AppError('maximum banner count exceeded.', 400));
 
   const today = moment().format('YYYY-MM-DD HH:mm:ss');
@@ -194,8 +199,11 @@ exports.addBanner = catchAsync(async (req, res, next) => {
       ? moment().add(10, 'months').format('YYYY-MM-DD HH:mm:ss')
       : endTime;
 
-  const query = `INSERT INTO azst_banners_tbl (azst_banner_title, azst_banner_description, azst_web_image, azst_mobile_image, azst_alt_text, azst_background_url,
-                        azst_start_time, azst_end_time, is_default, azst_updatedby, azst_createdby) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+  const query = `INSERT INTO azst_banners_tbl 
+                  (azst_banner_title, azst_banner_description, azst_web_image, azst_mobile_image,
+                  azst_alt_text, azst_background_url, azst_start_time, azst_end_time,
+                  azst_banner_type, azst_createdby,is_default)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
   const values = [
     title,
@@ -206,9 +214,9 @@ exports.addBanner = catchAsync(async (req, res, next) => {
     backgroundUrl,
     startTime,
     endTime,
+    bannerType,
+    req.empId,
     isDefault,
-    req.empId,
-    req.empId,
   ];
 
   const result = await db(query, values);
@@ -240,6 +248,7 @@ exports.updateBanner = catchAsync(async (req, res, next) => {
     startTime,
     endTime,
     isDefault,
+    bannerType,
     bannerId,
   } = req.body;
 
@@ -267,10 +276,10 @@ exports.updateBanner = catchAsync(async (req, res, next) => {
         azst_start_time = ?,
         azst_end_time = ?,
         is_default = ?,
+        azst_banner_type =?,
         azst_updatedby = ?
-      
-    WHERE
-        banner_id = ?
+      WHERE
+          banner_id = ?
 `;
 
   const values = [
@@ -283,6 +292,7 @@ exports.updateBanner = catchAsync(async (req, res, next) => {
     moment(startTime).format('YYYY-MM-DD HH:mm:ss'),
     moment(endTime).format('YYYY-MM-DD HH:mm:ss'),
     isDefault,
+    bannerType,
     req.empId,
     bannerId,
   ];

@@ -1,9 +1,11 @@
 const router = require('express').Router();
 
-const bannerCtrl = require('../../controllers/AdminCtrls/BannersCtrl/bannersCtrl');
 const authCtrl = require('../../controllers/authController');
+const bannerCtrl = require('../../controllers/AdminCtrls/BannersCtrl/bannersCtrl');
+const productBnrCtrl = require('../../controllers/AdminCtrls/BannersCtrl/productBanner');
 
 router.get('/data', bannerCtrl.getbanners);
+router.get('/product', productBnrCtrl.getbanners);
 
 const key = process.env.JWT_SECRET_ADMIN;
 
@@ -24,6 +26,7 @@ router.post(
   bannerCtrl.updateBanner
 );
 router.get('/', bannerCtrl.getAllBanners);
+router.get('/product/all', productBnrCtrl.getAllBanners);
 
 router.put('/', bannerCtrl.hideBanner);
 
