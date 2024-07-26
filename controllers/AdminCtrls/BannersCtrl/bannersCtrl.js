@@ -48,83 +48,6 @@ const updateBannerSchema = bannerSchema.keys({
   bannerId: Joi.number().required(),
 });
 
-const uploadBannerImage = async (files) => {
-  const allowedMimeTypes = ['image/png', 'image/jpeg', 'image/jpg'];
-  const images = {};
-  const promises = [];
-
-  for (const fieldName in files) {
-    const imageField = files[fieldName][0];
-
-    // Check the file type
-    if (!allowedMimeTypes.includes(imageField.mimetype)) {
-      throw new AppError(
-        'Invalid file type. Only PNG, JPEG, and JPG are allowed.',
-        400
-      );
-    }
-
-    const imageName = `${Date.now()}-${imageField.originalname.replace(
-      / /g,
-      '-'
-    )}`;
-    const folder = `uploads/bannerImages/`; // Corrected folder path
-
-    // Process image and save it
-    promises.push(
-      sharp(imageField.buffer)
-        .toFile(`${folder}${imageName}`)
-        .then(() => {
-          images[fieldName] = imageName;
-        })
-    );
-  }
-
-  await Promise.all(promises);
-  return images;
-};
-
-exports.storebanner = catchAsync(async (req, res, next) => {
-  const { error } = bannerSchema.validate(req.body);
-  if (error) return next(new AppError(error.message, 400));
-
-  if (!req.files || Object.keys(req.files).length < 2) {
-    return next(new AppError('banner image is required', 400));
-  }
-
-  const images = await uploadBannerImage(req.files);
-  Object.keys(images).forEach((image) => {
-    req.body[image] = images[image];
-  });
-  next();
-});
-
-exports.updatestorebanner = catchAsync(async (req, res, next) => {
-  const { error } = updateBannerSchema.validate(req.body);
-  if (error) return next(new AppError(error.message, 400));
-
-  if (!req.files || Object.keys(req.files).length < 2) {
-    return next();
-  }
-  const { azst_web_image, azst_mobile_image } = req.banner;
-  for (const fieldName in req.files) {
-    const imagePath =
-      fieldName === 'webBanner'
-        ? `uploads/bannerImages/${azst_web_image}`
-        : `uploads/bannerImages/${azst_mobile_image}`;
-
-    fs.unlink(imagePath, (err) => {});
-  }
-  const images = await uploadBannerImage(req.files);
-  Object.keys(images).forEach((image) => {
-    req.body[image] = images[image];
-  });
-  next();
-});
-
-const getBannerImageLink = (req, img) =>
-  `${req.protocol}://${req.get('host')}/api/images/banners/${img}`;
-
 exports.getbanners = catchAsync(async (req, res, next) => {
   const date = moment().format('YYYY-MM-DD HH:mm:ss');
   const query = `SELECT banner_id,azst_web_image,azst_mobile_image,azst_background_url
@@ -172,6 +95,108 @@ exports.getAllBanners = catchAsync(async (req, res, next) => {
   res.status(200).json(banners);
 });
 
+const uploadBannerImage = async (files) => {
+  const allowedMimeTypes = ['image/png', 'image/jpeg', 'image/jpg'];
+  const images = {};
+  const promises = [];
+
+  for (const fieldName in files) {
+    const imageField = files[fieldName][0];
+
+    // Check the file type
+    if (!allowedMimeTypes.includes(imageField.mimetype)) {
+      throw new AppError(
+        'Invalid file type. Only PNG, JPEG, and JPG are allowed.',
+        400
+      );
+    }
+
+    const imageName = `${Date.now()}-${imageField.originalname.replace(
+      / /g,
+      '-'
+    )}`;
+    const folder = `uploads/bannerImages/`; // Corrected folder path
+
+    // Process image and save it
+    promises.push(
+      sharp(imageField.buffer)
+        .toFile(`${folder}${imageName}`)
+        .then(() => {
+          images[fieldName] = imageName;
+        })
+    );
+  }
+
+  await Promise.all(promises);
+  return images;
+};
+
+// Middleware to check if a banner exists
+exports.isBannerExist = catchAsync(async (req, res, next) => {
+  const { bannerId } = req.body;
+  if (!bannerId) return next(new AppError('Banner ID required', 400));
+
+  const query =
+    'SELECT * FROM azst_banners_tbl WHERE status = 1 AND banner_id = ?';
+  const result = await db(query, [bannerId]);
+
+  if (result.length <= 0) return next(new AppError('Banner not found', 404));
+
+  req.banner = result[0];
+  next();
+});
+
+// Middleware to validate and store banner images
+exports.storeBanner = catchAsync(async (req, res, next) => {
+  const { error } = bannerSchema.validate(req.body);
+  if (error) return next(new AppError(error.message, 400));
+
+  if (!req.files || Object.keys(req.files).length < 2) {
+    return next(new AppError('Banner images are required', 400));
+  }
+
+  const images = await uploadBannerImage(req.files);
+  Object.keys(images).forEach((image) => {
+    req.body[image] = images[image];
+  });
+  next();
+});
+
+// Middleware to validate and update banner images
+exports.updateStoreBanner = catchAsync(async (req, res, next) => {
+  const { error } = updateBannerSchema.validate(req.body);
+  if (error) return next(new AppError(error.message, 400));
+
+  if (!req.files || Object.keys(req.files).length < 2) {
+    const { azst_web_image, azst_mobile_image } = req.banner;
+    req.body.webBanner = azst_web_image;
+    req.body.mobileBanner = azst_mobile_image;
+    return next();
+  }
+
+  const { azst_web_image, azst_mobile_image } = req.banner;
+  for (const fieldName in req.files) {
+    const imagePath =
+      fieldName === 'webBanner'
+        ? `uploads/bannerImages/${azst_web_image}`
+        : `uploads/bannerImages/${azst_mobile_image}`;
+
+    fs.unlink(imagePath, (err) => {
+      if (err) console.error('Failed to delete old image:', err);
+    });
+  }
+
+  const images = await uploadBannerImage(req.files);
+  Object.keys(images).forEach((image) => {
+    req.body[image] = images[image];
+  });
+  next();
+});
+
+const getBannerImageLink = (req, img) =>
+  `${req.protocol}://${req.get('host')}/api/images/banners/${img}`;
+
+// Add a new banner
 exports.addBanner = catchAsync(async (req, res, next) => {
   let {
     title,
@@ -186,11 +211,12 @@ exports.addBanner = catchAsync(async (req, res, next) => {
     bannerType,
   } = req.body;
 
-  const rowquery = `SELECT COUNT(*) as row_count FROM azst_banners_tbl`;
+  const rowQuery = 'SELECT COUNT(*) as row_count FROM azst_banners_tbl';
+  const resultRows = await db(rowQuery);
 
-  const resultRows = await db(rowquery);
-  if (resultRows[0].row_count > 25)
-    return next(new AppError('maximum banner count exceeded.', 400));
+  if (resultRows[0].row_count > 25) {
+    return next(new AppError('Maximum banner count exceeded', 400));
+  }
 
   const today = moment().format('YYYY-MM-DD HH:mm:ss');
   startTime = startTime === '' ? today : startTime;
@@ -202,7 +228,7 @@ exports.addBanner = catchAsync(async (req, res, next) => {
   const query = `INSERT INTO azst_banners_tbl 
                   (azst_banner_title, azst_banner_description, azst_web_image, azst_mobile_image,
                   azst_alt_text, azst_background_url, azst_start_time, azst_end_time,
-                  azst_banner_type, azst_createdby,is_default)
+                  azst_banner_type, azst_createdby, is_default)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
   const values = [
@@ -223,20 +249,10 @@ exports.addBanner = catchAsync(async (req, res, next) => {
 
   res
     .status(200)
-    .send({ banner_id: result.insertId, message: 'banner added successfully' });
+    .send({ banner_id: result.insertId, message: 'Banner added successfully' });
 });
 
-exports.isBannerExist = catchAsync(async (req, res, next) => {
-  const { bannerId } = req.body;
-  if (!bannerId) return next(new AppError('banner Id required', 400));
-  const query = `SELECT *
-                 FROM azst_banners_tbl WHERE status = 1 AND banner_id = ? `;
-  const result = await db(query, [bannerId]);
-  if (result.length <= 0) return next(new AppError('banner not found', 404));
-  req.banner = result[0];
-  next();
-});
-
+// Update an existing banner
 exports.updateBanner = catchAsync(async (req, res, next) => {
   let {
     title,
@@ -261,8 +277,6 @@ exports.updateBanner = catchAsync(async (req, res, next) => {
 
   webBanner = webBanner.substring(webBanner.lastIndexOf('/') + 1);
   mobileBanner = mobileBanner.substring(mobileBanner.lastIndexOf('/') + 1);
-  // Find the last '/' to get the start index of the filename
-  // Extract the filename from the URL
 
   const query = `
     UPDATE azst_banners_tbl
@@ -276,11 +290,11 @@ exports.updateBanner = catchAsync(async (req, res, next) => {
         azst_start_time = ?,
         azst_end_time = ?,
         is_default = ?,
-        azst_banner_type =?,
+        azst_banner_type = ?,
         azst_updatedby = ?
-      WHERE
-          banner_id = ?
-`;
+    WHERE
+        banner_id = ?
+  `;
 
   const values = [
     title,
@@ -299,7 +313,7 @@ exports.updateBanner = catchAsync(async (req, res, next) => {
 
   await db(query, values);
 
-  res.status(200).send({ message: 'banner  details updated successfully' });
+  res.status(200).send({ message: 'Banner details updated successfully' });
 });
 
 exports.getbanner = catchAsync(async (req, res, next) => {

@@ -10,11 +10,10 @@ router.get('/product', productBnrCtrl.getbanners);
 const key = process.env.JWT_SECRET_ADMIN;
 
 router.use(authCtrl.protect(key));
-
 router.post(
   '/add',
   bannerCtrl.uploadbanner,
-  bannerCtrl.storebanner,
+  bannerCtrl.storeBanner,
   bannerCtrl.addBanner
 );
 
@@ -22,9 +21,10 @@ router.post(
   '/update',
   bannerCtrl.uploadbanner,
   bannerCtrl.isBannerExist,
-  bannerCtrl.updatestorebanner,
+  bannerCtrl.updateStoreBanner,
   bannerCtrl.updateBanner
 );
+
 router.get('/', bannerCtrl.getAllBanners);
 router.get('/product/all', productBnrCtrl.getAllBanners);
 
