@@ -27,8 +27,9 @@ const upload = multer({
 exports.uploadImage = upload.single('blogImg');
 
 exports.storeImage = catchAsync(async (req, res, next) => {
+
   if (!req.file) {
-    next(new AppError('Upload blog image is required', 400));
+    return next(new AppError('Upload blog image is required', 400));
   }
   const imageName = `${Date.now()}-${req.file.originalname.replace(/ /g, '-')}`;
   await sharp(req.file.buffer).toFile(`Uploads/blogImages/${imageName}`);

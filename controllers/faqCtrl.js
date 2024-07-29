@@ -7,7 +7,7 @@ exports.getFaqs = catchAsync(async (req, res, next) => {
   const query = `SELECT azst_faq_id,azst_faq_question,azst_faq_ans,azst_faq_type
                   FROM azst_faq_tbl
                   WHERE azst_faq_status = 1
-                  ORDER BY azst_faq_type ,azst_faq_updated_on DESC `;
+                  ORDER BY azst_faq_type ,azst_faq_updated_on DESC , azst_faq_created_on DESC `;
 
   const faqs = await db(query);
 
