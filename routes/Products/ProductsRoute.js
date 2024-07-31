@@ -42,6 +42,14 @@ router.post(
 );
 
 router.post(
+  '/add-info',
+  productCtrl.uploadInfoImgs,
+  productModel.productInfoValidation,
+  productCtrl.storeIngImages,
+  productCtrl.addInfo
+);
+
+router.post(
   '/update-store',
   productCtrl.uploadImage,
   productModel.productValidation,
@@ -59,6 +67,10 @@ router.put(
   editCtrl.variantUpdate
 );
 
+router.use(multer().any());
+
+router.post('/get-info', productCtrl.getProductInfo);
+
 router.delete(
   '/delete/variant',
   editCtrl.isVariantExist,
@@ -73,9 +85,6 @@ router.post(
   editCtrl.getProductDetails,
   editCtrl.getVariantsDetails
 );
-
-// editCtrl.getProductDetails,
-//editCtrl.getVariantsDetails
 
 router.post('/whish-list', getWhishlist);
 router.post('/add-wl', isExistInWl, addToWl);

@@ -119,6 +119,68 @@ const variantsSchema = Joi.object({
   Costperitem: Joi.number(),
 });
 
+// Define the schema for a single ingredient
+const singleIngredientSchema = Joi.object({
+  id: Joi.alternatives().try(Joi.string(), Joi.number()).required(),
+  title: Joi.string().min(5).required(),
+  description: Joi.string().min(5).required(),
+  image: Joi.alternatives()
+    .try(Joi.string(), Joi.object())
+    .required()
+    .messages({
+      'any.required': 'Please upload an image', // Custom message for required field
+      'object.base': 'Image must be an object', // Custom message for invalid type
+    }), // assuming ingImg is a string (e.g., URL or filename)
+});
+
+const singleFeatureSchema = Joi.object({
+  id: Joi.alternatives().try(Joi.string(), Joi.number()).required(),
+  title: Joi.string().min(5).required(),
+  image: Joi.alternatives()
+    .try(Joi.string(), Joi.object())
+    .required()
+    .messages({
+      'any.required': 'Please upload an image', // Custom message for required field
+      'object.base': 'Image must be an object', // Custom message for invalid type
+    }), // assuming ingImg is a string (e.g., URL or filename)
+});
+
+// Validate the ingredients array
+const validateIng = (ings, schema) => {
+  const parsedIngs = JSON.parse(ings);
+  const validationResults = parsedIngs.map((ing) => schema.validate(ing));
+
+  for (let result of validationResults) {
+    if (result.error) {
+      throw new Error(result.error.message);
+    }
+  }
+  return parsedIngs; // Return parsed and validated ingredients
+};
+
+// Define the schema for the entire request body
+const productInfoSchema = Joi.object({
+  ingredients: Joi.custom((value, helpers) => {
+    try {
+      return validateIng(value, singleIngredientSchema);
+    } catch (error) {
+      return helpers.message(error.message);
+    }
+  }).required(),
+  features: Joi.custom((value, helpers) => {
+    try {
+      return validateIng(value, singleFeatureSchema);
+    } catch (error) {
+      return helpers.message(error.message);
+    }
+  }).required(),
+  productId: Joi.number().required().min(1),
+  ingImages: Joi.alternatives().try(Joi.string(), Joi.array()).optional(),
+  feaImages: Joi.alternatives().try(Joi.string(), Joi.array()).optional(),
+  deleteIngredient: Joi.array().optional(),
+  deleteFeatures: Joi.array().optional(),
+});
+
 const validateProduct = async (reqBody, schema) => {
   try {
     await schema.validateAsync(reqBody, { abortEarly: false });
@@ -166,4 +228,14 @@ const variantValidation = catchAsync(async (req, res, next) => {
   next();
 });
 
-module.exports = { productValidation, variantValidation };
+const productInfoValidation = catchAsync(async (req, res, next) => {
+  const { error } = productInfoSchema.validate(req.body);
+  if (error) return next(new AppError(error.message, 400));
+  next();
+});
+
+module.exports = {
+  productValidation,
+  variantValidation,
+  productInfoValidation,
+};

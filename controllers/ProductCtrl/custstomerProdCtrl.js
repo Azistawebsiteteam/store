@@ -231,8 +231,47 @@ exports.getProductsSerach = catchAsync(async (req, res, next) => {
 exports.getProductDetalis = catchAsync(async (req, res, next) => {
   const { productId } = req.body;
 
-  const getproductDetails = `SELECT * FROM azst_products  
-                              WHERE  product_url_title = ? AND azst_products.status = 1`;
+  const getproductDetails = `SELECT 
+                              azst_products.*, 
+                              (
+                                SELECT JSON_ARRAYAGG(
+                                  JSON_OBJECT(
+                                    'ingredient_id', azst_product_ingredients.id,
+                                    'title', azst_product_ingredients.title,
+                                    'description', azst_product_ingredients.description,
+                                    'image',  CONCAT('${
+                                      req.protocol
+                                    }://${req.get(
+    'host'
+  )}/api/images/ingredients/', azst_product_ingredients.image)
+                                                              
+                            ))
+                                FROM azst_product_ingredients 
+                                WHERE azst_product_ingredients.product_id = azst_products.id
+                                  AND azst_product_ingredients.status = 1
+                              ) AS product_ingredients,
+                              (
+                                SELECT JSON_ARRAYAGG(
+                                  JSON_OBJECT(
+                                    'feature_id', azst_product_features.id,
+                                    'title', azst_product_features.title,
+                                    'image',  CONCAT('${
+                                      req.protocol
+                                    }://${req.get(
+    'host'
+  )}/api/images/features/', azst_product_features.image)
+                                  )
+                                )
+                                FROM azst_product_features 
+                                WHERE azst_product_features.product_id = azst_products.id
+                                  AND azst_product_features.status = 1
+                              ) AS product_features
+                            FROM 
+                              azst_products
+                            WHERE 
+                              azst_products.product_url_title = ?
+                              AND azst_products.status = 1;
+                            `;
 
   const getVariants = `SELECT  id,option1,option2,option3 , variant_quantity FROM  azst_sku_variant_info 
                         WHERE product_id = ? AND status = 1 ORDER BY id`;

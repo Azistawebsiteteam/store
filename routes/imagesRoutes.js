@@ -21,5 +21,6 @@ setupStaticRoute('/popup', 'PopupImages');
 setupStaticRoute('/review', 'reviewImages');
 setupStaticRoute('/product', 'productImages');
 setupStaticRoute('/blog', 'blogImages');
-
+setupStaticRoute('/ingredients', 'ingredientsImages');
+setupStaticRoute('/features', 'featuresImages');
 module.exports = router;

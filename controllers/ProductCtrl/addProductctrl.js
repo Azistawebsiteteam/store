@@ -7,6 +7,7 @@ const {
   getofferPercentage,
   getPricess,
 } = require('../../Utils/offerperecentageCal');
+const { number } = require('joi');
 
 const multerStorage = multer.memoryStorage();
 
@@ -34,8 +35,8 @@ exports.uploadImage = upload.fields([
 const getVariantImgName = async (file, folderName) => {
   const fileName = `${Date.now()}-${file.originalname.replace(/ /g, '-')}`;
   await sharp(file.buffer)
-    .toFormat('jpeg')
-    .jpeg({ quality: 100 })
+    .toFormat('png')
+    .png({ quality: 100 }) // Note: PNG does not support quality setting like JPEG
     .toFile(`uploads/${folderName}/${fileName}`);
   return fileName;
 };
@@ -359,4 +360,162 @@ exports.skuVariantsProduct = catchAsync(async (req, res, next) => {
     }
   }
   res.status(200).json({ message: 'Product & variants inserted successfully' });
+});
+
+exports.uploadInfoImgs = upload.fields([
+  { name: 'ingImages', maxCount: 10 },
+  { name: 'feaImages', maxCount: 10 },
+]);
+
+exports.storeIngImages = catchAsync(async (req, res, next) => {
+  const { ingredients, features } = req.body;
+  const parsedIngredients = JSON.parse(ingredients);
+  const parsedFeatures = JSON.parse(features);
+  const ingImages = req.files.ingImages || [];
+  const feaImages = req.files.feaImages || [];
+
+  if (!parsedIngredients.length && !parsedFeatures.length) {
+    return next(new AppError('Ingredients and Features are Required', 400));
+  }
+
+  const updateImageData = async (data, images, folder) => {
+    const updatedData = [];
+    let imageIndex = 0;
+    for (let i = 0; i < data.length; i++) {
+      const item = data[i];
+      let image = item.image;
+
+      if (typeof image === 'object') {
+        // If image is an object, upload new image and get filename
+
+        const fileName = await getVariantImgName(images[imageIndex], folder);
+        imageIndex++;
+        updatedData.push({ ...item, image: fileName });
+      } else if (typeof image === 'string' && image !== '') {
+        // If image is a string, just keep the existing filename
+        updatedData.push(item);
+      } else {
+        return next(new AppError('Image is required for each item', 400));
+      }
+    }
+    return updatedData;
+  };
+
+  req.body.ingredients = await updateImageData(
+    parsedIngredients,
+    ingImages,
+    'ingredientsImages'
+  );
+  req.body.features = await updateImageData(
+    parsedFeatures,
+    feaImages,
+    'featuresImages'
+  );
+
+  next();
+});
+
+exports.addInfo = catchAsync(async (req, res, next) => {
+  const { ingredients, features, productId, deleteIngredient, deleteFeatures } =
+    req.body;
+  const empId = req.empId;
+
+  const deleteData = async (query, data) => {
+    for (let item of data) {
+      await db(query, [empId, item]);
+    }
+  };
+
+  const insertData = async (insertQuery, updateQuery, data) => {
+    for (const item of data) {
+      let query = '';
+      let values = [];
+
+      if (typeof item.id === 'number') {
+        // Update existing item
+
+        const { id, title, description, image } = item;
+        const modifiedImg = image.substring(image.lastIndexOf('/') + 1);
+        values = [title, modifiedImg, empId, id];
+        if (description) {
+          values.unshift(description);
+        }
+        query = updateQuery;
+      } else {
+        // Insert new item
+
+        const { title, description, image } = item;
+        values = [title, image, productId, empId];
+        if (description) {
+          values.unshift(description);
+        }
+        query = insertQuery;
+      }
+
+      const result = await db(query, values);
+      if (result.affectedRows === 0) {
+        throw new AppError('Oops! Something went wrong', 400);
+      }
+    }
+  };
+
+  const ingredientQuery = `INSERT INTO azst_product_ingredients (description, title, image, product_id, created_by) VALUES(?,?,?,?,?)`;
+  const featureQuery = `INSERT INTO azst_product_features (title, image, product_id, created_by) VALUES(?,?,?,?)`;
+
+  const ingredientUpQuery = `UPDATE azst_product_ingredients SET description = ?, title = ?, image = ?, updated_by = ? WHERE id = ?`;
+  const featureUpQuery = `UPDATE azst_product_features SET title = ?, image = ?, updated_by = ? WHERE id = ?`;
+
+  const deleteIngredientQ = `UPDATE azst_product_ingredients SET status = 0, updated_by = ? WHERE id = ?`;
+  const deleteFeatureQ = `UPDATE azst_product_features SET status = 0, updated_by = ? WHERE id = ?`;
+
+  await insertData(ingredientQuery, ingredientUpQuery, ingredients);
+  await insertData(featureQuery, featureUpQuery, features);
+  if (deleteIngredient && deleteIngredient.length) {
+    await deleteData(deleteIngredientQ, deleteIngredient);
+  }
+  if (deleteFeatures && deleteFeatures.length) {
+    await deleteData(deleteFeatureQ, deleteFeatures);
+  }
+
+  res.status(200).json({ message: 'Info Added successfully' });
+});
+
+exports.getProductInfo = catchAsync(async (req, res, next) => {
+  const { productId } = req.body;
+
+  if (!productId) {
+    return res.status(400).json({ message: 'Product ID is required' });
+  }
+
+  const getIngredients = `
+    SELECT
+      id,
+      title,
+      description,
+      CONCAT('${req.protocol}://${req.get(
+    'host'
+  )}/api/images/ingredients/', image) AS image
+    FROM
+      azst_product_ingredients
+    WHERE
+      product_id = ? AND status = 1`;
+
+  const getFeatures = `
+    SELECT
+      id,
+      title,
+      CONCAT('${req.protocol}://${req.get(
+    'host'
+  )}/api/images/features/', image) AS image
+    FROM
+      azst_product_features
+    WHERE
+      product_id = ? AND status = 1`;
+
+  const [ingredients, features] = await Promise.all([
+    db(getIngredients, [productId]),
+    db(getFeatures, [productId]),
+  ]);
+
+  res.status(200).json({ ingredients, features });
 });
