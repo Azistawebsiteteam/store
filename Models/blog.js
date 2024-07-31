@@ -12,7 +12,7 @@ const loginSchema = Joi.object({
 
 const blogValidation = async (req, res, next) => {
   //  const { title, description, content, product, type, blogImg } = req.body;
-  console.log(req.body);
+
   const { error } = loginSchema.validate(req.body);
   if (error) {
     return next(new AppError(error.message, 400));

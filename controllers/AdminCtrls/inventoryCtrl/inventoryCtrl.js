@@ -6,7 +6,7 @@ const catchAsync = require('../../../Utils/catchAsync');
 
 exports.getInventoryQty = catchAsync(async (req, res, next) => {
   let { inventoryId, collection, orderbyKey, sort } = req.body;
-  console.log(inventoryId);
+
   if (!inventoryId) return next(new AppError('inventoryId is required', 400));
 
   orderbyKey = orderbyKey ? orderbyKey : 'product_title';
@@ -51,7 +51,8 @@ exports.getInventoryQty = catchAsync(async (req, res, next) => {
     LEFT JOIN
       azst_sku_variant_info v ON a.azst_ipm_variant_id = v.id AND p.is_varaints_aval = 1
     WHERE
-      a.azst_ipm_inventory_id = ? ${filterQuery}
+      a.azst_ipm_inventory_id = ?
+    ${filterQuery}
     ORDER BY ${orderbyQuery} ${sortOrder}`;
 
   const result = await db(invtQuery, queryParams);

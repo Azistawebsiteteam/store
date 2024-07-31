@@ -8,6 +8,7 @@ const {
   getPricess,
 } = require('../../Utils/offerperecentageCal');
 const { number } = require('joi');
+const { query } = require('express');
 
 const multerStorage = multer.memoryStorage();
 
@@ -142,8 +143,8 @@ exports.addProduct = catchAsync(async (req, res, next) => {
     variantsThere,
     variants,
     brand,
-    minCartQty,
-    maxCartQty,
+    minCartQty = 1,
+    maxCartQty = 10,
   } = req.body;
 
   const parsedVariants = variantsThere ? JSON.parse(variants) : null;
@@ -161,7 +162,7 @@ exports.addProduct = catchAsync(async (req, res, next) => {
                             product_title, product_info, vendor_id, product_category, type, tags, collections, image_src,
                             product_images, variant_store_order, image_alt_text, seo_title, seo_description, cost_per_item,
                             price, compare_at_price, sku_code, sku_bar_code, is_taxable, product_weight, out_of_stock_sale,
-                            url_handle, status, azst_updatedby, origin_country, product_url_title, is_varaints_aval,brand_id
+                            url_handle, status, azst_updatedby, origin_country, product_url_title, is_varaints_aval,brand_id,
                             min_cart_quantity ,max_cart_quantity )
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ,?, ?, ?, ?)`;
 
