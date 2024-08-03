@@ -98,8 +98,7 @@ exports.getCustomerOrders = catchAsync(async (req, res, next) => {
                       azst_orders_tbl.azst_orders_id as azst_order_id,
                       ${productDetailsQuery},
                       ${shippingAddressquery},
-                      ${billingAddressQuery}
-                      
+                      ${billingAddressQuery}                     
                     FROM azst_orders_tbl
                     LEFT JOIN azst_ordersummary_tbl 
                       ON azst_orders_tbl.azst_orders_id = azst_ordersummary_tbl.azst_orders_id
