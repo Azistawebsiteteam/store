@@ -8,7 +8,7 @@ const addCtrl = require('../../controllers/OrderCtrl/addOrder');
 router.use(multer().any());
 const key = process.env.JWT_SECRET;
 
-router.get('/estimate/date', addCtrl.getEstimateDate);
+router.post('/estimate/date', addCtrl.getEstimateDate);
 
 router.use(authCtrl.protect(key));
 
