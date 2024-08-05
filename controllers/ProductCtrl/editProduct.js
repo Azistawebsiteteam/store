@@ -180,452 +180,6 @@ exports.getVariantsDetails = catchAsync(async (req, res, next) => {
   });
 });
 
-// const updateInventory = async (
-//   inventoryId,
-//   productId,
-//   variantId,
-//   quantity,
-//   empId
-// ) => {
-//   const getInventoryQuery = `
-//     SELECT azst_ipm_onhand_quantity, azst_ipm_avbl_quantity
-//     FROM azst_inventory_product_mapping
-//     WHERE azst_ipm_inventory_id = ?
-//       AND azst_ipm_product_id = ?
-//       AND azst_ipm_variant_id = ?;
-//   `;
-
-//   const updateInventoryQuery = `
-//     UPDATE azst_inventory_product_mapping
-//     SET azst_ipm_onhand_quantity = ?,
-//         azst_ipm_avbl_quantity = ?,
-//         azst_ipm_updated_by = ?
-//     WHERE azst_ipm_inventory_id = ?
-//       AND azst_ipm_product_id = ?
-//       AND azst_ipm_variant_id = ?;
-//   `;
-
-//   try {
-//     // Fetch the current values
-//     const [currentInventory] = await db(getInventoryQuery, [
-//       inventoryId,
-//       productId,
-//       variantId,
-//     ]);
-
-//     if (currentInventory) {
-//       const { azst_ipm_onhand_quantity, azst_ipm_avbl_quantity } =
-//         currentInventory;
-
-//       // Calculate the new available quantity
-//       const newAvblQuantity =
-//         quantity - azst_ipm_onhand_quantity + azst_ipm_avbl_quantity;
-
-//       // Prepare the values for the update query
-//       const invValues = [
-//         quantity,
-//         newAvblQuantity,
-//         empId,
-//         inventoryId,
-//         productId,
-//         variantId,
-//       ];
-
-//       // Execute the update query
-//       await db(updateInventoryQuery, invValues);
-//     } else {
-//       throw new Error(
-//         `Inventory not found for inventoryId: ${inventoryId}, productId: ${productId}, variantId: ${variantId}`
-//       );
-//     }
-//   } catch (error) {
-//     console.error(error);
-//     throw error;
-//   }
-// };
-
-// const updateTheInventory = async (inventory, productId, empId) => {
-//   const inventoryPromises = inventory.map(({ inventoryId, qty }) =>
-//     updateInventory(inventoryId, productId, 0, qty, empId)
-//   );
-
-//   // Wait for all promises to complete
-//   await Promise.all(inventoryPromises);
-// };
-
-// const updateVariantInventory = async (
-//   inventory,
-//   productId,
-//   variantId,
-//   quantity,
-//   empId
-// ) => {
-//   const inventoryPromises = inventory.map((inventoryId) =>
-//     updateInventory(inventoryId, productId, variantId, quantity, empId)
-//   );
-
-//   // Wait for all promises to complete
-//   await Promise.all(inventoryPromises);
-// };
-
-// const insertVariantInventory = async (
-//   vInventoryInfo,
-//   productId,
-//   variantId,
-//   quantity,
-//   empId
-// ) => {
-//   const inventoryQuery = `INSERT INTO azst_inventory_product_mapping (azst_ipm_inventory_id, azst_ipm_product_id,
-//                            azst_ipm_variant_id, azst_ipm_onhand_quantity, azst_ipm_avbl_quantity, azst_ipm_created_by)
-//                            VALUES (?, ?, ?, ?, ?, ? )`;
-
-//   const inventoryPromises = JSON.parse(vInventoryInfo).map((inventoryId) => {
-//     const invValues = [
-//       inventoryId,
-//       productId,
-//       variantId,
-//       quantity,
-//       quantity,
-//       empId,
-//     ];
-
-//     return db(inventoryQuery, invValues);
-//   });
-
-//   await Promise.all(inventoryPromises);
-// };
-
-// exports.updateProduct = catchAsync(async (req, res, next) => {
-//   const {
-//     productId,
-//     productTitle,
-//     productInfo,
-//     variantsOrder,
-//     productPrice,
-//     productComparePrice,
-//     productIsTaxable,
-//     productCostPerItem,
-//     inventoryInfo,
-//     vendor,
-//     cwos,
-//     skuCode,
-//     skuBarcode,
-//     productWeight,
-//     productActiveStatus,
-//     category,
-//     productType,
-//     collections,
-//     tags,
-//     metaTitle,
-//     metaDescription,
-//     urlHandle,
-//     productImages,
-//     variantsThere,
-//     variants,
-//     brand,
-//   } = req.body;
-
-//   const newProductImages = productImages.map((url) => {
-//     const startIndex = url.lastIndexOf('/') + 1; // Find the last '/' to get the start index of the filename
-//     return url.substring(startIndex); // Extract the filename from the URL
-//   });
-
-//   const parsedVariants = variantsThere ? JSON.parse(variants) : null;
-//   const firstVariant = parsedVariants ? getPricess(parsedVariants[0]) : null;
-
-//   const price = firstVariant ? firstVariant.offer_price : productPrice;
-//   const comparePrice = firstVariant
-//     ? firstVariant.comparePrice
-//     : productComparePrice;
-
-//   const urlTitle = productTitle.replace(/ /g, '-');
-
-//   const inventory = !variantsThere ? JSON.parse(inventoryInfo) : [];
-
-//   const productImage = newProductImages[0];
-
-//   const productUpdatequery = `
-//     UPDATE azst_products
-//     SET product_title = ?,product_info = ?,vendor_id = ?,product_category = ?,
-//         type = ?,tags = ?,collections = ?,image_src = ?,product_images = ?,
-//         variant_store_order = ?,image_alt_text = ?,seo_title = ?,seo_description = ?,
-//         cost_per_item = ?,price = ?,compare_at_price = ?,sku_code = ?,
-//         sku_bar_code = ?,is_taxable = ?,product_weight = ?,out_of_stock_sale = ?,
-//         url_handle = ?,status = ?,azst_updatedby = ?,
-//         product_url_title = ?, brand_id = ? ,is_varaints_aval = ?
-//     WHERE id = ?;
-//   `;
-
-//   const values = [
-//     productTitle,
-//     productInfo,
-//     vendor,
-//     category,
-//     productType,
-//     tags,
-//     collections,
-//     productImage,
-//     JSON.stringify(productImages),
-//     variantsOrder,
-//     productImage.split('-')[1],
-//     metaTitle,
-//     metaDescription,
-//     productCostPerItem,
-//     price,
-//     comparePrice,
-//     skuCode,
-//     skuBarcode,
-//     productIsTaxable,
-//     productWeight,
-//     cwos,
-//     urlHandle,
-//     productActiveStatus,
-//     req.empId,
-//     urlTitle,
-//     brand,
-//     variantsThere,
-//     productId,
-//   ];
-
-//   await db(productUpdatequery, values);
-//   if (!variantsThere) {
-//     await updateTheInventory(inventory, productId, req.empId);
-//     return res.status(200).json({
-//       message: 'Product updated successfully',
-//     });
-//   }
-//   next();
-// });
-
-// exports.skuvarientsUpdate = catchAsync(async (req, res, next) => {
-//   const { productActiveStatus, variants, productId, vInventoryInfo } = req.body;
-
-//   const insert_product_varients = `INSERT INTO azst_sku_variant_info (product_id,
-//                                     variant_image,
-//                                     variant_weight_unit,
-//                                     variant_HS_code,
-//                                     variant_barcode,
-//                                     variant_sku,
-//                                     variant_weight,
-//                                     variant_inventory_tracker,
-//                                     variant_inventory_policy,
-//                                     variant_fulfillment_service,
-//                                     variant_requires_shipping,
-//                                     variant_taxable,
-//                                     compare_at_price,
-//                                     offer_price,
-//                                     offer_percentage,
-//                                     status,
-//                                     variant_quantity,
-//                                     option1,
-//                                     option2,
-//                                     option3)
-//                                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-
-//   const update_product_varients = `UPDATE  azst_sku_variant_info SET product_id = ?,
-//                                     variant_image= ?,
-//                                     variant_weight_unit= ?,
-//                                     variant_HS_code= ?,
-//                                     variant_barcode= ?,
-//                                     variant_sku= ?,
-//                                     variant_weight= ?,
-//                                     variant_inventory_tracker= ?,
-//                                     variant_inventory_policy= ?,
-//                                     variant_fulfillment_service= ?,
-//                                     variant_requires_shipping= ?,
-//                                     variant_taxable= ?,
-//                                     compare_at_price= ?,
-//                                     offer_price= ?,
-//                                     offer_percentage= ?,
-//                                     status= ?,
-//                                     variant_quantity= ?,
-//                                     option1= ?,
-//                                     option2= ?,
-//                                     option3= ? where id = ?
-//                                  `;
-
-//   const deleteMainVariant = `DELETE FROM  azst_sku_variant_info where id = ?`;
-
-//   const insertVariant = async (values, variantId, quantity) => {
-//     await db(insert_product_varients, values);
-//     insertVariantInventory(
-//       vInventoryInfo,
-//       productId,
-//       variantId,
-//       quantity,
-//       req.empId
-//     );
-//   };
-
-//   const updateVariant = async (values, variantId, quantity) => {
-//     await db(update_product_varients, values);
-//     const inventory = JSON.parse(vInventoryInfo);
-//     updateVariantInventory(
-//       inventory,
-//       productId,
-//       variantId,
-//       quantity,
-//       req.empId
-//     );
-//   };
-
-//   const deleteOldMainVariants = async (id) => {
-//     await db(deleteMainVariant, [id]);
-//   };
-
-//   const variantsData = JSON.parse(variants);
-
-//   const newVariantImages = (productImages) => {
-//     const imageNames = productImages.map((url) => {
-//       const startIndex = url.lastIndexOf('/') + 1; // Find the last '/' to get the start index of the filename
-//       return url.substring(startIndex); // Extract the filename from the URL
-//     });
-//     return imageNames;
-//   };
-
-//   for (let variant of variantsData) {
-//     let mainVariant = variant.main;
-//     let subvariants = variant.sub;
-
-//     if (subvariants.length > 1) {
-//       await deleteOldMainVariants(mainVariant.variantId);
-//       mainVariant.variantId = 0;
-//     }
-//     if (subvariants.length > 0) {
-//       const updatedVariants = [];
-//       for (let subvariant of subvariants) {
-//         const updateId = updatedVariants.find(
-//           (v) => v.variantId === subvariant.variantId
-//         );
-//         if (parseInt(subvariant.variantId) !== 0) {
-//           updatedVariants.push(subvariant);
-//         }
-//         if (updateId) {
-//           subvariant.variantId = 0; // Corrected property access
-//         }
-
-//         let {
-//           variantId,
-//           variantImage,
-//           variantWeight,
-//           variantWeightUnit,
-//           value,
-//           offer_price,
-//           comparePrice,
-//           quantity,
-//           hsCode,
-//           barCode,
-//           skuCode,
-//           isTaxable,
-//           shippingRequired,
-//           inventoryId,
-//           inventoryPolicy,
-//           variantService,
-//         } = subvariant;
-
-//         const subValues = value.split('-');
-//         const option2 = subValues[0];
-//         const option3 = subValues.length > 1 ? subValues[1] : null;
-
-//         if (!comparePrice) {
-//           comparePrice = offer_price;
-//         }
-//         const offerPercentage = getofferPercentage(comparePrice, offer_price);
-//         const values = [
-//           productId,
-//           JSON.stringify(
-//             newVariantImages([mainVariant.variantImage, variantImage])
-//           ),
-//           variantWeightUnit,
-//           hsCode,
-//           barCode,
-//           skuCode,
-//           variantWeight,
-//           inventoryId,
-//           inventoryPolicy,
-//           variantService,
-//           shippingRequired,
-//           isTaxable,
-//           comparePrice,
-//           offer_price,
-//           offerPercentage,
-//           productActiveStatus,
-//           quantity,
-//           mainVariant.value,
-//           option2,
-//           option3,
-//         ];
-
-//         if (
-//           subvariants.length > 1 &&
-//           parseInt(mainVariant.variantId) === 0 &&
-//           parseInt(variantId) === 0
-//         ) {
-//           await insertVariant(values, variantId, quantity);
-//         } else {
-//           values.push(variantId);
-//           await updateVariant(values, variantId, quantity);
-//         }
-//       }
-//     } else {
-//       let {
-//         variantId,
-//         variantImage,
-//         variantWeight,
-//         variantWeightUnit,
-//         value,
-//         comparePrice,
-//         offer_price,
-//         quantity,
-//         hsCode,
-//         barCode,
-//         skuCode,
-//         isTaxable,
-//         shippingRequired,
-//         inventoryId,
-//         inventoryPolicy,
-//         variantService,
-//       } = mainVariant;
-
-//       if (!comparePrice) {
-//         comparePrice = offer_price;
-//       }
-//       const offerPercentage = getofferPercentage(comparePrice, offer_price);
-
-//       const values = [
-//         productId,
-//         JSON.stringify(newVariantImages([variantImage])),
-//         variantWeightUnit,
-//         hsCode,
-//         barCode,
-//         skuCode,
-//         variantWeight,
-//         inventoryId,
-//         inventoryPolicy,
-//         variantService,
-//         shippingRequired,
-//         isTaxable,
-//         comparePrice,
-//         offer_price,
-//         offerPercentage,
-//         productActiveStatus,
-//         quantity,
-//         value,
-//         null,
-//         null,
-//       ];
-
-//       if (variantId && parseInt(variantId) !== 0) {
-//         values.push(variantId);
-//         await updateVariant(values, variantId, quantity);
-//       } else {
-//         await insertVariant(values, variantId, quantity);
-//       }
-//     }
-//   }
-//   res.status(200).json({ message: 'Product & variants inserted successfully' });
-// });
-
 const updateInventory = async (
   inventoryId,
   productId,
@@ -663,7 +217,6 @@ const updateInventory = async (
         currentInventory;
       const newAvblQuantity =
         quantity - azst_ipm_onhand_quantity + azst_ipm_avbl_quantity;
-
       const invValues = [
         quantity,
         newAvblQuantity,
@@ -674,21 +227,35 @@ const updateInventory = async (
       ];
       await db(updateInventoryQuery, invValues);
     } else {
-      throw new Error(
-        `Inventory not found for inventoryId: ${inventoryId}, productId: ${productId}, variantId: ${variantId}`
-      );
+      const query = `INSERT INTO azst_inventory_product_mapping 
+                  (azst_ipm_inventory_id, azst_ipm_product_id, azst_ipm_variant_id, 
+                   azst_ipm_onhand_quantity, azst_ipm_avbl_quantity, azst_ipm_created_by)
+               VALUES (?, ?, ?, ?, ?, ?)`;
+
+      const values = [
+        inventoryId,
+        productId,
+        variantId,
+        quantity,
+        quantity,
+        empId,
+      ];
+      await db(query, values);
     }
   } catch (error) {
-    console.error(error);
     throw error;
   }
 };
 
 const updateTheInventory = async (inventory, productId, empId) => {
-  const inventoryPromises = inventory.map(({ inventoryId, qty }) =>
-    updateInventory(inventoryId, productId, 0, qty, empId)
-  );
-  await Promise.all(inventoryPromises);
+  try {
+    const inventoryPromises = inventory.map(({ inventoryId, qty }) =>
+      updateInventory(inventoryId, productId, 0, qty, empId)
+    );
+    await Promise.all(inventoryPromises);
+  } catch (error) {
+    throw error;
+  }
 };
 
 const updateVariantInventory = async (
@@ -782,6 +349,7 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
     : productComparePrice;
   const urlTitle = productTitle.replace(/ /g, '-');
   const inventory = !variantsThere ? JSON.parse(inventoryInfo) : [];
+
   const productImage = newProductImages[0];
 
   const productUpdatequery = `
@@ -831,8 +399,12 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
   await db(productUpdatequery, values);
 
   if (!variantsThere) {
-    await updateTheInventory(inventory, productId, req.empId);
-    return res.status(200).json({ message: 'Product updated successfully' });
+    try {
+      await updateTheInventory(inventory, productId, req.empId);
+      return res.status(200).json({ message: 'Product updated successfully' });
+    } catch (error) {
+      next(new AppError(error.message, 400));
+    }
   }
   next();
 });

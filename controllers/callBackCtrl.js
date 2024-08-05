@@ -15,7 +15,7 @@ exports.createCallBack = catchAsync(async (req, res, next) => {
     requestQty,
     purposeOfPurchase,
     expetedDeliveryDate,
-    customerId,
+    customerId = '',
   } = req.body;
 
   const values = [
@@ -46,7 +46,7 @@ exports.createCallBack = catchAsync(async (req, res, next) => {
 
   res.status(200).json({
     callBackId: result.insertId,
-    message: 'The callback request was raised successfully.',
+    message: 'callback request raised.',
   });
 });
 
@@ -114,7 +114,7 @@ exports.deleteCallback = catchAsync(async (req, res, next) => {
 // Customer Query Operations Start From Here
 
 exports.createCusQuery = catchAsync(async (req, res, next) => {
-  const { name, email, mobileNumber, message, customerId } = req.body;
+  const { name, email, mobileNumber, message, customerId = '' } = req.body;
 
   const query = `INSERT INTO azst_customer_queries_tbl (  azst_cusm_qr_name,
                   azst_cusm_qr_email,
@@ -126,7 +126,7 @@ exports.createCusQuery = catchAsync(async (req, res, next) => {
   const result = await db(query, values);
   if (result.affectedRows === 0)
     return next(new AppError('Error while processing'));
-  res.status(200).json({ message: 'The Query was raised successfully.' });
+  res.status(200).json({ message: 'Query raised' });
 });
 
 exports.getCusQuery = catchAsync(async (req, res, next) => {
@@ -150,7 +150,7 @@ exports.getCusQuery = catchAsync(async (req, res, next) => {
 exports.resovleQuery = catchAsync(async (req, res, next) => {
   const { id, isResolve } = req.body;
 
-  if (!id) return next(new AppError('callback id not provided', 400));
+  if (!id) return next(new AppError('Query id not provided', 400));
 
   const status = isResolve === 'true' ? 1 : 0;
 
@@ -164,9 +164,7 @@ exports.resovleQuery = catchAsync(async (req, res, next) => {
   if (result.affectedRows === 0)
     return next(new AppError('opps something wrong', 400));
 
-  res
-    .status(200)
-    .json({ message: 'The callback status was updated successfully.' });
+  res.status(200).json({ message: 'Query updated' });
 });
 
 exports.deleteQuery = catchAsync(async (req, res, next) => {
@@ -184,7 +182,7 @@ exports.deleteQuery = catchAsync(async (req, res, next) => {
   if (result.affectedRows === 0)
     return next(new AppError('opps something wrong', 400));
 
-  res.status(200).json({ message: 'The Query was Deleted successfully.' });
+  res.status(200).json({ message: 'Query Deleted' });
 });
 
 // azst_cusm_qr_id,

@@ -1,14 +1,15 @@
 const { default: axios } = require('axios');
 const db = require('../../dbconfig');
-const catchAsync = require('../../Utils/catchAsync');
-const AppError = require('../../Utils/appError');
 const Joi = require('joi');
 const moment = require('moment');
 
+const catchAsync = require('../../Utils/catchAsync');
+const AppError = require('../../Utils/appError');
+
 const pinocdeSchema = Joi.object({
   pincode: Joi.number().integer().min(100000).max(999999).messages({
-    'number.min': 'Number must have exactly 6 digits',
-    'number.max': 'Number must have exactly 6 digits',
+    'number.min': 'Must be a 6-digit number',
+    'number.max': 'Must be a 6-digit number',
   }),
 });
 
@@ -34,7 +35,7 @@ exports.getEstimateDate = catchAsync(async (req, res, next) => {
   if (!PostOffice)
     return next(new AppError(`Invalid Pincode (or) ${Message}`, 400));
 
-  const { State, Country, Circle, District, Division, Region } = PostOffice[0];
+  const { State } = PostOffice[0];
 
   const query =
     'select azst_pin_days_number from  azst_pincode_no_of_days  Where azst_pin_days_state = ?';
