@@ -3,8 +3,8 @@ const multer = require('multer');
 const sharp = require('sharp');
 const fs = require('fs');
 const Joi = require('joi');
-const AppError = require('../../../Utils/appError');
 
+const AppError = require('../../../Utils/appError');
 const catchAsync = require('../../../Utils/catchAsync');
 const createSendToken = require('../../../Utils/jwtToken');
 

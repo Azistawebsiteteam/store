@@ -14,7 +14,7 @@ exports.createCallBack = catchAsync(async (req, res, next) => {
     budget,
     requestQty,
     purposeOfPurchase,
-    expetedDeliveryDate,
+    estimatedDeliveryDate,
     customerId = '',
   } = req.body;
 
@@ -26,7 +26,7 @@ exports.createCallBack = catchAsync(async (req, res, next) => {
     budget,
     requestQty,
     purposeOfPurchase,
-    expetedDeliveryDate,
+    estimatedDeliveryDate,
     customerId,
   ];
 

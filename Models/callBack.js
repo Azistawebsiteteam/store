@@ -19,7 +19,7 @@ const callbackSchema = baseSchame.keys({
   budget: Joi.number().min(1),
   requestQty: Joi.number().min(1),
   purposeOfPurchase: Joi.string().required(),
-  expetedDeliveryDate: Joi.date().iso().required(),
+  estimatedDeliveryDate: Joi.date().iso().required(),
 });
 
 const querySchema = baseSchame.keys({
