@@ -1,4 +1,3 @@
-const moment = require('moment');
 const db = require('../../dbconfig');
 const AppError = require('../../Utils/appError');
 const catchAsync = require('../../Utils/catchAsync');
@@ -35,7 +34,7 @@ const getProductFromCart = async (
 
 const updateProductQuantity = async (values) => {
   const query =
-    'UPDATE azst_cart_tbl SET azst_quantity=? WHERE azst_customer_id=? AND azst_variant_id=?';
+    'UPDATE azst_cart_tbl SET azst_quantity=? ,azst_customer_id = ? WHERE  azst_cart_id = ?';
   await db(query, values);
 };
 
@@ -46,13 +45,12 @@ const addProductToCart = async (values) => {
                       azst_customer_id,
                       azst_session_id
                     ) VALUES (?, ?, ?, ?, ?)`;
+
   await db(query, values);
 };
 
 const addProductToCartHandler = catchAsync(async (req, res, next) => {
   const { cartProducts, customerId, sessionId } = req.body;
-
-  console.log(req.body);
 
   for (const product of cartProducts) {
     try {
@@ -62,22 +60,22 @@ const addProductToCartHandler = catchAsync(async (req, res, next) => {
         product.variantId,
         product.productId
       );
-      console.log({ isExist, quantity, cartId });
+
       if (isExist) {
         const updateQty = quantity + product.quantity;
-        const values = [updateQty, customerId || sessionId, product.variantId];
+        const values = [updateQty, customerId, cartId];
         await updateProductQuantity(values);
+      } else {
+        const values = [
+          product.productId,
+          product.variantId,
+          product.quantity,
+          customerId,
+          sessionId,
+        ];
+
+        await addProductToCart(values);
       }
-      //else {
-      //   const values = [
-      //     product.productId,
-      //     product.variantId,
-      //     product.quantity,
-      //     customerId,
-      //     sessionId,
-      //   ];
-      //   await addProductToCart(values);
-      // }
     } catch (err) {
       console.log(err);
       return next(new AppError(err.sqlMessage ? err.sqlMessage : '', 400));
@@ -88,9 +86,10 @@ const addProductToCartHandler = catchAsync(async (req, res, next) => {
 
 module.exports = addProductToCartHandler;
 
-// azst_cart_id,
+//   azst_cart_id,
 //   azst_product_id,
 //   azst_variant_id,
+//   azst_collection_id;
 //   azst_quantity,
 //   azst_customer_id,
 //   azst_session_id,

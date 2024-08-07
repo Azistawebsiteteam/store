@@ -32,19 +32,19 @@ router.get('/:id', blogController.getBlogById);
 // Route to create a blog with image upload and store
 router.post(
   '/',
-  blogController.uploadImage,
+  blogController.uploadblogImg,
   blogValidationCtrl,
-  blogController.storeImage,
+  blogController.storeBlogImgs,
   blogController.createBlog
 );
 
 // Route to update a blog with image upload and update
 router.put(
   '/',
-  blogController.uploadImage,
+  blogController.uploadblogImg,
   blogValidationCtrl,
   blogController.isBlogExist,
-  blogController.updateImage,
+  blogController.updateStoreBlogImgs,
   blogController.updateBlog
 );
 

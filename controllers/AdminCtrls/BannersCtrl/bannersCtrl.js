@@ -131,21 +131,6 @@ const uploadBannerImage = async (files) => {
   return images;
 };
 
-// Middleware to check if a banner exists
-exports.isBannerExist = catchAsync(async (req, res, next) => {
-  const { bannerId } = req.body;
-  if (!bannerId) return next(new AppError('Banner ID required', 400));
-
-  const query =
-    'SELECT * FROM azst_banners_tbl WHERE status = 1 AND banner_id = ?';
-  const result = await db(query, [bannerId]);
-
-  if (result.length <= 0) return next(new AppError('Banner not found', 404));
-
-  req.banner = result[0];
-  next();
-});
-
 // Middleware to validate and store banner images
 exports.storeBanner = catchAsync(async (req, res, next) => {
   const { error } = bannerSchema.validate(req.body);
@@ -218,6 +203,21 @@ exports.updateStoreBanner = catchAsync(async (req, res, next) => {
     req.body[image] = images[image];
   });
 
+  next();
+});
+
+// Middleware to check if a banner exists
+exports.isBannerExist = catchAsync(async (req, res, next) => {
+  const { bannerId } = req.body;
+  if (!bannerId) return next(new AppError('Banner ID required', 400));
+
+  const query =
+    'SELECT * FROM azst_banners_tbl WHERE status = 1 AND banner_id = ?';
+  const result = await db(query, [bannerId]);
+
+  if (result.length <= 0) return next(new AppError('Banner not found', 404));
+
+  req.banner = result[0];
   next();
 });
 

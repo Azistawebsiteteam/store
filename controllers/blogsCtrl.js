@@ -24,33 +24,113 @@ const upload = multer({
   fileFilter: multerFilter,
 });
 
-exports.uploadImage = upload.single('blogImg');
+exports.uploadblogImg = upload.fields([
+  { name: 'blogImg', maxCount: 1 },
+  { name: 'blogThumbnailImg', maxCount: 1 },
+]);
 
-exports.storeImage = catchAsync(async (req, res, next) => {
+const uploadBlogImage = async (files) => {
+  const allowedMimeTypes = ['image/png', 'image/jpeg', 'image/jpg'];
+  const images = {};
+  const promises = [];
 
-  if (!req.file) {
-    return next(new AppError('Upload blog image is required', 400));
+  for (const fieldName in files) {
+    const imageField = files[fieldName][0];
+
+    // Check the file type
+    if (!allowedMimeTypes.includes(imageField.mimetype)) {
+      throw new AppError(
+        'Invalid file type. Only PNG, JPEG, and JPG are allowed.',
+        400
+      );
+    }
+
+    const imageName = `${Date.now()}-${imageField.originalname.replace(
+      / /g,
+      '-'
+    )}`;
+    const folder = `Uploads/blogImages/`; //  folder path to stroe image
+
+    // Process image and save it
+    promises.push(
+      sharp(imageField.buffer)
+        .toFile(`${folder}${imageName}`)
+        .then(() => {
+          images[fieldName] = imageName;
+        })
+    );
   }
-  const imageName = `${Date.now()}-${req.file.originalname.replace(/ /g, '-')}`;
-  await sharp(req.file.buffer).toFile(`Uploads/blogImages/${imageName}`);
-  req.body.blogImg = imageName;
+
+  await Promise.all(promises);
+  return images;
+};
+
+// Middleware to validate and store banner images
+exports.storeBlogImgs = catchAsync(async (req, res, next) => {
+  if (!req.files || Object.keys(req.files).length < 2) {
+    return next(new AppError('Blog images are required', 400));
+  }
+
+  const images = await uploadBlogImage(req.files);
+  Object.keys(images).forEach((image) => {
+    req.body[image] = images[image];
+  });
   next();
 });
 
-exports.updateImage = catchAsync(async (req, res, next) => {
-  const { azst_blg_img } = req.blog;
+// Middleware to validate and update banner images
+exports.updateStoreBlogImgs = catchAsync(async (req, res, next) => {
+  const { azst_blg_img, azst_blg_thumbnail_img } = req.blog;
 
-  if (!req.file) {
+  if (!req.files || Object.keys(req.files).length === 0) {
+    // No files uploaded, use existing images
     req.body.blogImg = azst_blg_img;
+    req.body.blogThumbnailImg = azst_blg_thumbnail_img;
     return next();
   }
-  const imagePath = `Uploads/blogImages/${azst_blg_img}`;
 
-  fs.unlink(imagePath, (err) => {});
+  if (req.files && Object.keys(req.files).length === 1) {
+    // One file uploaded, determine which one and handle it
+    for (const fieldName in req.files) {
+      const imagePath =
+        fieldName === 'blogImg'
+          ? `Uploads/blogImages//${azst_blg_img}`
+          : `Uploads/blogImages//${azst_blg_thumbnail_img}`;
 
-  const imageName = `${Date.now()}-${req.file.originalname.replace(/ /g, '-')}`;
-  await sharp(req.file.buffer).toFile(`Uploads/blogImages/${imageName}`);
-  req.body.blogImg = imageName;
+      fs.unlink(imagePath, (err) => {
+        if (err) console.error('Failed to delete old image:', err);
+      });
+
+      const images = await uploadBlogImage(req.files);
+      req.body[fieldName] = images[fieldName];
+
+      // Ensure the other banner image is retained
+      if (fieldName === 'blogImg') {
+        req.body.blogThumbnailImg = azst_blg_thumbnail_img;
+      } else {
+        req.body.blogImg = azst_blg_img;
+      }
+    }
+    return next();
+  }
+
+  // Both files uploaded
+  for (const fieldName in req.files) {
+    const imagePath =
+      fieldName === 'blogImg'
+        ? `Uploads/blogImages//${azst_blg_img}`
+        : `Uploads/blogImages//${azst_blg_thumbnail_img}`;
+
+    fs.unlink(imagePath, (err) => {
+      if (err) console.error('Failed to delete old image:', err);
+    });
+  }
+
+  const images = await uploadBlogImage(req.files);
+  Object.keys(images).forEach((image) => {
+    req.body[image] = images[image];
+  });
+
   next();
 });
 
@@ -58,7 +138,15 @@ const getBlogImgLink = (req, img) =>
   `${req.protocol}://${req.get('host')}/api/images/blog/${img}`;
 
 exports.createBlog = catchAsync(async (req, res, next) => {
-  const { title, description, content, product, type, blogImg } = req.body;
+  const {
+    title,
+    description,
+    content,
+    product,
+    type,
+    blogImg,
+    blogThumbnailImg,
+  } = req.body;
   const createdBy = req.empId;
 
   const query = `INSERT INTO azst_blogs_tbl (
@@ -67,15 +155,17 @@ exports.createBlog = catchAsync(async (req, res, next) => {
                         azst_blg_content,
                         azst_blg_product,
                         azst_blg_img,
+                        azst_blg_thumbnail_img,
                         azst_blg_type,
                         azst_blg_created_by) 
-                 VALUES (?,?,?,?,?,?,?)`;
+                 VALUES (?,?,?,?,?,?,?,?)`;
   const values = [
     title,
     description,
     content,
     product,
     blogImg,
+    blogThumbnailImg,
     type,
     createdBy,
   ];
@@ -119,6 +209,7 @@ exports.getAllBlogs = catchAsync(async (req, res, next) => {
     azst_blg_product: blog.azst_blg_product,
     azst_blg_type: blog.azst_blg_type,
     azst_blg_img: getBlogImgLink(req, blog.azst_blg_img),
+    azst_blg_thumbnail_img: getBlogImgLink(req, blog.azst_blg_thumbnail_img),
     azst_blg_created: blog.azst_blg_created,
   }));
 
@@ -136,14 +227,26 @@ exports.getBlogById = catchAsync(async (req, res, next) => {
   const blog = {
     ...req.blog,
     azst_blg_img: getBlogImgLink(req, req.blog.azst_blg_img),
+    azst_blg_thumbnail_img: getBlogImgLink(
+      req,
+      req.blog.azst_blg_thumbnail_img
+    ),
   };
 
   res.status(200).json(blog);
 });
 
 exports.updateBlog = catchAsync(async (req, res, next) => {
-  const { id } = req.body;
-  const { title, description, content, product, type, blogImg } = req.body;
+  const {
+    id,
+    title,
+    description,
+    content,
+    product,
+    type,
+    blogImg,
+    blogThumbnailImg,
+  } = req.body;
 
   const fields = {
     azst_blg_title: title,
@@ -151,6 +254,7 @@ exports.updateBlog = catchAsync(async (req, res, next) => {
     azst_blg_content: content,
     azst_blg_product: product,
     azst_blg_img: blogImg,
+    azst_blg_thumbnail_img: blogThumbnailImg,
     azst_blg_type: type,
     azst_blg_updated_by: req.empId,
     azst_blg_updated_on: new Date(),
@@ -187,16 +291,3 @@ exports.deleteBlog = catchAsync(async (req, res, next) => {
     message: 'Blog deleted successfully',
   });
 });
-
-// azst_blg_id,
-//   azst_blg_title,
-//   azst_blg_content,
-//   azst_blg_product,
-//   azst_blg_type,
-//   azst_blg_created_on,
-//   azst_blg_updated_on,
-//   azst_blg_created_by,
-//   azst_blg_updated_by,
-//   azst_blg_status,
-//   azst_blg_img,
-//   azst_blg_description;
