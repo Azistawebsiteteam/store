@@ -8,9 +8,13 @@ const getProductFromCart = async (
   variantId,
   productId
 ) => {
-  const query = `SELECT azst_cart_id ,azst_quantity 
-  FROM azst_cart_tbl
-  WHERE azst_variant_id=? AND azst_product_id=?  AND (azst_customer_id = ? OR azst_session_id = ?) AND status=1`;
+  const query = `SELECT azst_cart_id ,azst_cart_quantity 
+                  FROM azst_cart_tbl
+                  WHERE azst_cart_variant_id=?
+                    AND azst_cart_product_id=?
+                    AND (azst_customer_id = ? OR azst_session_id = ?)
+                    AND azst_cart_status=1`;
+
   const result = await db(query, [
     variantId ?? 0,
     productId,
@@ -18,10 +22,10 @@ const getProductFromCart = async (
     sessionId,
   ]);
   if (result.length) {
-    const { azst_cart_id, azst_quantity } = result[0];
+    const { azst_cart_id, azst_cart_quantity } = result[0];
     return {
       isExist: result.length > 0,
-      quantity: azst_quantity,
+      quantity: azst_cart_quantity,
       cartId: azst_cart_id,
     };
   }
@@ -34,14 +38,14 @@ const getProductFromCart = async (
 
 const updateProductQuantity = async (values) => {
   const query =
-    'UPDATE azst_cart_tbl SET azst_quantity=? ,azst_customer_id = ? WHERE  azst_cart_id = ?';
+    'UPDATE azst_cart_tbl SET azst_cart_quantity=? ,azst_customer_id = ? WHERE  azst_cart_id = ?';
   await db(query, values);
 };
 
 const addProductToCart = async (values) => {
-  const query = `INSERT INTO azst_cart_tbl (   azst_product_id,
-                      azst_variant_id,
-                      azst_quantity,
+  const query = `INSERT INTO azst_cart_tbl (   azst_cart_product_id,
+                      azst_cart_variant_id,
+                      azst_cart_quantity,
                       azst_customer_id,
                       azst_session_id
                     ) VALUES (?, ?, ?, ?, ?)`;
@@ -81,18 +85,18 @@ const addProductToCartHandler = catchAsync(async (req, res, next) => {
       return next(new AppError(err.sqlMessage ? err.sqlMessage : '', 400));
     }
   }
-  res.status(200).json({ message: 'Added to cart successfully' });
+  res.azst_cart_status(200).json({ message: 'Added to cart successfully' });
 });
 
 module.exports = addProductToCartHandler;
 
 //   azst_cart_id,
-//   azst_product_id,
-//   azst_variant_id,
-//   azst_collection_id;
-//   azst_quantity,
+//   azst_cart_product_id,
+//   azst_cart_variant_id,
+//   azst_cart_quantity,
 //   azst_customer_id,
 //   azst_session_id,
-//   status,
-//   created_on,
-//   updated_on;
+//   azst_cart_status,
+//   azst_cart_created_on,
+//   azst_cart_updated_on,
+//   azst_cart_collection_id;

@@ -359,6 +359,7 @@ const calculateXYDiscount = async (
 
 exports.getDiscounts = catchAsync(async (req, res, next) => {
   const { discountCode, discountType, products } = req.body;
+
   const cartProducts = JSON.parse(products);
   const date = moment().format('YYYY-MM-DD HH:mm:ss');
   let billingDetails;
@@ -388,7 +389,7 @@ exports.getDiscounts = catchAsync(async (req, res, next) => {
   res.status(200).json(billingDetails);
 });
 
-//  azst_dsc_title,
+//    azst_dsc_title,
 //    azst_dsc_code,
 //    azst_dsc_mode,
 //    azst_dsc_value,
@@ -398,14 +399,14 @@ exports.getDiscounts = catchAsync(async (req, res, next) => {
 //    azst_dsc_apply_qty,
 //    azst_dsc_usage_cnt;
 
-// azst_dsc_id,
+//   azst_dsc_id,
 //   azst_dsc_title,
 //   azst_dsc_code,
 //   azst_dsc_mode,
 //   azst_dsc_value,
-// azst_dsc_apply_mode,
-// azst_dsc_apply_id,
-// azst_dsc_prc_value,
+//   azst_dsc_apply_mode,
+//   azst_dsc_apply_id,
+//   azst_dsc_prc_value,
 //   azst_dsc_elg_cus,
 //   azst_dsc_apply_qty,
 //   azst_dsc_usage_cnt,

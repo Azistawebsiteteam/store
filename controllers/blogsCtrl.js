@@ -37,14 +37,6 @@ const uploadBlogImage = async (files) => {
   for (const fieldName in files) {
     const imageField = files[fieldName][0];
 
-    // Check the file type
-    if (!allowedMimeTypes.includes(imageField.mimetype)) {
-      throw new AppError(
-        'Invalid file type. Only PNG, JPEG, and JPG are allowed.',
-        400
-      );
-    }
-
     const imageName = `${Date.now()}-${imageField.originalname.replace(
       / /g,
       '-'
