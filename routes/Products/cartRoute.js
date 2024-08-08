@@ -7,13 +7,17 @@ const {
   removeFromCart,
 } = require('../../controllers/Cart/getProducts');
 
-const addToCart = require('../../controllers/Cart/addProducts');
+const addToCartCtrl = require('../../controllers/Cart/addProducts');
 
 // Create the MySQL session store using the connection pool
 
 router.use(multer().any());
 
-router.route('/').post(addToCart);
+router
+  .route('/')
+  .post(addToCartCtrl.addProductToCart)
+  .put(addToCartCtrl.handleProductQuantityUpdate);
+
 router.get('/data', getCartData);
 router.patch('/data', removeFromCart);
 

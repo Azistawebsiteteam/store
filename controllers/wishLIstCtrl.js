@@ -17,7 +17,7 @@ const isExistInWl = catchAsync(async (req, res, next) => {
 
   const { error } = whishlistSchema.validate(req.body);
   if (error) return next(new AppError(error.message, 400));
-  const query = `SELECT azst_variant_id FROM azst_wishlist 
+  const query = `SELECT azst_variant_id FROM azst_wishlist_tbl 
                  WHERE azst_customer_id= ?  AND azst_product_id =?  AND azst_variant_id = ? AND status = 1`;
   const values = [empId, productId, variantId];
   const result = await db(query, values);
@@ -30,7 +30,7 @@ const addToWl = catchAsync(async (req, res, next) => {
   const { productId, variantId } = req.body;
   const { empId } = req;
 
-  const query = `INSERT INTO azst_wishlist (azst_product_id,azst_variant_id,azst_customer_id)
+  const query = `INSERT INTO azst_wishlist_tbl (azst_product_id,azst_variant_id,azst_customer_id)
                   VALUES (?,?,?)`;
   const values = [productId, variantId, empId];
 
@@ -42,7 +42,7 @@ const removeFromWl = catchAsync(async (req, res, next) => {
   const { whishlistId } = req.body;
 
   if (!whishlistId) return next(new AppError('wishlistId is required', 400));
-  const query = `UPDATE azst_wishlist SET status = 0 , updateon = ? WHERE azst_wishlist_id = ?`;
+  const query = `UPDATE azst_wishlist_tbl SET status = 0 , updateon = ? WHERE azst_wishlist_id = ?`;
   const today = moment().format('YYYY-MM-DD HH:mm:ss');
   await db(query, [today, whishlistId]);
   res.status(200).json({ message: 'Product removed successfully' });
@@ -59,10 +59,10 @@ const getImageLink = (req, imges, pImg) => {
 
 const getWhishlist = catchAsync(async (req, res, next) => {
   const query = `SELECT azst_wishlist_id,product_title,product_url_title,price,azst_sku_variant_info.compare_at_price,azst_products.compare_at_price as product_compare_at_price,variant_image,image_src,azst_product_id,azst_variant_id, offer_price,offer_percentage
-                    FROM azst_wishlist
-                    LEFT JOIN azst_sku_variant_info ON  azst_wishlist.azst_variant_id = azst_sku_variant_info.id
-                    LEFT JOIN azst_products ON azst_wishlist.azst_product_id = azst_products.id
-                    WHERE azst_customer_id = ? AND azst_wishlist.status = 1`;
+                    FROM azst_wishlist_tbl
+                    LEFT JOIN azst_sku_variant_info ON  azst_wishlist_tbl.azst_variant_id = azst_sku_variant_info.id
+                    LEFT JOIN azst_products ON azst_wishlist_tbl.azst_product_id = azst_products.id
+                    WHERE azst_customer_id = ? AND azst_wishlist_tbl.status = 1`;
 
   const result = await db(query, req.empId);
 

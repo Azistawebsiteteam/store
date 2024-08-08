@@ -1,3 +1,4 @@
+const Joi = require('joi');
 const db = require('../../dbconfig');
 const AppError = require('../../Utils/appError');
 const catchAsync = require('../../Utils/catchAsync');
@@ -37,9 +38,13 @@ const getProductFromCart = async (
 };
 
 const updateProductQuantity = async (values) => {
-  const query =
-    'UPDATE azst_cart_tbl SET azst_cart_quantity=? ,azst_customer_id = ? WHERE  azst_cart_id = ?';
-  await db(query, values);
+  try {
+    const query =
+      'UPDATE azst_cart_tbl SET azst_cart_quantity=? ,azst_customer_id = ? WHERE  azst_cart_id = ?';
+    await db(query, values);
+  } catch (error) {
+    throw error;
+  }
 };
 
 const addProductToCart = async (values) => {
@@ -53,7 +58,7 @@ const addProductToCart = async (values) => {
   await db(query, values);
 };
 
-const addProductToCartHandler = catchAsync(async (req, res, next) => {
+exports.addProductToCart = catchAsync(async (req, res, next) => {
   const { cartProducts, customerId, sessionId } = req.body;
 
   for (const product of cartProducts) {
@@ -81,14 +86,43 @@ const addProductToCartHandler = catchAsync(async (req, res, next) => {
         await addProductToCart(values);
       }
     } catch (err) {
-      console.log(err);
       return next(new AppError(err.sqlMessage ? err.sqlMessage : '', 400));
     }
   }
-  res.azst_cart_status(200).json({ message: 'Added to cart successfully' });
+  res.status(200).json({ message: 'Added to cart successfully' });
 });
 
-module.exports = addProductToCartHandler;
+// HERE handling the update quantity of product in cart by (+ , - ) button operator operations
+
+const updateQuantitySchema = Joi.object({
+  cartId: Joi.number().required(),
+  quantity: Joi.number().required(),
+  customerId: Joi.number().optional(),
+});
+
+exports.handleProductQuantityUpdate = catchAsync(async (req, res, next) => {
+  try {
+    const { error } = updateQuantitySchema.validate(req.body);
+    if (error) return next(new AppError(error.message, 400));
+    const { cartId, quantity, customerId } = req.body;
+
+    if (parseInt(quantity) === 0) {
+      const query =
+        'Update azst_cart_tbl set azst_cart_status = 0 where azst_cart_id = ?';
+      await db(query, [cartId]);
+    }
+    const values = [quantity, customerId, cartId];
+    await updateProductQuantity(values);
+    res.status(200).json({ message: 'quantity updated' });
+  } catch (err) {
+    return next(
+      new AppError(
+        err.sqlMessage ? err.sqlMessage : 'oops something went wrong',
+        400
+      )
+    );
+  }
+});
 
 //   azst_cart_id,
 //   azst_cart_product_id,

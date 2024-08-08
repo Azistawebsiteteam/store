@@ -97,14 +97,14 @@ exports.getCollectionProducts = catchAsync(async (req, res, next) => {
       compare_at_price,
       product_url_title,
       CASE 
-        WHEN azst_wishlist.azst_product_id IS NOT NULL THEN true
+        WHEN azst_wishlist_tbl.azst_product_id IS NOT NULL THEN true
         ELSE false
       END AS in_wishlist,
       COALESCE(AVG(prt.review_points), 0) AS product_review_points,
       COALESCE(SUM(pi.azst_ipm_onhand_quantity), 0) AS product_qty
     FROM azst_products
-    LEFT JOIN azst_wishlist 
-      ON azst_products.id = azst_wishlist.azst_product_id
+    LEFT JOIN azst_wishlist_tbl 
+      ON azst_products.id = azst_wishlist_tbl.azst_product_id
     LEFT JOIN product_review_rating_tbl AS prt
       ON azst_products.id = prt.product_id
     LEFT JOIN azst_inventory_product_mapping AS pi 
@@ -166,11 +166,11 @@ exports.shop99Products = catchAsync(async (req, res, next) => {
   const getProducts = `SELECT id as product_id, product_main_title, product_title, image_src,
                         image_alt_text, price, compare_at_price, product_url_title,
                         CASE 
-                          WHEN azst_wishlist.azst_product_id IS NOT NULL THEN true
+                          WHEN wl.azst_product_id IS NOT NULL THEN true
                           ELSE false
                         END AS in_wishlist
                        FROM azst_products
-                       LEFT JOIN azst_wishlist ON azst_products.id = azst_wishlist.azst_product_id
+                       LEFT JOIN azst_wishlist_tbl as wl ON azst_products.id = wl.azst_product_id  AND wl.status = 1
                        WHERE azst_products.status = 1 
                        AND JSON_CONTAINS(collections, JSON_QUOTE('25'), '$')`;
 
@@ -185,12 +185,12 @@ exports.getBestSeller = catchAsync(async (req, res, next) => {
                     image_alt_text, price, compare_at_price, product_url_title,
                     COUNT(azst_ordersummary_tbl.azst_order_product_id) AS no_of_orders,
                     CASE 
-                      WHEN azst_wishlist.azst_product_id IS NOT NULL THEN true
+                      WHEN wl.azst_product_id IS NOT NULL THEN true
                       ELSE false
                     END AS in_wishlist
                  FROM azst_ordersummary_tbl
                  LEFT JOIN azst_products ON azst_products.id = azst_ordersummary_tbl.azst_order_product_id
-                 LEFT JOIN azst_wishlist ON azst_products.id = azst_wishlist.azst_product_id
+                 LEFT JOIN azst_wishlist_tbl AS wl ON azst_products.id = wl.azst_product_id AND wl.status = 1
                  WHERE  azst_products.status = 1
                  GROUP BY azst_ordersummary_tbl.azst_order_product_id
                  ORDER BY  no_of_orders DESC
@@ -265,9 +265,14 @@ exports.getProductDetalis = catchAsync(async (req, res, next) => {
                                 FROM azst_product_features 
                                 WHERE azst_product_features.product_id = azst_products.id
                                   AND azst_product_features.status = 1
-                              ) AS product_features
+                              ) AS product_features,
+                               CASE 
+                      WHEN wl.azst_product_id IS NOT NULL THEN true
+                      ELSE false
+                    END AS in_wishlist
                             FROM 
                               azst_products
+                              LEFT JOIN azst_wishlist_tbl AS wl ON azst_products.id = wl.azst_product_id AND wl.status = 1
                             WHERE 
                               azst_products.product_url_title = ?
                               AND azst_products.status = 1;

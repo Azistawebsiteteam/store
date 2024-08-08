@@ -53,9 +53,9 @@ const getCartData = catchAsync(async (req, res, next) => {
                         azst_inventory_product_mapping
                         ON (azst_cart_tbl.azst_cart_product_id = azst_inventory_product_mapping.azst_ipm_product_id
                         AND azst_cart_tbl.azst_cart_variant_id = azst_inventory_product_mapping.azst_ipm_variant_id)
-                    WHERE 
+                    WHERE  azst_cart_status = 1   AND 
                         (azst_customer_id = ? OR azst_session_id = ?)  
-                        AND azst_cart_status = 1
+                      
                     GROUP BY 
                         azst_cart_id
                     ORDER BY 
@@ -81,7 +81,8 @@ const getCartData = catchAsync(async (req, res, next) => {
 
 const removeFromCart = catchAsync(async (req, res, next) => {
   const { cartId } = req.body;
-  const query = 'Update azst_cart_tbl set status = 0 where azst_cart_id = ?';
+  const query =
+    'Update azst_cart_tbl set azst_cart_status = 0 where azst_cart_id = ?';
   const result = await db(query, [cartId]);
   res.status(200).json({ message: 'Cart updated successfully' });
 });
