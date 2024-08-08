@@ -18,7 +18,7 @@ router
   .post(addToCartCtrl.addProductToCart)
   .put(addToCartCtrl.handleProductQuantityUpdate);
 
-router.get('/data', getCartData);
+router.post('/data', getCartData);
 router.patch('/data', removeFromCart);
 
 const key = process.env.JWT_SECRET;
