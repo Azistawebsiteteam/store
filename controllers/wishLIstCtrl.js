@@ -58,7 +58,8 @@ const getImageLink = (req, imges, pImg) => {
 };
 
 const getWhishlist = catchAsync(async (req, res, next) => {
-  const query = `SELECT azst_wishlist_id,product_title,product_url_title,price,azst_sku_variant_info.compare_at_price,azst_products.compare_at_price as product_compare_at_price,variant_image,image_src,azst_product_id,azst_variant_id, offer_price,offer_percentage
+  const query = `SELECT azst_wishlist_id,product_title,product_url_title,price,min_cart_quantity,
+                    max_cart_quantity,azst_sku_variant_info.compare_at_price,azst_products.compare_at_price as product_compare_at_price,variant_image,image_src,azst_product_id,azst_variant_id, offer_price,offer_percentage
                     FROM azst_wishlist_tbl
                     LEFT JOIN azst_sku_variant_info ON  azst_wishlist_tbl.azst_variant_id = azst_sku_variant_info.id
                     LEFT JOIN azst_products ON azst_wishlist_tbl.azst_product_id = azst_products.id

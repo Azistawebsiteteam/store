@@ -164,7 +164,8 @@ exports.getCollectionProducts = catchAsync(async (req, res, next) => {
 
 exports.shop99Products = catchAsync(async (req, res, next) => {
   const getProducts = `SELECT id as product_id, product_main_title, product_title, image_src,
-                        image_alt_text, price, compare_at_price, product_url_title,
+                        image_alt_text, price, compare_at_price, product_url_title,min_cart_quantity,
+                        max_cart_quantity,
                         CASE 
                           WHEN wl.azst_product_id IS NOT NULL THEN true
                           ELSE false
@@ -182,8 +183,8 @@ exports.shop99Products = catchAsync(async (req, res, next) => {
 
 exports.getBestSeller = catchAsync(async (req, res, next) => {
   const query = `SELECT id as product_id, product_title,product_main_title, image_src,
-                    image_alt_text, price, compare_at_price, product_url_title,
-                    COUNT(azst_ordersummary_tbl.azst_order_product_id) AS no_of_orders,
+                    image_alt_text, price, compare_at_price, product_url_title,min_cart_quantity,
+                    max_cart_quantity,COUNT(azst_ordersummary_tbl.azst_order_product_id) AS no_of_orders,
                     CASE 
                       WHEN wl.azst_product_id IS NOT NULL THEN true
                       ELSE false
