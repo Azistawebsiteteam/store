@@ -28,8 +28,8 @@ exports.getAllOrdrs = catchAsync(async (req, res, next) => {
                        FROM azst_orders_tbl
                         LEFT JOIN azst_ordersummary_tbl
                         ON azst_orders_tbl.azst_orders_id = azst_ordersummary_tbl.azst_orders_id
-                        LEFT JOIN azst_customer
-                        ON azst_customer.azst_customer_id = azst_orders_tbl.azst_orders_customer_id 
+                        LEFT JOIN azst_customers_tbl
+                        ON azst_customers_tbl.azst_customer_id = azst_orders_tbl.azst_orders_customer_id 
                        ${filterQuery}
                        GROUP BY azst_orders_tbl.azst_orders_id`;
   const results = await db(ordersQuery, values);
@@ -72,17 +72,17 @@ const shippingAddressquery = `JSON_OBJECT(
   ) AS shipping_address`;
 
 const billingAddressQuery = `JSON_OBJECT( 
-        'azst_customer_hno', azst_customer.azst_customer_hno,
-        'azst_customer_area', azst_customer.azst_customer_area,
-        'azst_customer_city',azst_customer.azst_customer_city ,
-        'azst_customer_district', azst_customer.azst_customer_district,
-        'azst_customer_state', azst_customer.azst_customer_state,
-        'azst_customer_country', azst_customer.azst_customer_country,
-        'azst_customer_zip', azst_customer.azst_customer_zip ,
-        'azst_customer_landmark',azst_customer.azst_customer_landmark ,
-        'azst_customer_company',azst_customer.azst_customer_company ,
-        'azst_customer_address1',azst_customer.azst_customer_address1 ,
-        'azst_customer_address2',azst_customer.azst_customer_address2 ) AS billing_address`;
+        'azst_customer_hno', azst_customers_tbl.azst_customer_hno,
+        'azst_customer_area', azst_customers_tbl.azst_customer_area,
+        'azst_customer_city',azst_customers_tbl.azst_customer_city ,
+        'azst_customer_district', azst_customers_tbl.azst_customer_district,
+        'azst_customer_state', azst_customers_tbl.azst_customer_state,
+        'azst_customer_country', azst_customers_tbl.azst_customer_country,
+        'azst_customer_zip', azst_customers_tbl.azst_customer_zip ,
+        'azst_customer_landmark',azst_customers_tbl.azst_customer_landmark ,
+        'azst_customer_company',azst_customers_tbl.azst_customer_company ,
+        'azst_customer_address1',azst_customers_tbl.azst_customer_address1 ,
+        'azst_customer_address2',azst_customers_tbl.azst_customer_address2 ) AS billing_address`;
 
 exports.getCustomerOrders = catchAsync(async (req, res, next) => {
   const customerId = req.empId;
@@ -108,8 +108,8 @@ exports.getCustomerOrders = catchAsync(async (req, res, next) => {
                       ON azst_orderinfo_tbl.azst_addressbook_id = azst_customer_adressbook.azst_customer_adressbook_id
                     LEFT JOIN azst_products
                       ON azst_ordersummary_tbl.azst_order_product_id = azst_products.id
-                    LEFT JOIN azst_customer
-                      ON azst_customer.azst_customer_id = azst_orders_tbl.azst_orders_customer_id
+                    LEFT JOIN azst_customers_tbl
+                      ON azst_customers_tbl.azst_customer_id = azst_orders_tbl.azst_orders_customer_id
                     LEFT JOIN azst_sku_variant_info
                       ON azst_ordersummary_tbl.azst_order_variant_id = azst_sku_variant_info.id
                     WHERE azst_orders_tbl.azst_orders_customer_id = ?

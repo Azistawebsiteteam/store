@@ -12,7 +12,7 @@ exports.isUserExist = catchAsync(async (req, res, next) => {
   const id = userId ?? req.empId;
 
   const getUser =
-    'Select *  from azst_customer where azst_customer_id  = ? AND azst_customer_status = 1';
+    'Select *  from azst_customers_tbl where azst_customer_id  = ? AND azst_customer_status = 1';
   const result = await db(getUser, [id]);
   if (result.length === 0)
     return next(new AppError('No such customer was found', 404));
@@ -46,7 +46,7 @@ exports.updateProfile = catchAsync(async (req, res, next) => {
     gender,
     dob,
   } = req.body;
-  const profile = `UPDATE azst_customer SET  azst_customer_fname = ?, azst_customer_lname = ?, 
+  const profile = `UPDATE azst_customers_tbl SET  azst_customer_fname = ?, azst_customer_lname = ?, 
                         azst_customer_mobile = ?, azst_customer_email = ?, azst_customer_hno = ?,
                         azst_customer_district = ?,azst_customer_state = ?, azst_customer_country = ?,
                         azst_customer_zip = ?,azst_customer_landmark = ?, azst_customer_acceptemail_marketing = ?,

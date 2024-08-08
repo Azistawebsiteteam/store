@@ -12,7 +12,7 @@ exports.checkExistingUser = catchAsync(async (req, res, next) => {
   const mobileNum = customerMobileNum || mailOrMobile;
   const email = customerEmail || mailOrMobile;
   const checkQuery =
-    'SELECT azst_customer_id FROM  azst_customer  WHERE azst_customer_mobile = ? OR azst_customer_email = ? ';
+    'SELECT azst_customer_id FROM  azst_customers_tbl  WHERE azst_customer_mobile = ? OR azst_customer_email = ? ';
 
   const result = await db(checkQuery, [mobileNum, email]);
 
@@ -46,7 +46,7 @@ exports.signup = catchAsync(async (req, res, next) => {
   const [firstName = '', lastName = ''] = customerName.split(' ');
 
   const registerQuery = `
-    INSERT INTO azst_customer (
+    INSERT INTO azst_customers_tbl (
       azst_customer_fname,
       azst_customer_lname,
       azst_customer_mobile,
@@ -86,7 +86,7 @@ exports.mobileSignupInsert = catchAsync(async (req, res, next) => {
 
   const today = moment().format('YYYY-MM-DD HH:mm:ss');
 
-  const registerQuery = `INSERT INTO azst_customer (azst_customer_fname,azst_customer_lname,azst_customer_mobile,azst_customer_email,azst_customer_updatedon)
+  const registerQuery = `INSERT INTO azst_customers_tbl (azst_customer_fname,azst_customer_lname,azst_customer_mobile,azst_customer_email,azst_customer_updatedon)
                           VALUES(?,?,?,?,?)`;
 
   let values = [];
@@ -108,7 +108,7 @@ exports.otpSignupDetails = catchAsync(async (req, res, next) => {
   const { firstName, lastName, password, gender } = req.body;
   const today = moment().format('YYYY-MM-DD HH:mm:ss');
 
-  const registerQuery = `UPDATE azst_customer SET azst_customer_fname = ? ,azst_customer_lname = ?,
+  const registerQuery = `UPDATE azst_customers_tbl SET azst_customer_fname = ? ,azst_customer_lname = ?,
                             azst_customer_pwd = ? ,azst_customer_gender =?  ,azst_customer_updatedon = ?
                             WHERE azst_customer_id = ?`;
 
@@ -130,7 +130,7 @@ exports.otpSignupDetails = catchAsync(async (req, res, next) => {
 });
 
 exports.deleteAccount = catchAsync(async (req, res, next) => {
-  const deleteQuery = `UPDATE azst_customer SET azst_customer_status = 0 WHERE azst_customer_id = ?`;
+  const deleteQuery = `UPDATE azst_customers_tbl SET azst_customer_status = 0 WHERE azst_customer_id = ?`;
   await db(deleteQuery, [req.empId]);
   res.status(200).json({ message: 'Your account has been deleted' });
 });

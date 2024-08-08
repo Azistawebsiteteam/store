@@ -53,7 +53,7 @@ exports.getAllCustomers = catchAsync(async (req, res, next) => {
       azst_customer_country,
       azst_customer_totalspent,
       azst_customer_totalorders
-    FROM azst_customer
+    FROM azst_customers_tbl
     ${filterQuery}
     ORDER BY ${orderbyQuery} ${sortOrder}`;
 
@@ -66,7 +66,7 @@ exports.disableCustomer = catchAsync(async (req, res, next) => {
 
   if (!userId) return next(new AppError('User Id is required'));
 
-  const disableQuery = `UPDATE azst_customer SET azst_customer_status = 0 , azst_customer_updatedby =? WHERE azst_customer_id = ?`;
+  const disableQuery = `UPDATE azst_customers_tbl SET azst_customer_status = 0 , azst_customer_updatedby =? WHERE azst_customer_id = ?`;
   const response = await db(disableQuery, [req.empId, userId]);
   if (response.affectedRows > 0) {
     res.status(200).json({ message: 'User Account successfully disabled.' });
@@ -81,7 +81,7 @@ exports.disableCustomer = catchAsync(async (req, res, next) => {
 //   if (!userId) return next(new AppError('User Id is required'));
 
 //   const deleteQuery = `
-//     DELETE FROM azst_customer
+//     DELETE FROM azst_customers_tbl
 //     WHERE azst_customer_id = ? AND azst_customer_totalorders = 0
 //   `;
 

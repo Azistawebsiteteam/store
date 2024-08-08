@@ -87,7 +87,46 @@ const removeFromCart = catchAsync(async (req, res, next) => {
   res.status(200).json({ message: 'Cart updated successfully' });
 });
 
-module.exports = { getCartData, removeFromCart };
+const abandonmentCart = catchAsync(async (req, res, next) => {
+  const query = `SELECT   azst_cart_id,
+                  azst_cart_product_id,
+                  azst_cart_variant_id,
+                  azst_cart_quantity,
+                  azst_customers_tbl.azst_customer_id,
+                  azst_session_id,
+                  azst_cart_status,
+                  DATE_FORMAT(azst_cart_created_on , '%d-%m-%Y') azst_cart_added_on,
+                  CONCAT(azst_customer_fname, ' ' ,azst_customer_lname) azst_customer_fname,
+                  azst_customer_mobile,
+                  azst_customer_email,
+                  product_url_title,
+                  CONCAT('${req.protocol}://${req.get(
+    'host'
+  )}/api/images/product/variantimage/', variant_image) as p_variant_image,
+                  azst_products.compare_at_price AS product_compare_at_price,
+                  price,
+                  azst_sku_variant_info.compare_at_price,
+                  offer_price,
+                  offer_percentage,
+                  CONCAT('${req.protocol}://${req.get(
+    'host'
+  )}/api/images/product/', image_src) as product_image,
+                  is_varaints_aval
+                FROM  azst_cart_tbl
+                LEFT JOIN azst_customers_tbl ON azst_cart_tbl.azst_customer_id = azst_customers_tbl.azst_customer_id
+                LEFT JOIN 
+                        azst_sku_variant_info 
+                        ON azst_cart_tbl.azst_cart_variant_id = azst_sku_variant_info.id
+                LEFT JOIN 
+                        azst_products 
+                        ON azst_cart_tbl.azst_cart_product_id = azst_products.id
+
+`;
+  const result = await db(query);
+  res.status(200).json(result);
+});
+
+module.exports = { getCartData, removeFromCart, abandonmentCart };
 
 //   azst_cart_id,
 //   azst_cart_product_id,

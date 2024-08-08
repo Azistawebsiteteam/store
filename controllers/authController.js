@@ -38,7 +38,7 @@ exports.protect = (token_key) => {
     // 3) check user active or not  or dleted account
     let query = '';
     if (token_key === process.env.JWT_SECRET) {
-      query = `SELECT * FROM azst_customer 
+      query = `SELECT * FROM azst_customers_tbl 
                       WHERE azst_customer_id = ? AND azst_customer_status = 1`;
     } else {
       query = `SELECT * FROM azst_admin_details 
@@ -83,7 +83,7 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
   const { currentPassword, newPassword } = req.body;
 
   const getoldPassword =
-    'SELECT azst_customer_pwd FROM azst_customer WHERE azst_customer_id= ?';
+    'SELECT azst_customer_pwd FROM azst_customers_tbl WHERE azst_customer_id= ?';
 
   const result = await db(getoldPassword, [req.empId]);
 
@@ -101,7 +101,7 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
     return next(new AppError('Invalid CurrentPassword', 404));
   }
   const hashedPassword = await bcrypt.hash(newPassword, 10);
-  const changePasswordAfterReset = `UPDATE azst_customer SET azst_customer_pwd = ? WHERE azst_customer_id = ?`;
+  const changePasswordAfterReset = `UPDATE azst_customers_tbl SET azst_customer_pwd = ? WHERE azst_customer_id = ?`;
   await db(changePasswordAfterReset, [hashedPassword, req.empId]);
   const key = process.env.JWT_SECRET;
   const token = createSendToken(req.empId, key);
@@ -112,7 +112,7 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
   const { newPassword } = req.body;
   const { azst_customer_id } = req.userDetails;
   const hashedPassword = await bcrypt.hash(newPassword, 10);
-  const changePasswordAfterReset = `UPDATE azst_customer SET azst_customer_pwd = ? WHERE azst_customer_id = ?`;
+  const changePasswordAfterReset = `UPDATE azst_customers_tbl SET azst_customer_pwd = ? WHERE azst_customer_id = ?`;
 
   const values = [hashedPassword, azst_customer_id];
   await db(changePasswordAfterReset, values);

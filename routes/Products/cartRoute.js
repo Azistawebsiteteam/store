@@ -5,6 +5,7 @@ const authCtrl = require('../../controllers/authController');
 const {
   getCartData,
   removeFromCart,
+  abandonmentCart,
 } = require('../../controllers/Cart/getProducts');
 
 const addToCartCtrl = require('../../controllers/Cart/addProducts');
@@ -21,8 +22,12 @@ router
 router.post('/data', getCartData);
 router.patch('/data', removeFromCart);
 
-const key = process.env.JWT_SECRET;
+// Admin routes handle
+
+const key = process.env.JWT_SECRET_ADMIN;
 
 router.use(authCtrl.protect(key));
+
+router.post('/abandonment', abandonmentCart);
 
 module.exports = router;

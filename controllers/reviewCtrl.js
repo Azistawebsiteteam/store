@@ -199,7 +199,7 @@ exports.getProductReviews = catchAsync(async (req, res, next) => {
                               DATE_FORMAT(review_created_on, '%d-%m-%Y %H:%i:%s') AS created_on,
                               DATE_FORMAT(review_updated_on, '%d-%m-%Y %H:%i:%s') AS updated_on
                         FROM product_review_rating_tbl
-                        LEFT JOIN azst_customer ON product_review_rating_tbl.customer_id = azst_customer.azst_customer_id
+                        LEFT JOIN azst_customers_tbl ON product_review_rating_tbl.customer_id = azst_customers_tbl.azst_customer_id
                         WHERE review_status = 1   AND  review_approval_status = 1 AND product_id = ?
                         ORDER BY created_on ${orderby};
                       `;
@@ -247,7 +247,7 @@ exports.getAllReviews = catchAsync(async (req, res, next) => {
                       DATE_FORMAT(review_updated_on, '%d-%m-%Y %H:%i:%s') AS updated_on,DATE_FORMAT(approved_on, '%d-%m-%Y %H:%i:%s') AS approve_on,
                       azst_customer_fname,azst_customer_lname,product_title,image_src as product_image,url_handle
                     FROM product_review_rating_tbl
-                    LEFT JOIN azst_customer ON product_review_rating_tbl.customer_id = azst_customer.azst_customer_id
+                    LEFT JOIN azst_customers_tbl ON product_review_rating_tbl.customer_id = azst_customers_tbl.azst_customer_id
                     LEFT JOIN azst_products ON product_review_rating_tbl.product_id = azst_products.id
                     WHERE review_status = 1 ${filtersQuery} ORDER BY created_on DESC`;
 
