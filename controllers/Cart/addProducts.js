@@ -58,8 +58,29 @@ const addProductToCart = async (values) => {
   await db(query, values);
 };
 
+const cartProductSchema = Joi.object({
+  productId: Joi.number().required(),
+  variantId: Joi.number().required(),
+  quantity: Joi.number().integer().min(1).required(),
+});
+
+const cartSchema = Joi.object({
+  cartProducts: Joi.array().items(cartProductSchema).required(),
+  customerId: Joi.number().min(0).optional(),
+  sessionId: Joi.string()
+    .when('customerId', {
+      is: 0,
+      then: Joi.string().min(1).required(), // If customerId is 0, sessionId must be a non-empty string
+      otherwise: Joi.string().allow(''), // Otherwise, sessionId can be empty or any string
+    })
+    .optional(),
+}).or('customerId', 'sessionId'); // Ensure at least one of customerId or sessionId is provided and valid
+
 exports.addProductToCart = catchAsync(async (req, res, next) => {
   const { cartProducts, customerId, sessionId } = req.body;
+
+  const { error } = cartSchema.validate(req.body);
+  if (error) return next(new AppError(error.message, 400));
 
   for (const product of cartProducts) {
     try {

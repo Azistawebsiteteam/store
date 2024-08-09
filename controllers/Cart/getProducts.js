@@ -88,41 +88,44 @@ const removeFromCart = catchAsync(async (req, res, next) => {
 });
 
 const abandonmentCart = catchAsync(async (req, res, next) => {
-  const query = `SELECT   azst_cart_id,
-                  azst_cart_product_id,
-                  azst_cart_variant_id,
-                  azst_cart_quantity,
-                  azst_customers_tbl.azst_customer_id,
-                  azst_session_id,
-                  azst_cart_status,
-                  DATE_FORMAT(azst_cart_created_on , '%d-%m-%Y') azst_cart_added_on,
-                  CONCAT(azst_customer_fname, ' ' ,azst_customer_lname) azst_customer_fname,
-                  azst_customer_mobile,
-                  azst_customer_email,
-                  product_url_title,
-                  CONCAT('${req.protocol}://${req.get(
-    'host'
-  )}/api/images/product/variantimage/', variant_image) as p_variant_image,
-                  azst_products.compare_at_price AS product_compare_at_price,
-                  price,
-                  azst_sku_variant_info.compare_at_price,
-                  offer_price,
-                  offer_percentage,
-                  CONCAT('${req.protocol}://${req.get(
-    'host'
-  )}/api/images/product/', image_src) as product_image,
-                  is_varaints_aval
-                FROM  azst_cart_tbl
-                LEFT JOIN azst_customers_tbl ON azst_cart_tbl.azst_customer_id = azst_customers_tbl.azst_customer_id
-                LEFT JOIN 
-                        azst_sku_variant_info 
-                        ON azst_cart_tbl.azst_cart_variant_id = azst_sku_variant_info.id
-                LEFT JOIN 
-                        azst_products 
-                        ON azst_cart_tbl.azst_cart_product_id = azst_products.id
+  const query = `
+    SELECT
+      c.azst_cart_id,
+      c.azst_cart_product_id,
+      c.azst_cart_variant_id,
+      c.azst_cart_quantity,
+      cu.azst_customer_id,
+      c.azst_session_id,
+      c.azst_cart_status,
+      DATE_FORMAT(c.azst_cart_created_on, '%d-%m-%Y') AS azst_cart_added_on,
+      CONCAT(cu.azst_customer_fname, ' ', cu.azst_customer_lname) AS azst_customer_name,
+      cu.azst_customer_mobile,
+      cu.azst_customer_email,
+      p.product_url_title,
+      CONCAT(?, v.variant_image) AS variant_image,
+      p.compare_at_price AS product_compare_at_price,
+      p.price,
+      v.compare_at_price AS variant_compare_at_price,
+      v.offer_price,
+      v.offer_percentage,
+      CONCAT(?, p.image_src) AS product_image,
+      p.is_varaints_aval
+    FROM azst_cart_tbl c
+    LEFT JOIN azst_customers_tbl cu ON c.azst_customer_id = cu.azst_customer_id
+    LEFT JOIN azst_sku_variant_info v ON c.azst_cart_variant_id = v.id
+    LEFT JOIN azst_products p ON c.azst_cart_product_id = p.id
+    ORDER BY azst_cart_added_on DESC
+  `;
 
-`;
-  const result = await db(query);
+  const variantImageBaseUrl = `${req.protocol}://${req.get(
+    'host'
+  )}/api/images/product/variantimage/`;
+  const productImageBaseUrl = `${req.protocol}://${req.get(
+    'host'
+  )}/api/images/product/`;
+
+  const result = await db(query, [variantImageBaseUrl, productImageBaseUrl]);
+
   res.status(200).json(result);
 });
 

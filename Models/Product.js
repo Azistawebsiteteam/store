@@ -51,8 +51,9 @@ const baseProductSchema = Joi.object({
 });
 
 const productSchemaWithoutVariants = baseProductSchema.keys({
-  productPrice: Joi.number().required(),
-  productComparePrice: Joi.number().allow(''),
+  productComparePrice: Joi.number()
+    .min(Joi.ref('productPrice')) // Ensure that productComparePrice is equal to or greater than productPrice
+    .required(),
   productIsTaxable: Joi.boolean().required(),
   productCostPerItem: Joi.number().required(),
   inventoryInfo: Joi.string().required(),
@@ -103,10 +104,22 @@ const variantsSchema = Joi.object({
       Joi.number() // Allow number type
     )
     .required(),
-  comparePrice: Joi.alternatives().try(
-    Joi.number().min(0).required(),
-    Joi.string().valid('0').required()
-  ),
+  comparePrice: Joi.alternatives()
+    .try(Joi.number().required(), Joi.string().valid('0').required())
+    .custom((value, helpers) => {
+      const { offer_price } = helpers.state.ancestors[0];
+
+      if (typeof offer_price === 'string' && value === '0') {
+        return value; // Valid when offer_price is a string and comparePrice is '0'
+      }
+
+      if (typeof offer_price === 'number' && value < offer_price) {
+        return helpers.error('any.invalid'); // Validation error when comparePrice is less than offer_price
+      }
+
+      return value; // Valid when conditions are met
+    })
+    .required(),
   quantity: Joi.number(),
   hsCode: Joi.string().required().allow(''),
   barcode: Joi.string().required().allow('', null),
