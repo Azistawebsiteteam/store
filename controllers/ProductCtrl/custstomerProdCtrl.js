@@ -90,6 +90,8 @@ exports.getCollectionProducts = catchAsync(async (req, res, next) => {
     SELECT 
       azst_products.id AS product_id,
       product_main_title,
+      min_cart_quantity,
+      max_cart_quantity,
       product_title,
       image_src,
       image_alt_text,
