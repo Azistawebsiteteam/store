@@ -29,6 +29,7 @@ const getCartData = catchAsync(async (req, res, next) => {
                         azst_cart_product_id,
                         azst_cart_variant_id,
                         azst_cart_quantity,
+                        product_main_title,
                         product_url_title,
                         min_cart_quantity,
                         max_cart_quantity,
