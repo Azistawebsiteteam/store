@@ -16,6 +16,7 @@ const imagesRoute = require('./routes/imagesRoutes');
 const app = express();
 
 process.on('uncaughtException', (err) => {
+  console.log(err);
   console.log('Uncaught exception! Shutting down...');
   process.exit(1);
 });

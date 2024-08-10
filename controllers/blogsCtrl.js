@@ -86,8 +86,8 @@ exports.updateStoreBlogImgs = catchAsync(async (req, res, next) => {
     for (const fieldName in req.files) {
       const imagePath =
         fieldName === 'blogImg'
-          ? `Uploads/blogImages//${azst_blg_img}`
-          : `Uploads/blogImages//${azst_blg_thumbnail_img}`;
+          ? `Uploads/blogImages/${azst_blg_img}`
+          : `Uploads/blogImages/${azst_blg_thumbnail_img}`;
 
       fs.unlink(imagePath, (err) => {
         if (err) console.error('Failed to delete old image:', err);
@@ -110,8 +110,8 @@ exports.updateStoreBlogImgs = catchAsync(async (req, res, next) => {
   for (const fieldName in req.files) {
     const imagePath =
       fieldName === 'blogImg'
-        ? `Uploads/blogImages//${azst_blg_img}`
-        : `Uploads/blogImages//${azst_blg_thumbnail_img}`;
+        ? `Uploads/blogImages/${azst_blg_img}`
+        : `Uploads/blogImages/${azst_blg_thumbnail_img}`;
 
     fs.unlink(imagePath, (err) => {
       if (err) console.error('Failed to delete old image:', err);
