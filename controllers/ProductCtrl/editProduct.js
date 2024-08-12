@@ -187,25 +187,28 @@ const updateInventory = async (
   quantity,
   empId
 ) => {
+  //console.log({ inventoryId, productId, variantId, quantity, empId });
   const getInventoryQuery = `
-    SELECT azst_ipm_onhand_quantity, azst_ipm_avbl_quantity 
-    FROM azst_inventory_product_mapping 
-    WHERE azst_ipm_inventory_id = ? 
-      AND azst_ipm_product_id = ? 
-      AND azst_ipm_variant_id = ?;
-  `;
+                              SELECT azst_ipm_onhand_quantity, azst_ipm_avbl_quantity
+                              FROM azst_inventory_product_mapping
+                              WHERE azst_ipm_inventory_id = ?
+                                AND azst_ipm_product_id = ?
+                                AND azst_ipm_variant_id = ?;
+                            `;
 
   const updateInventoryQuery = `
-    UPDATE azst_inventory_product_mapping 
-    SET azst_ipm_onhand_quantity = ?, 
-        azst_ipm_avbl_quantity = ?, 
-        azst_ipm_updated_by = ?
-    WHERE azst_ipm_inventory_id = ? 
-      AND azst_ipm_product_id = ? 
-      AND azst_ipm_variant_id = ?;
-  `;
+                                  UPDATE azst_inventory_product_mapping
+                                  SET azst_ipm_onhand_quantity = ?,
+                                      azst_ipm_avbl_quantity = ?,
+                                      azst_ipm_updated_by = ?
+                                  WHERE azst_ipm_inventory_id = ?
+                                    AND azst_ipm_product_id = ?
+                                    AND azst_ipm_variant_id = ?;
+                                `;
 
   try {
+    //console.log([inventoryId, productId, variantId]);
+    //console.log(getInventoryQuery);
     const [currentInventory] = await db(getInventoryQuery, [
       inventoryId,
       productId,
@@ -225,12 +228,14 @@ const updateInventory = async (
         productId,
         variantId,
       ];
+      //console.log(invValues);
+      //console.log(updateInventoryQuery);
       await db(updateInventoryQuery, invValues);
     } else {
-      const query = `INSERT INTO azst_inventory_product_mapping 
-                  (azst_ipm_inventory_id, azst_ipm_product_id, azst_ipm_variant_id, 
-                   azst_ipm_onhand_quantity, azst_ipm_avbl_quantity, azst_ipm_created_by)
-               VALUES (?, ?, ?, ?, ?, ?)`;
+      const query = `INSERT INTO azst_inventory_product_mapping
+                          (azst_ipm_inventory_id, azst_ipm_product_id, azst_ipm_variant_id,
+                          azst_ipm_onhand_quantity, azst_ipm_avbl_quantity, azst_ipm_created_by)
+                      VALUES (?, ?, ?, ?, ?, ?)`;
 
       const values = [
         inventoryId,
@@ -240,18 +245,21 @@ const updateInventory = async (
         quantity,
         empId,
       ];
+
       await db(query, values);
     }
   } catch (error) {
+    console.log(error);
     throw error;
   }
 };
 
 const updateTheInventory = async (inventory, productId, empId) => {
   try {
-    const inventoryPromises = inventory.map(({ inventoryId, qty }) =>
-      updateInventory(inventoryId, productId, 0, qty, empId)
-    );
+    const inventoryPromises = inventory.map(({ inventoryId, qty }) => {
+      console.log(inventoryId, 'fdsfkjfjkdjds');
+      return updateInventory(inventoryId, productId, 0, qty, empId);
+    });
     await Promise.all(inventoryPromises);
   } catch (error) {
     throw error;
@@ -265,9 +273,15 @@ const updateVariantInventory = async (
   quantity,
   empId
 ) => {
-  const inventoryPromises = inventory.map((inventoryId) =>
-    updateInventory(inventoryId, productId, variantId, quantity, empId)
-  );
+  const inventoryPromises = inventory.map((inv) => {
+    return updateInventory(
+      inv.inventoryId,
+      productId,
+      variantId,
+      quantity,
+      empId
+    );
+  });
   await Promise.all(inventoryPromises);
 };
 
@@ -284,15 +298,16 @@ const insertVariantInventory = async (
     VALUES (?, ?, ?, ?, ?, ?);
   `;
 
-  const inventoryPromises = JSON.parse(vInventoryInfo).map((inventoryId) => {
+  const inventoryPromises = JSON.parse(vInventoryInfo).map((inv) => {
     const invValues = [
-      inventoryId,
+      inv.inventoryId,
       productId,
       variantId,
       quantity,
       quantity,
       empId,
     ];
+    console.log(inventoryQuery, invValues);
     return db(inventoryQuery, invValues);
   });
 

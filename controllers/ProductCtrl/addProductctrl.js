@@ -196,8 +196,8 @@ exports.addProduct = catchAsync(async (req, res, next) => {
     urlTitle,
     variantsThere,
     brand,
-    minCartQty,
-    maxCartQty,
+    minCartQty ?? 1,
+    maxCartQty ?? 10,
   ];
 
   const product = await db(productQuery, values);

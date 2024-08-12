@@ -18,6 +18,7 @@ const filtersSchema = Joi.object({
   productQty: Joi.string().optional().valid('All', 'inStock'),
   orderBy: Joi.string().optional().valid('ASC', 'DESC'),
   reviewpoint: Joi.number().optional(),
+  customerId: Joi.number().optional().allow(''),
 });
 
 exports.getCollectionProducts = catchAsync(async (req, res, next) => {
@@ -33,6 +34,7 @@ exports.getCollectionProducts = catchAsync(async (req, res, next) => {
     orderBy = 'ASC',
     reviewpoint,
     productQty,
+    customerId,
   } = req.body;
 
   // Initialize arrays to store SQL filter conditions and values
@@ -86,44 +88,47 @@ exports.getCollectionProducts = catchAsync(async (req, res, next) => {
     havingValues.length > 0 ? 'HAVING ' + havingValues.join(' AND ') : '';
 
   // Construct the main SQL query to fetch products with applied filters and sorting
+
   const getProducts = `
-    SELECT 
-      azst_products.id AS product_id,
-      product_main_title,
-      min_cart_quantity,
-      max_cart_quantity,
-      product_title,
-      image_src,
-      image_alt_text,
-      price,
-      compare_at_price,
-      product_url_title,
-      CASE 
-        WHEN azst_wishlist_tbl.azst_product_id IS NOT NULL THEN true
-        ELSE false
-      END AS in_wishlist,
-      COALESCE(AVG(prt.review_points), 0) AS product_review_points,
-      COALESCE(SUM(pi.azst_ipm_onhand_quantity), 0) AS product_qty
-    FROM azst_products
-    LEFT JOIN azst_wishlist_tbl 
-      ON azst_products.id = azst_wishlist_tbl.azst_product_id
-    LEFT JOIN product_review_rating_tbl AS prt
-      ON azst_products.id = prt.product_id
-    LEFT JOIN azst_inventory_product_mapping AS pi 
-      ON azst_products.id = pi.azst_ipm_product_id
-    ${filterQuery}
-    GROUP BY 
-      azst_products.id,
-      product_main_title,
-      product_title,
-      image_src,
-      image_alt_text,
-      price,
-      compare_at_price,
-      product_url_title
-    ${havingQuery}
-    ${sortByQuery}
-  `;
+  SELECT 
+    azst_products.id AS product_id,
+    product_main_title,
+    min_cart_quantity,
+    max_cart_quantity,
+    product_title,
+    image_src,
+    image_alt_text,
+    price,
+    compare_at_price,
+    product_url_title,
+    CASE 
+      WHEN wl.azst_product_id IS NOT NULL THEN true
+      ELSE false
+    END AS in_wishlist,
+    COALESCE(AVG(prt.review_points), 0) AS product_review_points,
+    COALESCE(SUM(pi.azst_ipm_onhand_quantity), 0) AS product_qty
+  FROM azst_products
+  LEFT JOIN azst_wishlist_tbl AS wl
+    ON azst_products.id = wl.azst_product_id 
+    AND wl.status = 1 
+    AND wl.azst_customer_id = '${customerId}'
+  LEFT JOIN product_review_rating_tbl prt
+    ON azst_products.id = prt.product_id
+  LEFT JOIN azst_inventory_product_mapping pi 
+    ON azst_products.id = pi.azst_ipm_product_id
+  ${filterQuery}
+  GROUP BY 
+    azst_products.id,
+    product_main_title,
+    product_title,
+    image_src,
+    image_alt_text,
+    price,
+    compare_at_price,
+    product_url_title
+  ${havingQuery}
+  ${sortByQuery}
+`;
 
   // Determine which collection to query for additional collection data
   let collectionQuery = '';
@@ -165,6 +170,7 @@ exports.getCollectionProducts = catchAsync(async (req, res, next) => {
 });
 
 exports.shop99Products = catchAsync(async (req, res, next) => {
+  const { customerId } = req.body;
   const getProducts = `SELECT id as product_id, product_main_title, product_title, image_src,
                         image_alt_text, price, compare_at_price, product_url_title,min_cart_quantity,
                         max_cart_quantity,
@@ -173,7 +179,7 @@ exports.shop99Products = catchAsync(async (req, res, next) => {
                           ELSE false
                         END AS in_wishlist
                        FROM azst_products
-                       LEFT JOIN azst_wishlist_tbl as wl ON azst_products.id = wl.azst_product_id  AND wl.status = 1
+                       LEFT JOIN azst_wishlist_tbl as wl ON azst_products.id = wl.azst_product_id  AND wl.status = 1 AND wl.azst_customer_id = '${customerId}'
                        WHERE azst_products.status = 1 
                        AND JSON_CONTAINS(collections, JSON_QUOTE('25'), '$')`;
 
@@ -184,6 +190,7 @@ exports.shop99Products = catchAsync(async (req, res, next) => {
 });
 
 exports.getBestSeller = catchAsync(async (req, res, next) => {
+  const { customerId } = req.body;
   const query = `SELECT id as product_id, product_title,product_main_title, image_src,
                     image_alt_text, price, compare_at_price, product_url_title,min_cart_quantity,
                     max_cart_quantity,COUNT(azst_ordersummary_tbl.azst_order_product_id) AS no_of_orders,
@@ -193,7 +200,7 @@ exports.getBestSeller = catchAsync(async (req, res, next) => {
                     END AS in_wishlist
                  FROM azst_ordersummary_tbl
                  LEFT JOIN azst_products ON azst_products.id = azst_ordersummary_tbl.azst_order_product_id
-                 LEFT JOIN azst_wishlist_tbl AS wl ON azst_products.id = wl.azst_product_id AND wl.status = 1
+                 LEFT JOIN azst_wishlist_tbl AS wl ON azst_products.id = wl.azst_product_id AND wl.status = 1 AND wl.azst_customer_id = '${customerId}'
                  WHERE  azst_products.status = 1
                  GROUP BY azst_ordersummary_tbl.azst_order_product_id
                  ORDER BY  no_of_orders DESC
@@ -232,7 +239,7 @@ exports.getProductsSerach = catchAsync(async (req, res, next) => {
 });
 
 exports.getProductDetalis = catchAsync(async (req, res, next) => {
-  const { productId } = req.body;
+  const { productId, customerId } = req.body;
 
   const getproductDetails = `SELECT 
                               azst_products.*, 
@@ -246,8 +253,7 @@ exports.getProductDetalis = catchAsync(async (req, res, next) => {
                                       req.protocol
                                     }://${req.get(
     'host'
-  )}/api/images/ingredients/', azst_product_ingredients.image)
-                                                              
+  )}/api/images/ingredients/', azst_product_ingredients.image)                                                         
                             ))
                                 FROM azst_product_ingredients 
                                 WHERE azst_product_ingredients.product_id = azst_products.id
@@ -275,7 +281,8 @@ exports.getProductDetalis = catchAsync(async (req, res, next) => {
                     END AS in_wishlist
                             FROM 
                               azst_products
-                              LEFT JOIN azst_wishlist_tbl AS wl ON azst_products.id = wl.azst_product_id AND wl.status = 1
+                              LEFT JOIN azst_wishlist_tbl AS wl ON azst_products.id = wl.azst_product_id
+                              AND wl.status = 1 AND wl.azst_customer_id = '${customerId}'
                             WHERE 
                               azst_products.product_url_title = ?
                               AND azst_products.status = 1;
