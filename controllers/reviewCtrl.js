@@ -205,7 +205,7 @@ exports.getProductReviews = catchAsync(async (req, res, next) => {
                       `;
 
   const result = await db(reviewQuery, values);
-  if (result.length <= 0) return next(new AppError('No Reviews Found', 404));
+  // if (result.length <= 0) return next(new AppError('No Reviews Found', 404));
 
   const modifiedReview = result.map((review) => ({
     ...review,
