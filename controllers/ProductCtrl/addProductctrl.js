@@ -7,8 +7,6 @@ const {
   getofferPercentage,
   getPricess,
 } = require('../../Utils/offerperecentageCal');
-const { number } = require('joi');
-const { query } = require('express');
 
 const multerStorage = multer.memoryStorage();
 

@@ -139,7 +139,7 @@ const getDiscountByCode = async (code, id, date) => {
 const getXyDiscountByCode = async (code, id, date) => {
   const query = `
     SELECT 
-      azst_x_y_dsc_applyto AS azst_dsc_apply_mode,
+      azst_x_y_dsc_applyto AS azst_dsc_apply_mode,t
       azst_x_y_dsc_applid AS azst_dsc_apply_id,
       azst_x_y_dsc_buy_mode AS azst_dsc_prc_mode,
       azst_x_y_dsc_min_add_qty AS azst_dsc_prc_value,

@@ -9,6 +9,8 @@ router.use(multer().any());
 const key = process.env.JWT_SECRET;
 
 router.post('/estimate/date', orderAddCtrl.getEstimateDate);
+router.post('/payment/', orderAddCtrl.razorPayCreateOrder);
+router.get('/payment/:paymentId', orderAddCtrl.rezorpayPayment);
 
 router.use(authCtrl.protect(key));
 // Route to download the invoice

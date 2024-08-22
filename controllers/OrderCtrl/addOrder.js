@@ -5,9 +5,11 @@ const moment = require('moment');
 const path = require('path');
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
+const Razorpay = require('razorpay');
 
 const catchAsync = require('../../Utils/catchAsync');
 const AppError = require('../../Utils/appError');
+const { concurrency } = require('sharp');
 
 const pinocdeSchema = Joi.object({
   pincode: Joi.number().integer().min(100000).max(999999).messages({
@@ -244,6 +246,50 @@ const getCartTotal = (cartProducts) => {
   }, 0);
   return { subTotal, taxAmount };
 };
+
+const razorpayInstance = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_KEY_SECRET,
+});
+
+exports.razorPayCreateOrder = catchAsync(async (req, res, next) => {
+  const { amount, currency } = req.body;
+
+  const options = {
+    amount,
+    currency,
+    receipt: 'receipt',
+    payment_capture: 1,
+  };
+  try {
+    const response = await razorpayInstance.orders.create(options);
+
+    res.status(200).json({
+      order_id: response.id,
+      currency: response.currency,
+      amount: response.amount,
+    });
+  } catch (error) {
+    console.error(error);
+  }
+});
+
+exports.rezorpayPayment = catchAsync(async (req, res, next) => {
+  const { paymentId } = req.params;
+
+  try {
+    const payment = await razorpayInstance.payments.fetch(paymentId);
+
+    res.json({
+      status: payment.status,
+      method: payment.method,
+      amount: payment.amount,
+      currency: payment.currency,
+    });
+  } catch (error) {
+    console.log(error);
+  }
+});
 
 exports.addedOrder = catchAsync(async (req, res, next) => {
   const { paymentMethod, cartProducts, addressId } = req.body;

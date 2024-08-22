@@ -274,13 +274,7 @@ const updateVariantInventory = async (
   empId
 ) => {
   const inventoryPromises = inventory.map((inv) => {
-    return updateInventory(
-      inv.inventoryId,
-      productId,
-      variantId,
-      quantity,
-      empId
-    );
+    return updateInventory(inv, productId, variantId, quantity, empId);
   });
   await Promise.all(inventoryPromises);
 };
@@ -489,9 +483,11 @@ exports.skuvarientsUpdate = catchAsync(async (req, res, next) => {
         const updateId = updatedVariants.find(
           (v) => v.variantId === subvariant.variantId
         );
+
         if (parseInt(subvariant.variantId) !== 0) {
           updatedVariants.push(subvariant);
         }
+
         if (updateId) {
           subvariant.variantId = 0;
         }
