@@ -1,5 +1,6 @@
 const db = require('../../dbconfig');
 const Joi = require('joi');
+const moment = require('moment');
 
 const catchAsync = require('../../Utils/catchAsync');
 const AppError = require('../../Utils/appError');
@@ -183,4 +184,92 @@ exports.getOrderDetails = catchAsync(async (req, res, next) => {
     })),
   };
   res.status(200).json(Order);
+});
+
+const confirmSchema = Joi.object({
+  orderId: Joi.string().min(1).max(20).required(),
+  orderStatus: Joi.number().required().valid(0, 1),
+  inventoryId: Joi.string().when('orderStatus', {
+    is: 1, // When orderStatus is 1
+    then: Joi.required(), // inventoryId is required
+    otherwise: Joi.optional(), // Otherwise, it's optional
+  }),
+});
+
+exports.confirmOrder = catchAsync(async (req, res, next) => {
+  const { orderId, orderStatus } = req.body;
+  const { error } = confirmSchema.validate(req.body);
+  if (error) return next(new AppError(error.message, 400));
+
+  // Ensure that orderStatus is either true or false (1 or 0)
+  const time = moment().format('YYYY-MM-DD HH:mm:ss');
+
+  // Construct the SQL fields based on the orderStatus
+  const orderstatus = orderStatus
+    ? 'azst_orders_confirm_status = 1'
+    : 'azst_orders_status = 0';
+  const orderUpdateBy = orderStatus
+    ? 'azst_orders_confirm_by = ?'
+    : 'azst_orders_cancelled_by = ?';
+  const orderUpdatetime = orderStatus
+    ? 'azst_orders_confirm_on = ?'
+    : 'azst_orders_cancelled_on = ?';
+
+  // Construct the full SQL query
+  const query = `UPDATE azst_orders_tbl SET ${orderstatus}, ${orderUpdateBy}, ${orderUpdatetime}
+                 WHERE azst_orders_id = ?`;
+
+  // Construct the values array in the correct order
+  const values = [req.empId, time, orderId];
+
+  const result = await db(query, values);
+
+  if (result.affectedRows > 0) {
+    if (orderStatus === 1) {
+      // Proceed to updateInventory if order is confirmed
+      return next();
+    } else {
+      // Send response immediately if the order is cancelled
+      return res.status(200).json({ message: 'Order status updated' });
+    }
+  }
+
+  return next(new AppError('Something went wrong', 400));
+});
+
+exports.updateInventory = catchAsync(async (req, res, next) => {
+  const { orderId, inventoryId } = req.body;
+
+  // Step 1: Get the products related to the order
+  const getQtyQuery = `SELECT azst_order_product_id,
+                        azst_order_variant_id, azst_order_qty
+                       FROM azst_ordersummary_tbl
+                       WHERE azst_orders_id = ?`;
+
+  const products = await db(getQtyQuery, [orderId]);
+
+  // Step 2: Iterate through each product and update the inventory quantities directly
+  const updateInventoryQuery = `UPDATE azst_inventory_product_mapping 
+                                SET azst_ipm_onhand_quantity = azst_ipm_onhand_quantity - ?, 
+                                    azst_ipm_avbl_quantity = azst_ipm_avbl_quantity - ? 
+                                WHERE azst_ipm_inventory_id = ? 
+                                  AND azst_ipm_product_id = ? 
+                                  AND azst_ipm_variant_id = ?`;
+
+  for (let product of products) {
+    const { azst_order_product_id, azst_order_variant_id, azst_order_qty } =
+      product;
+
+    // Step 3: Update the inventory with the calculated quantities
+    await db(updateInventoryQuery, [
+      azst_order_qty,
+      azst_order_qty,
+      inventoryId,
+      azst_order_product_id,
+      azst_order_variant_id,
+    ]);
+  }
+
+  // Step 4: Send a response back after inventory update is successful
+  res.status(200).json({ message: 'Order status updated' });
 });

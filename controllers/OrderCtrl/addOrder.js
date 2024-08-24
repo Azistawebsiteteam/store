@@ -5,11 +5,9 @@ const moment = require('moment');
 const path = require('path');
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
-const Razorpay = require('razorpay');
 
 const catchAsync = require('../../Utils/catchAsync');
 const AppError = require('../../Utils/appError');
-const { concurrency } = require('sharp');
 
 const pinocdeSchema = Joi.object({
   pincode: Joi.number().integer().min(100000).max(999999).messages({
@@ -247,104 +245,207 @@ const getCartTotal = (cartProducts) => {
   return { subTotal, taxAmount };
 };
 
-const razorpayInstance = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
-
-exports.razorPayCreateOrder = catchAsync(async (req, res, next) => {
-  const { amount, currency } = req.body;
-
-  const options = {
-    amount,
-    currency,
-    receipt: 'receipt',
-    payment_capture: 1,
-  };
+exports.placeOrder = catchAsync(async (req, res, next) => {
   try {
-    const response = await razorpayInstance.orders.create(options);
+    const {
+      paymentMethod,
+      paymentData,
+      discountAmount,
+      discountCode,
+      cartList,
+      orderSource,
+      shippingCharge,
+    } = req.body;
 
-    res.status(200).json({
-      order_id: response.id,
-      currency: response.currency,
-      amount: response.amount,
-    });
-  } catch (error) {
-    console.error(error);
-  }
-});
+    // Validate cartList
+    if (!cartList || !Array.isArray(cartList)) {
+      return res.status(400).json({ message: 'Cart is empty or invalid' });
+    }
 
-exports.rezorpayPayment = catchAsync(async (req, res, next) => {
-  const { paymentId } = req.params;
+    const cartProducts = cartList;
 
-  try {
-    const payment = await razorpayInstance.payments.fetch(paymentId);
+    // Extract payment details
+    const { amount, currency, razorpay_order_id, razorpay_payment_id } =
+      paymentData;
 
-    res.json({
-      status: payment.status,
-      method: payment.method,
-      amount: payment.amount,
-      currency: payment.currency,
-    });
-  } catch (error) {
-    console.log(error);
-  }
-});
+    // Extract customer details from userDetails
+    const { azst_customer_id, azst_customer_email } = req.userDetails;
 
-exports.addedOrder = catchAsync(async (req, res, next) => {
-  const { paymentMethod, cartProducts, addressId } = req.body;
-  const customerId = req.empId;
-  const userDetails = req.userDetails;
+    // Generate a unique order ID
+    const orderId = generateOrderId();
 
-  // Generate a unique order ID
-  const orderId = generateOrderId();
+    // Calculate order total, tax, and subtotal
+    const { subTotal, taxAmount } = getCartTotal(cartProducts);
+    const orderTotalAmount =
+      subTotal + taxAmount + shippingCharge - discountAmount;
 
-  // Calculate the subtotal and tax amount
-  const { subTotal, taxAmount } = getCartTotal(cartProducts);
-  // console.log(subTotal, taxAmount);
+    // Determine financial status
+    const financialStatus =
+      amount === orderTotalAmount ? 'paid' : 'partially paid';
+    const paidOn = moment().format('YYYY-MM-DD HH:mm:ss');
 
-  // Assume discount and shipping charge
-  const discountAmount = 10; // For example, $10 discount
-  const shippingCharge = 15; // For example, $15 shipping charge
+    // Determine fulfillment status
+    const fulfillmentStatus =
+      financialStatus === 'paid' ? 'fulfilled' : 'unfulfilled';
+    const fulfilledOn =
+      fulfillmentStatus === 'fulfilled'
+        ? moment().format('YYYY-MM-DD HH:mm:ss')
+        : null;
 
-  // Prepare order data
-  const orderData = {
-    orderId,
-    customerId,
-    subTotal,
-    taxAmount,
-    discountAmount,
-    shippingCharge,
-    paymentMethod,
-    createdOn: new Date(),
-  };
+    // Determine payment reference
+    const paymentReference = paymentMethod === 'COD' ? 'COD' : 'ONLINE';
+    const checkOutId = paymentMethod === 'COD' ? null : razorpay_order_id;
+    const paymentId = paymentMethod === 'COD' ? null : razorpay_payment_id;
 
-  // // Save order data to the database
-  // await db.azst_orders_tbl.create(orderData);
-  // Save cart products data to the database...
-  // const folder = `Uploads/invoices/`;
-  // Define the path for the uploads/invoices directory
-  const invoicesDir = path.join(__dirname, '../../Uploads/invoices');
+    // SQL query for inserting order data
+    const query = `INSERT INTO azst_orders_tbl (
+                      azst_orders_id, azst_orders_email, azst_orders_financial_status, azst_orders_paid_on,
+                      azst_orders_fulfillment_status, azst_orders_fulfilled_on,
+                      azst_orders_currency, azst_orders_subtotal, azst_orders_taxes, azst_orders_total,
+                      azst_orders_discount_code, azst_orders_discount_amount, azst_orders_customer_id,  
+                      azst_orders_payment_method, azst_orders_payment_reference,
+                      azst_orders_source, azst_orders_checkout_id, azst_orders_payment_id
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
-  // Ensure the uploads/invoices directory exists
-  if (!fs.existsSync(invoicesDir)) {
-    fs.mkdirSync(invoicesDir, { recursive: true }); // Create the directory if it doesn't exist
-  }
-
-  // Define the file path for the invoice
-  const invoiceFilePath = path.join(invoicesDir, `${orderId}.pdf`);
-
-  generateInvoice(orderData, userDetails, cartProducts, invoiceFilePath);
-
-  res.status(201).json({
-    status: 'success',
-    data: {
+    const values = [
       orderId,
+      azst_customer_email,
+      financialStatus,
+      paidOn,
+      fulfillmentStatus,
+      fulfilledOn,
+      currency,
       subTotal,
       taxAmount,
-      total: subTotal + taxAmount,
-    },
-  });
+      orderTotalAmount,
+      discountCode,
+      discountAmount,
+      azst_customer_id,
+      paymentMethod,
+      paymentReference,
+      orderSource,
+      checkOutId,
+      paymentId,
+    ];
+
+    // Execute query
+    const result = await db(query, values);
+    if (result.affectedRows === 0) {
+      throw new Error('Failed to place order');
+    }
+
+    // Pass order ID to the next middleware
+    req.orderData = orderId;
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
+exports.orderInfo = catchAsync(async (req, res, next) => {
+  const { paymentData, addressId, isBillingAdsame, shippingCharge } = req.body;
+
+  const orderId = req.orderData;
+  const customerId = req.empId;
+
+  if (!paymentData || !addressId || !orderId || !customerId) {
+    return res
+      .status(400)
+      .json({ message: 'Missing required order information' });
+  }
+
+  const { notes = '', noteAttributes = '' } = paymentData;
+
+  const query = `
+    INSERT INTO azst_orderinfo_tbl (
+      azst_orders_id,
+      azst_orders_customer_id,
+      azst_addressbook_id,
+      azst_orderinfo_notes,
+      azst_orderinfo_note_attributes,
+      azst_orderinfo_shippingtype,
+      azst_orderinfo_shpping_amount,
+      azst_orderinfo_billing_adrs_issame
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `;
+
+  const shippingType = shippingCharge > 0 ? 'paid shipping' : 'free shipping';
+
+  const values = [
+    orderId,
+    customerId,
+    addressId,
+    notes,
+    noteAttributes,
+    shippingType,
+    shippingCharge,
+    isBillingAdsame,
+  ];
+
+  try {
+    await db(query, values);
+    next(); // Proceed to the next middleware
+  } catch (error) {
+    console.error('Error inserting order info:', error.message);
+    next(error); // Passes the error to the global error handler
+  }
+});
+
+exports.orderSummary = catchAsync(async (req, res, next) => {
+  const { cartList } = req.body;
+  const orderId = req.orderData;
+
+  if (!cartList || !Array.isArray(cartList) || cartList.length === 0) {
+    return res.status(400).json({ message: 'Cart is empty or invalid' });
+  }
+
+  const insertQuery = `
+    INSERT INTO azst_ordersummary_tbl (
+      azst_orders_id,
+      azst_order_product_id,
+      azst_order_variant_id,
+      azst_order_qty,
+      azst_order_delivery_method,
+      azst_product_price
+    ) VALUES (?, ?, ?, ?, ?, ?)
+  `;
+
+  const removeQuery = `DELETE FROM azst_cart_tbl WHERE azst_cart_id = ?`;
+
+  for (let product of cartList) {
+    const {
+      azst_cart_product_id,
+      azst_cart_variant_id,
+      azst_cart_quantity,
+      price,
+      azst_cart_id,
+    } = product;
+
+    const values = [
+      orderId,
+      azst_cart_product_id,
+      azst_cart_variant_id,
+      azst_cart_quantity,
+      'POSTAL',
+      price,
+    ];
+
+    const result = await db(insertQuery, values);
+
+    if (result.affectedRows > 0) {
+      await db(removeQuery, [azst_cart_id]);
+    } else {
+      return next(
+        new AppError(
+          `Failed to insert product ${azst_cart_product_id} into order summary`,
+          400
+        )
+      );
+    }
+  }
+
+  res.status(200).json({ message: 'Order placed successfully' });
 });
 
 exports.viewInvoice = (req, res, next) => {
@@ -392,6 +493,66 @@ exports.downloadInvoice = (req, res, next) => {
   }
 };
 
+// exports.placeOrder = catchAsync(async (req, res, next) => {
+//   const {
+//     paymentMethod,
+//     cartProducts,
+//     addressId,
+//     isBillingAdsame,
+//     discountAmount,
+//     discountCode,
+//     shippingCharge,
+//   } = req.body;
+//   const customerId = req.empId;
+//   const userDetails = req.userDetails;
+
+//   // Generate a unique order ID
+//   const orderId = generateOrderId();
+
+//   // Calculate the subtotal and tax amount
+//   const { subTotal, taxAmount } = getCartTotal(cartProducts);
+//   // console.log(subTotal, taxAmount);
+
+//   // Prepare order data
+//   const orderData = {
+//     orderId,
+//     customerId,
+//     subTotal,
+//     taxAmount,
+//     discountAmount,
+//     shippingCharge,
+//     paymentMethod,
+//     createdOn: new Date(),
+//   };
+
+//   // // Save order data to the database
+//   // await db.azst_orders_tbl.create(orderData);
+//   // Save cart products data to the database...
+//   // const folder = `Uploads/invoices/`;
+//   // Define the path for the uploads/invoices directory
+//   const invoicesDir = path.join(__dirname, '../../Uploads/invoices');
+
+//   // Ensure the uploads/invoices directory exists
+//   if (!fs.existsSync(invoicesDir)) {
+//     fs.mkdirSync(invoicesDir, { recursive: true }); // Create the directory if it doesn't exist
+//   }
+
+//   // Define the file path for the invoice
+//   const invoiceFilePath = path.join(invoicesDir, `${orderId}.pdf`);
+
+//   generateInvoice(orderData, userDetails, cartProducts, invoiceFilePath);
+
+//   res.status(201).json({
+//     status: 'success',
+//     data: {
+//       orderId,
+//       subTotal,
+//       taxAmount,
+//       total: subTotal + taxAmount,
+//     },
+//   });
+// });
+
 // exports.addedOrder = catchAsync(async (req, res, next) => {
 //   const { paymentMethod, cartProduct, addressId } = req.body;
 //   const orderId = generateOrderId();
@@ -427,17 +588,21 @@ exports.downloadInvoice = (req, res, next) => {
 //   azst_orders_fulfillment_status,
 //   azst_orders_fulfilled_on,
 //   azst_orders_currency,
-//   azst_orders_shipping,
 //   azst_orders_subtotal,
+//   azst_orders_shipping,
 //   azst_orders_taxes,
 //   azst_orders_total,
 //   azst_orders_discount_code,
 //   azst_orders_discount_amount,
 //   azst_orders_shipping_method,
-//   azst_orders_status,
+
 //   azst_orders_created_on,
+//   azst_orders_confirm_by,
+//   azst_orders_confirm_on,
+//   azst_orders_confirm_status,
 //   azst_orders_customer_id,
 //   azst_orders_checkout_id,
+//   azst_orders_status,
 //   azst_orders_cancelled_at,
 //   azst_orders_payment_method,
 //   azst_orders_payment_reference,
@@ -447,8 +612,7 @@ exports.downloadInvoice = (req, res, next) => {
 //   azst_orders_source,
 //   azst_orders_billing_province_name,
 //   azst_orders_shipping_province_name,
-//   azst_orders_payment_id,
-//   azst_orders_payment_references;
+//   azst_orders_payment_id;
 
 // ** azst_ordersummary_tbl **
 // it  store the details of order who many products are in order and quantity and price , method of payment

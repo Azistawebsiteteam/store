@@ -10,7 +10,7 @@ router.use(authCtrl.protect(key));
 router.use(multer().any());
 
 router.post('/all', ordersCtrl.getAllOrdrs);
-
+router.post('/confirm', ordersCtrl.confirmOrder, ordersCtrl.updateInventory);
 router.post('/order/details', ordersCtrl.getOrderDetails);
 
 module.exports = router;
