@@ -46,19 +46,19 @@ exports.getCollectionProducts = catchAsync(async (req, res, next) => {
   // Filter by collectionId if provided
   if (collectionId) {
     filters.push(`JSON_CONTAINS(collections, ?, '$')`);
-    values.push(collectionId);
+    values.push(collectionId.toString());
   }
 
   // Filter by categoryId if provided
   if (categoryId) {
     filters.push(`product_category = ?`);
-    values.push(categoryId);
+    values.push(categoryId.toString());
   }
 
   // Filter by brandId if provided
   if (brandId) {
     filters.push(`brand_id = ?`);
-    values.push(brandId);
+    values.push(brandId.toString());
   }
 
   // Construct the WHERE clause for SQL query
@@ -379,8 +379,9 @@ exports.getAllProducts = catchAsync(async (req, res, next) => {
     SELECT 
       p.id AS product_id,
       p.product_title,
-      p.product_category,
+      c.azst_category_name as product_category,
       p.url_handle,
+      v.azst_vendor_name,
       p.status,
       p.image_src,
       COALESCE(i.total_variant_quantity, 0) AS total_variant_quantity,
@@ -394,10 +395,12 @@ exports.getAllProducts = catchAsync(async (req, res, next) => {
       GROUP BY azst_ipm_product_id
     ) i ON p.id = i.azst_ipm_product_id
     LEFT JOIN azst_sku_variant_info s ON p.id = s.product_id
+    LEFT JOIN azst_category_tbl c ON p.product_category = c.azst_category_id
+    LEFT JOIN azst_vendor_details v ON p.vendor_id = v.azst_vendor_id
+    
     GROUP BY 
       p.id,
       p.product_title,
-      p.product_category,
       p.url_handle,
       p.status,
       p.image_src,
@@ -409,7 +412,6 @@ exports.getAllProducts = catchAsync(async (req, res, next) => {
   if (products.length === 0) {
     return res.status(200).json({
       products: [],
-      collection_data: collectiondata,
       message: 'No products found',
     });
   }

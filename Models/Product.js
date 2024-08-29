@@ -134,7 +134,7 @@ const variantsSchema = Joi.object({
 // Define the schema for a single ingredient
 const singleIngredientSchema = Joi.object({
   id: Joi.alternatives().try(Joi.string(), Joi.number()).required(),
-  title: Joi.string().min(5).required(),
+  title: Joi.string().min(3).required(),
   description: Joi.string().min(5).required(),
   image: Joi.alternatives()
     .try(Joi.string(), Joi.object())
