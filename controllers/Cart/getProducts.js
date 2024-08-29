@@ -41,6 +41,7 @@ const getCartData = catchAsync(async (req, res, next) => {
                     offer_percentage,
                     image_src,
                     is_varaints_aval,
+                    option1,option2,option3,
                     COALESCE(SUM(azst_ipm_avbl_quantity), 0) AS avbl_quantity
                 FROM 
                     azst_cart_tbl

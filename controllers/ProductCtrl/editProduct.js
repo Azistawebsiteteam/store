@@ -187,7 +187,6 @@ const updateInventory = async (
   quantity,
   empId
 ) => {
-  //console.log({ inventoryId, productId, variantId, quantity, empId });
   const getInventoryQuery = `
                               SELECT azst_ipm_onhand_quantity, azst_ipm_avbl_quantity
                               FROM azst_inventory_product_mapping
@@ -249,7 +248,6 @@ const updateInventory = async (
       await db(query, values);
     }
   } catch (error) {
-    console.log(error);
     throw error;
   }
 };
@@ -257,7 +255,6 @@ const updateInventory = async (
 const updateTheInventory = async (inventory, productId, empId) => {
   try {
     const inventoryPromises = inventory.map(({ inventoryId, qty }) => {
-      console.log(inventoryId, 'fdsfkjfjkdjds');
       return updateInventory(inventoryId, productId, 0, qty, empId);
     });
     await Promise.all(inventoryPromises);
@@ -293,15 +290,8 @@ const insertVariantInventory = async (
   `;
 
   const inventoryPromises = JSON.parse(vInventoryInfo).map((inv) => {
-    const invValues = [
-      inv.inventoryId,
-      productId,
-      variantId,
-      quantity,
-      quantity,
-      empId,
-    ];
-    console.log(inventoryQuery, invValues);
+    const invValues = [inv, productId, variantId, quantity, quantity, empId];
+
     return db(inventoryQuery, invValues);
   });
 
@@ -371,6 +361,9 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
     WHERE id = ?;
   `;
 
+  const collectionsArry = collections.map((id) => parseInt(id, 10));
+  console.log(collectionsArry);
+
   const values = [
     productMainTitle,
     productTitle,
@@ -379,7 +372,7 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
     category,
     productType,
     tags,
-    collections,
+    `[${collectionsArry}]`,
     productImage,
     JSON.stringify(newProductImages),
     variantsOrder,

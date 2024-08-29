@@ -163,6 +163,7 @@ exports.addProduct = catchAsync(async (req, res, next) => {
                             url_handle, status, azst_updatedby, origin_country, product_url_title, is_varaints_aval,brand_id,
                             min_cart_quantity ,max_cart_quantity )
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ,?, ?, ?, ?)`;
+  const collectionsArry = collections.map((id) => parseInt(id, 10));
 
   const values = [
     productMainTitle,
@@ -172,7 +173,7 @@ exports.addProduct = catchAsync(async (req, res, next) => {
     category,
     productType,
     tags,
-    collections,
+    `[${collectionsArry}]`,
     productImage,
     JSON.stringify(productImages),
     variantsOrder,

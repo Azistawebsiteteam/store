@@ -36,9 +36,7 @@ const baseProductSchema = Joi.object({
   vendor: Joi.number().required(),
   category: Joi.string().required(),
   productType: Joi.string().required(),
-  collections: Joi.custom((value, helpers) => {
-    return validateJSONArray(value, 'Tags must be an Array');
-  }).required(),
+  collections: Joi.array().required(),
   tags: Joi.custom((value, helpers) => {
     return validateJSONArray(value, 'Tags must be an Array');
   }).required(),
@@ -51,6 +49,7 @@ const baseProductSchema = Joi.object({
 });
 
 const productSchemaWithoutVariants = baseProductSchema.keys({
+  productPrice: Joi.number().required(),
   productComparePrice: Joi.number()
     .min(Joi.ref('productPrice')) // Ensure that productComparePrice is equal to or greater than productPrice
     .required(),
@@ -148,7 +147,7 @@ const singleIngredientSchema = Joi.object({
 
 const singleFeatureSchema = Joi.object({
   id: Joi.alternatives().try(Joi.string(), Joi.number()).required(),
-  title: Joi.string().min(5).required(),
+  title: Joi.string().min(3).required(),
   image: Joi.alternatives()
     .try(Joi.string(), Joi.object())
     .required()

@@ -45,8 +45,8 @@ exports.getCollectionProducts = catchAsync(async (req, res, next) => {
 
   // Filter by collectionId if provided
   if (collectionId) {
-    filters.push(`JSON_CONTAINS(collections, JSON_QUOTE(?), '$')`);
-    values.push(collectionId.toString());
+    filters.push(`JSON_CONTAINS(collections, ?, '$')`);
+    values.push(collectionId);
   }
 
   // Filter by categoryId if provided
@@ -74,7 +74,7 @@ exports.getCollectionProducts = catchAsync(async (req, res, next) => {
 
   // Filter by reviewpoint if provided
   if (reviewpoint) {
-    havingValues.push(`AVG(prt.review_points) >= ?`);
+    havingValues.push(`COALESCE(AVG(prt.review_points), 0) >= ?`);
     values.push(reviewpoint);
   }
 
@@ -88,47 +88,44 @@ exports.getCollectionProducts = catchAsync(async (req, res, next) => {
     havingValues.length > 0 ? 'HAVING ' + havingValues.join(' AND ') : '';
 
   // Construct the main SQL query to fetch products with applied filters and sorting
-
-  const getProducts = `
-  SELECT 
-    azst_products.id AS product_id,
-    product_main_title,
-    min_cart_quantity,
-    max_cart_quantity,
-    product_title,
-    image_src,
-    image_alt_text,
-    price,
-    compare_at_price,
-    product_url_title,
-    CASE 
-      WHEN wl.azst_product_id IS NOT NULL THEN true
-      ELSE false
-    END AS in_wishlist,
-    COALESCE(AVG(prt.review_points), 0) AS product_review_points,
-    COALESCE(SUM(pi.azst_ipm_onhand_quantity), 0) AS product_qty
-  FROM azst_products
-  LEFT JOIN azst_wishlist_tbl AS wl
-    ON azst_products.id = wl.azst_product_id 
-    AND wl.status = 1 
-    AND wl.azst_customer_id = '${customerId}'
-  LEFT JOIN product_review_rating_tbl prt
-    ON azst_products.id = prt.product_id
-  LEFT JOIN azst_inventory_product_mapping pi 
-    ON azst_products.id = pi.azst_ipm_product_id
-  ${filterQuery}
-  GROUP BY 
-    azst_products.id,
-    product_main_title,
-    product_title,
-    image_src,
-    image_alt_text,
-    price,
-    compare_at_price,
-    product_url_title
-  ${havingQuery}
-  ${sortByQuery}
-`;
+  const getProducts = `SELECT
+                      azst_products.id AS product_id,
+                      product_main_title,
+                      min_cart_quantity,
+                      max_cart_quantity,
+                      product_title,
+                      image_src,
+                      image_alt_text,
+                      price,
+                      compare_at_price,
+                      product_url_title,
+                      CASE
+                        WHEN wl.azst_product_id IS NOT NULL THEN true
+                        ELSE false
+                      END AS in_wishlist,
+                      COALESCE(AVG(prt.review_points), 0) AS product_review_points,
+                      COALESCE(SUM(pi.azst_ipm_onhand_quantity), 0) AS product_qty
+                    FROM azst_products
+                    LEFT JOIN azst_wishlist_tbl AS wl
+                        ON azst_products.id = wl.azst_product_id
+                        AND wl.status = 1
+                        AND wl.azst_customer_id = '${customerId}'
+                    LEFT JOIN product_review_rating_tbl prt
+                        ON azst_products.id = prt.product_id
+                    LEFT JOIN azst_inventory_product_mapping pi
+                        ON azst_products.id = pi.azst_ipm_product_id
+                       ${filterQuery}
+                    GROUP BY
+                        azst_products.id,
+                        product_main_title,
+                        product_title,
+                        image_src,
+                        image_alt_text,
+                        price,
+                        compare_at_price,
+                        product_url_title
+                        ${havingQuery}
+                        ${sortByQuery}`;
 
   // Determine which collection to query for additional collection data
   let collectionQuery = '';
