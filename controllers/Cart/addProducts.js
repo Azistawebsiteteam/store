@@ -13,7 +13,7 @@ const getProductFromCart = async (
                   FROM azst_cart_tbl
                   WHERE azst_cart_variant_id=?
                     AND azst_cart_product_id=?
-                    AND (azst_customer_id = ? OR azst_session_id = ?)
+                    AND azst_customer_id = ? AND azst_session_id = ?
                     AND azst_cart_status=1`;
 
   const result = await db(query, [
@@ -111,6 +111,20 @@ exports.addProductToCart = catchAsync(async (req, res, next) => {
     }
   }
   res.status(200).json({ message: 'Added to cart successfully' });
+});
+
+exports.updateLocalToUser = catchAsync(async (req, res, next) => {
+  const { sessionId } = req.body;
+  const userId = req.empId;
+
+  const query = `UPDATE azst_cart_tbl 
+                  SET azst_customer_id = ? 
+                  WHERE azst_session_id = ?
+                    AND (azst_customer_id = 0 OR azst_customer_id = '')
+                    AND  azst_cart_status = 1`;
+
+  await db(query, [userId, sessionId]);
+  res.status(200).json({ message: 'success' });
 });
 
 // HERE handling the update quantity of product in cart by (+ , - ) button operator operations

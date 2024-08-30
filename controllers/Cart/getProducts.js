@@ -18,51 +18,107 @@ const getCartSchema = Joi.object({
   sessionId: Joi.string().optional().allow(''),
 });
 
+// const query = `SELECT
+//                   azst_cart_id,
+//                   azst_cart_product_id,
+//                   azst_cart_variant_id,
+//                   SUM(azst_cart_quantity) as azst_cart_quantity,
+//                   product_main_title,
+//                   product_url_title,
+//                   min_cart_quantity,
+//                   max_cart_quantity,
+//                   variant_image,
+// azst_products.compare_at_price AS product_compare_at_price,
+// price,
+// azst_sku_variant_info.compare_at_price,
+// offer_price,
+// offer_percentage,
+// image_src,
+//                   is_varaints_aval,
+//                   option1,option2,option3,
+//                   COALESCE(SUM(azst_ipm_avbl_quantity), 0) AS avbl_quantity
+//               FROM
+//                   azst_cart_tbl
+//               LEFT JOIN
+//                   azst_sku_variant_info
+//                   ON azst_cart_tbl.azst_cart_variant_id = azst_sku_variant_info.id
+//               LEFT JOIN
+//                   azst_products
+//                   ON azst_cart_tbl.azst_cart_product_id = azst_products.id
+//               LEFT JOIN
+//                   azst_inventory_product_mapping
+//                   ON (azst_cart_tbl.azst_cart_product_id = azst_inventory_product_mapping.azst_ipm_product_id
+//                   AND azst_cart_tbl.azst_cart_variant_id = azst_inventory_product_mapping.azst_ipm_variant_id)
+//               WHERE
+//                   azst_cart_status = 1
+//                   AND  azst_customer_id = ? AND azst_session_id = ?
+//               GROUP BY
+//                   azst_cart_product_id , azst_cart_variant_id
+//               ORDER BY
+//                   azst_cart_created_on DESC;`;
+
 const getCartData = catchAsync(async (req, res, next) => {
   const { customerId, sessionId } = req.body;
 
   const { error } = getCartSchema.validate(req.body);
   if (error) return next(new AppError(error.message, 400));
 
-  const query = `SELECT 
-                    azst_cart_id,
-                    azst_cart_product_id,
-                    azst_cart_variant_id,
-                    azst_cart_quantity,
-                    product_main_title,
-                    product_url_title,
-                    min_cart_quantity,
-                    max_cart_quantity,
-                    variant_image,
-                    azst_products.compare_at_price AS product_compare_at_price,
-                    price,
-                    azst_sku_variant_info.compare_at_price,
-                    offer_price,
+  const query = `
+                SELECT 
+                    ac.azst_cart_id,
+                    ac.azst_cart_product_id,
+                    ac.azst_cart_variant_id,
+                    ac.azst_cart_quantity,
+                    p.product_main_title,
+                    p.product_url_title,
+                    p.min_cart_quantity,
+                    p.max_cart_quantity,
+                    v.variant_image,
+                    p.compare_at_price AS product_compare_at_price,            
+                    p.price,
+                    v.compare_at_price,
+                    v.offer_price,
                     offer_percentage,
-                    image_src,
-                    is_varaints_aval,
-                    option1,option2,option3,
-                    COALESCE(SUM(azst_ipm_avbl_quantity), 0) AS avbl_quantity
+                    p.image_src,
+                    p.is_varaints_aval,
+                    v.option1,
+                    v.option2,
+                    v.option3,
+                    COALESCE(SUM(ipm.azst_ipm_avbl_quantity), 0) AS avbl_quantity
                 FROM 
-                    azst_cart_tbl
+                    (SELECT 
+                        azst_cart_id,
+                        azst_cart_product_id,
+                        azst_cart_variant_id,
+                        SUM(azst_cart_quantity) AS azst_cart_quantity,
+                        MAX(azst_cart_created_on) AS max_created_on
+                    FROM 
+                        azst_cart_tbl
+                    WHERE  
+                        azst_cart_status = 1 
+                        AND azst_customer_id = ? 
+                        AND azst_session_id = ?
+                    GROUP BY 
+                        azst_cart_product_id, 
+                        azst_cart_variant_id
+                    ) ac
                 LEFT JOIN 
-                    azst_sku_variant_info 
-                    ON azst_cart_tbl.azst_cart_variant_id = azst_sku_variant_info.id
+                    azst_sku_variant_info v 
+                    ON ac.azst_cart_variant_id = v.id
                 LEFT JOIN 
-                    azst_products 
-                    ON azst_cart_tbl.azst_cart_product_id = azst_products.id
+                    azst_products p 
+                    ON ac.azst_cart_product_id = p.id
                 LEFT JOIN 
-                    azst_inventory_product_mapping
-                    ON (azst_cart_tbl.azst_cart_product_id = azst_inventory_product_mapping.azst_ipm_product_id
-                    AND azst_cart_tbl.azst_cart_variant_id = azst_inventory_product_mapping.azst_ipm_variant_id)
-                WHERE  
-                    azst_cart_status = 1 
-                    AND (azst_customer_id <> 0  AND azst_customer_id = ? OR azst_session_id = ?)
+                    azst_inventory_product_mapping ipm
+                    ON (ac.azst_cart_product_id = ipm.azst_ipm_product_id
+                    AND ac.azst_cart_variant_id = ipm.azst_ipm_variant_id)
                 GROUP BY 
-                    azst_cart_id
+                    ac.azst_cart_product_id, 
+                    ac.azst_cart_variant_id
                 ORDER BY 
-                    azst_cart_created_on DESC;`;
+                    ac.max_created_on DESC;`;
 
+  await db("SET SESSION sql_mode = ''");
   const result = await db(query, [customerId, sessionId]);
 
   const cart_products = result.map((product) => ({
@@ -74,6 +130,8 @@ const getCartData = catchAsync(async (req, res, next) => {
       product.image_src
     }`,
   }));
+
+  // AND (azst_customer_id <> 0  AND azst_customer_id = ? AND azst_session_id = ?)
 
   res
     .status(200)

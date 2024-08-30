@@ -30,7 +30,6 @@ exports.protect = (token_key) => {
         new AppError('You are not logged in! Please log in to get access.', 401)
       );
     }
-
     // 2) check it is valid token or not
     const payload = jwt.verify(token, token_key);
     const { id } = payload;

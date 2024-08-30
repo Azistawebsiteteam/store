@@ -10,9 +10,9 @@ const {
 
 const addToCartCtrl = require('../../controllers/Cart/addProducts');
 
-// Create the MySQL session store using the connection pool
-
 router.use(multer().any());
+
+// Customer Routes & Methods
 
 router
   .route('/')
@@ -21,6 +21,14 @@ router
 
 router.post('/data', getCartData);
 router.patch('/data', removeFromCart);
+
+const ukey = process.env.JWT_SECRET;
+
+router.post(
+  '/add/user',
+  authCtrl.protect(ukey),
+  addToCartCtrl.updateLocalToUser
+);
 
 // Admin routes handle
 
