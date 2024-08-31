@@ -30,6 +30,6 @@ router.post(
 //router.use(reviewCtrl.isReviewExist);
 router.use(multer().any());
 router.post('/delete/review', reviewCtrl.DeleteMyReview);
-router.get('/get/review', reviewCtrl.updateReview);
+router.get('/my', reviewCtrl.customerReviews, reviewCtrl.getAllReviews);
 
 module.exports = router;
