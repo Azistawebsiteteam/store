@@ -117,6 +117,42 @@ exports.createReview = catchAsync(async (req, res, next) => {
   next(new AppError('Something went wrong', 400));
 });
 
+const getReviewImageLink = (req, images) => {
+  const parsedImages = JSON.parse(images);
+  if (parsedImages && parsedImages.length > 0) {
+    return parsedImages.map(
+      (image) =>
+        `${req.protocol}://${req.get('host')}/api/images/review/${image}`
+    );
+  } else {
+    return [];
+  }
+};
+
+exports.getReviewDetails = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+  const userId = req.empId;
+
+  const getQuery = `SELECT review_id,product_id,review_title,review_content,review_points,
+                      review_images, DATE_FORMAT(review_created_on, '%d-%m-%Y %H:%i:%s') AS created_on,
+                      product_title,image_src as product_image,url_handle
+                    FROM product_review_rating_tbl
+                    LEFT JOIN azst_products ON product_review_rating_tbl.product_id = azst_products.id
+                    WHERE review_status = 1 AND customer_id = ? AND review_id = ?`;
+
+  const [review] = await db(getQuery, [userId, id]);
+
+  if (!review) return res.status(404).json({ message: 'Review not found' });
+  const reviewDetails = {
+    ...review,
+    review_images: getReviewImageLink(req, review.review_images),
+    product_image: `${req.protocol}://${req.get('host')}/api/images/product/${
+      review.product_image
+    }`,
+  };
+  res.status(200).json(reviewDetails);
+});
+
 exports.updateReview = catchAsync(async (req, res, next) => {
   const { reviewId, reviewTitle, reviewContent, reviewPoints, reviewImages } =
     req.body;
@@ -167,18 +203,6 @@ exports.DeleteMyReview = catchAsync(async (req, res, next) => {
 
   next(new AppError('Something went wrong', 400));
 });
-
-const getReviewImageLink = (req, images) => {
-  const parsedImages = JSON.parse(images);
-  if (parsedImages && parsedImages.length > 0) {
-    return parsedImages.map(
-      (image) =>
-        `${req.protocol}://${req.get('host')}/api/images/review/${image}`
-    );
-  } else {
-    return [];
-  }
-};
 
 exports.getProductReviews = catchAsync(async (req, res, next) => {
   const { productId, orderby = 'DESC' } = req.body;
