@@ -273,3 +273,52 @@ exports.updateInventory = catchAsync(async (req, res, next) => {
   // Step 4: Send a response back after inventory update is successful
   res.status(200).json({ message: 'Order status updated' });
 });
+
+exports.deliveryOrder = catchAsync(async (req, res, next) => {
+  const { orderId } = req.body;
+  const deliveryId = req.empId;
+
+  if (!orderId) return next(new AppError('orderId is required', 400));
+
+  // Step 1: Fetch the order details
+  const orderQuery = `SELECT azst_orders_customer_id, azst_orders_total ,azst_orders_delivery_status 
+                      FROM azst_orders_tbl 
+                      WHERE azst_orders_id = ?`;
+  const [order] = await db(orderQuery, [orderId]);
+
+  if (!order) {
+    return next(new AppError('No order found for delivery', 400));
+  }
+
+  const {
+    azst_orders_customer_id,
+    azst_orders_total,
+    azst_orders_delivery_status,
+  } = order;
+
+  if (azst_orders_delivery_status === 1)
+    return next(new AppError('order already delivered', 400));
+
+  // Step 2: Update the order delivery status and date
+  const updateOrderQuery = `UPDATE azst_orders_tbl 
+                            SET azst_orders_delivery_status = 1, 
+                                azst_orders_delivery_on = ? 
+                            WHERE azst_orders_id = ?`;
+
+  const today = moment().format('YYYY-MM-DD HH:mm:ss');
+  const delivery = await db(updateOrderQuery, [today, orderId]);
+
+  if (delivery.affectedRows === 0) {
+    return next(new AppError('Failed to update order delivery status', 400));
+  }
+
+  // Step 3: Update the customer record with the total spent and total orders
+  const updateCustomerQuery = `UPDATE azst_customers_tbl 
+                               SET azst_customer_totalspent = azst_customer_totalspent + ?, 
+                                   azst_customer_totalorders = azst_customer_totalorders + 1 
+                               WHERE azst_customer_id = ?`;
+
+  await db(updateCustomerQuery, [azst_orders_total, azst_orders_customer_id]);
+
+  res.status(200).json({ message: 'Order delivery completed successfully' });
+});

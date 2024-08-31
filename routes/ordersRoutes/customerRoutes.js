@@ -2,7 +2,7 @@ const router = require('express').Router();
 const multer = require('multer');
 
 const authCtrl = require('../../controllers/authController');
-const ordersCtrl = require('../../controllers/OrderCtrl/gettAllOrders');
+const ordersCtrl = require('../../controllers/OrderCtrl/adminOrdersctrl');
 const orderAddCtrl = require('../../controllers/OrderCtrl/addOrder');
 const razorpayCtrl = require('../../controllers/OrderCtrl/razorpay');
 
