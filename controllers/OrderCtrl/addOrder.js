@@ -349,8 +349,8 @@ exports.getOrderSummary = catchAsync(async (req, res, next) => {
       }`,
     })),
   }));
-
-  res.status(200).json(ordersData);
+  const orderSummary = ordersData[0];
+  res.status(200).json(orderSummary);
 });
 
 function generateInvoice(orderData, userDetails, cartProducts, filePath) {
