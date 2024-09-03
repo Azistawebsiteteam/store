@@ -3,6 +3,7 @@ const multer = require('multer');
 
 const authCtrl = require('../../controllers/authController');
 const ordersCtrl = require('../../controllers/OrderCtrl/adminOrdersctrl');
+const orderModel = require('../../Models/order');
 const orderAddCtrl = require('../../controllers/OrderCtrl/addOrder');
 const razorpayCtrl = require('../../controllers/OrderCtrl/razorpay');
 
@@ -18,10 +19,13 @@ router.post('/validate-payment', razorpayCtrl.razorPayValidatePayment);
 
 router.post(
   '/place-order',
+  orderModel,
   orderAddCtrl.placeOrder,
   orderAddCtrl.orderInfo,
   orderAddCtrl.orderSummary
 );
+
+router.post('/order-summary', orderAddCtrl.getOrderSummary);
 
 router.get('/payment/:paymentId', razorpayCtrl.rezorpayPayment);
 

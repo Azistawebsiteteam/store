@@ -59,6 +59,300 @@ exports.getEstimateDate = catchAsync(async (req, res, next) => {
   res.status(200).json({ expectedDateFrom, expectedDateto });
 });
 
+function generateOrderId() {
+  const timestamp = Date.now().toString(36).toUpperCase(); // Converts timestamp to base36
+
+  const randomPart = Math.random().toString(36).toUpperCase().substring(2, 8); // Adds random part
+
+  const orderId = (timestamp + randomPart).substring(0, 12);
+  return 'AZSTA-' + orderId; // Combine and slice to 12 chars
+}
+
+const getCartTotal = (cartProducts) => {
+  const subTotal = cartProducts.reduce(
+    (acc, p) => (acc += parseInt(p.azst_cart_quantity) * parseInt(p.price)),
+    0
+  );
+
+  const taxAmount = cartProducts.reduce((acc, p) => {
+    const productPrice = parseInt(p.azst_cart_quantity) * parseInt(p.price);
+    const taxPercentage = 10;
+    const taxAmount = (productPrice / 100) * taxPercentage;
+    return (acc += taxAmount);
+  }, 0);
+  return { subTotal, taxAmount };
+};
+
+exports.placeOrder = catchAsync(async (req, res, next) => {
+  try {
+    const {
+      paymentMethod,
+      paymentData,
+      discountAmount,
+      discountCode,
+      cartList,
+      orderSource,
+      shippingCharge,
+    } = req.body;
+
+    // Validate cartList
+    if (!cartList || !Array.isArray(cartList)) {
+      return res.status(400).json({ message: 'Cart is empty or invalid' });
+    }
+
+    const cartProducts = cartList;
+
+    // Extract payment details
+    const { amount, currency, razorpay_order_id, razorpay_payment_id } =
+      paymentData;
+
+    // Extract customer details from userDetails
+    const { user_id, user_email, user_district } = req.userDetails;
+
+    // Generate a unique order ID
+    const orderId = generateOrderId();
+
+    // Calculate order total, tax, and subtotal
+    const { subTotal, taxAmount } = getCartTotal(cartProducts);
+    const orderTotalAmount =
+      subTotal + taxAmount + shippingCharge - discountAmount;
+
+    // Determine financial status
+    const financialStatus =
+      amount === orderTotalAmount ? 'paid' : 'partially paid';
+    const paidOn = moment().format('YYYY-MM-DD HH:mm:ss');
+
+    // Determine fulfillment status
+    const fulfillmentStatus =
+      financialStatus === 'paid' ? 'fulfilled' : 'unfulfilled';
+    const fulfilledOn =
+      fulfillmentStatus === 'fulfilled'
+        ? moment().format('YYYY-MM-DD HH:mm:ss')
+        : null;
+
+    // Determine payment reference
+    const paymentReference = paymentMethod === 'COD' ? 'COD' : 'ONLINE';
+    const checkOutId = paymentMethod === 'COD' ? null : razorpay_order_id;
+    const paymentId = paymentMethod === 'COD' ? null : razorpay_payment_id;
+
+    // SQL query for inserting order data
+    const query = `INSERT INTO azst_orders_tbl (
+                      azst_orders_id, azst_orders_email, azst_orders_financial_status, azst_orders_paid_on,
+                      azst_orders_fulfillment_status, azst_orders_fulfilled_on,
+                      azst_orders_currency, azst_orders_subtotal, azst_orders_taxes, azst_orders_total,
+                      azst_orders_discount_code, azst_orders_discount_amount, azst_orders_customer_id,  
+                      azst_orders_payment_method, azst_orders_payment_reference,
+                      azst_orders_source, azst_orders_checkout_id, azst_orders_payment_id
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+
+    const values = [
+      orderId,
+      user_email,
+      financialStatus,
+      paidOn,
+      fulfillmentStatus,
+      fulfilledOn,
+      currency,
+      subTotal,
+      taxAmount,
+      orderTotalAmount,
+      discountCode,
+      discountAmount,
+      user_id,
+      paymentMethod,
+      paymentReference,
+      orderSource,
+      checkOutId,
+      paymentId,
+    ];
+
+    // Execute query
+    const result = await db(query, values);
+    if (result.affectedRows === 0) {
+      throw new Error('Failed to place order');
+    }
+
+    // Pass order ID to the next middleware
+    req.orderData = orderId;
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
+exports.orderInfo = catchAsync(async (req, res, next) => {
+  const { paymentData, addressId, isBillingAdsame, shippingCharge } = req.body;
+
+  const orderId = req.orderData;
+  const customerId = req.empId;
+
+  if (!paymentData || !addressId || !orderId || !customerId) {
+    return res
+      .status(400)
+      .json({ message: 'Missing required order information' });
+  }
+
+  const { notes = '', noteAttributes = '' } = paymentData;
+
+  const query = `
+    INSERT INTO azst_orderinfo_tbl (
+      azst_orders_id,
+      azst_orders_customer_id,
+      azst_addressbook_id,
+      azst_orderinfo_notes,
+      azst_orderinfo_note_attributes,
+      azst_orderinfo_shippingtype,
+      azst_orderinfo_shpping_amount,
+      azst_orderinfo_billing_adrs_issame
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `;
+
+  const shippingType = shippingCharge > 0 ? 'paid shipping' : 'free shipping';
+
+  const values = [
+    orderId,
+    customerId,
+    addressId,
+    notes,
+    noteAttributes,
+    shippingType,
+    shippingCharge,
+    isBillingAdsame,
+  ];
+
+  try {
+    await db(query, values);
+    next(); // Proceed to the next middleware
+  } catch (error) {
+    console.error('Error inserting order info:', error.message);
+    next(error); // Passes the error to the global error handler
+  }
+});
+
+exports.orderSummary = catchAsync(async (req, res, next) => {
+  const { cartList, paymentMethod } = req.body;
+  const orderId = req.orderData;
+
+  if (!cartList || !Array.isArray(cartList) || cartList.length === 0) {
+    return res.status(400).json({ message: 'Cart is empty or invalid' });
+  }
+
+  const insertQuery = `
+    INSERT INTO azst_ordersummary_tbl (
+      azst_orders_id,
+      azst_order_product_id,
+      azst_order_variant_id,
+      azst_order_qty,
+      azst_order_delivery_method,
+      azst_product_price
+    ) VALUES (?, ?, ?, ?, ?, ?)
+  `;
+
+  const removeQuery = `DELETE FROM azst_cart_tbl WHERE azst_cart_id = ?`;
+
+  for (let product of cartList) {
+    const {
+      azst_cart_product_id,
+      azst_cart_variant_id,
+      azst_cart_quantity,
+      price,
+      azst_cart_id,
+    } = product;
+
+    const values = [
+      orderId,
+      azst_cart_product_id,
+      azst_cart_variant_id,
+      azst_cart_quantity,
+      'POSTAL',
+      price,
+    ];
+
+    const result = await db(insertQuery, values);
+
+    if (result.affectedRows > 0) {
+      await db(removeQuery, [azst_cart_id]);
+    } else {
+      return next(
+        new AppError(
+          `Failed to insert product ${azst_cart_product_id} into order summary`,
+          400
+        )
+      );
+    }
+  }
+
+  res.status(200).json({ orderId, message: 'Order placed successfully' });
+});
+
+const productDetailsQuery = `JSON_ARRAYAGG(
+    JSON_OBJECT(
+      'azst_order_product_id', azst_ordersummary_tbl.azst_order_product_id,
+      'azst_order_variant_id', azst_ordersummary_tbl.azst_order_variant_id,
+      'product_title', azst_products.product_title,
+      'product_image', azst_products.image_src,
+      'azst_product_price', azst_ordersummary_tbl.azst_product_price,
+      'option1', azst_sku_variant_info.option1,
+      'option2', azst_sku_variant_info.option2,
+      'option3', azst_sku_variant_info.option3,
+      'azst_order_qty', azst_ordersummary_tbl.azst_order_qty
+    )
+  ) AS products_details`;
+
+exports.getOrderSummary = catchAsync(async (req, res, next) => {
+  const { orderId } = req.body;
+
+  const schema = Joi.object({
+    orderId: Joi.string().min(1).required(),
+  });
+
+  const { error } = schema.validate({ orderId });
+  if (error) return next(new AppError(error.message, 400));
+
+  //      azst_orderinfo_tbl.*,
+  const orderQuery = `SELECT
+                      azst_orders_created_on,
+                      azst_orders_payment_method,
+                      azst_orders_tbl.azst_orders_id as azst_order_id,
+                       azst_orders_taxes,
+                       azst_orderinfo_shpping_amount,
+                       azst_orders_discount_amount,
+                      azst_orders_total,
+                      ${productDetailsQuery}                   
+                    FROM azst_orders_tbl
+                    LEFT JOIN azst_ordersummary_tbl 
+                      ON azst_orders_tbl.azst_orders_id = azst_ordersummary_tbl.azst_orders_id
+                    LEFT JOIN azst_orderinfo_tbl 
+                      ON azst_orders_tbl.azst_orders_id = azst_orderinfo_tbl.azst_orders_id
+                    LEFT JOIN azst_products
+                      ON azst_ordersummary_tbl.azst_order_product_id = azst_products.id
+                    LEFT JOIN azst_sku_variant_info
+                      ON azst_ordersummary_tbl.azst_order_variant_id = azst_sku_variant_info.id
+                    WHERE azst_orders_tbl.azst_orders_id = ?
+                  
+                    `;
+
+  await db("SET SESSION sql_mode = ''");
+  const result = await db(orderQuery, [orderId]);
+
+  if (result.length === 0) return res.status(200).json([]);
+
+  let orders = result;
+
+  const ordersData = orders.map((order) => ({
+    ...order,
+    products_details: order.products_details.map((product) => ({
+      ...product,
+      product_image: `${req.protocol}://${req.get('host')}/api/images/product/${
+        product.product_image
+      }`,
+    })),
+  }));
+
+  res.status(200).json(ordersData);
+});
+
 function generateInvoice(orderData, userDetails, cartProducts, filePath) {
   const {
     user_id,
@@ -221,233 +515,6 @@ function generateInvoice(orderData, userDetails, cartProducts, filePath) {
   doc.end();
 }
 
-function generateOrderId() {
-  const timestamp = Date.now().toString(36).toUpperCase(); // Converts timestamp to base36
-
-  const randomPart = Math.random().toString(36).toUpperCase().substring(2, 8); // Adds random part
-
-  const orderId = (timestamp + randomPart).substring(0, 12);
-  return 'AZSTA-' + orderId; // Combine and slice to 12 chars
-}
-
-const getCartTotal = (cartProducts) => {
-  const subTotal = cartProducts.reduce(
-    (acc, p) => (acc += parseInt(p.azst_cart_quantity) * parseInt(p.price)),
-    0
-  );
-
-  const taxAmount = cartProducts.reduce((acc, p) => {
-    const productPrice = parseInt(p.azst_cart_quantity) * parseInt(p.price);
-    const taxPercentage = 10;
-    const taxAmount = (productPrice / 100) * taxPercentage;
-    return (acc += taxAmount);
-  }, 0);
-  return { subTotal, taxAmount };
-};
-
-exports.placeOrder = catchAsync(async (req, res, next) => {
-  try {
-    const {
-      paymentMethod,
-      paymentData,
-      discountAmount,
-      discountCode,
-      cartList,
-      orderSource,
-      shippingCharge,
-    } = req.body;
-
-    // Validate cartList
-    if (!cartList || !Array.isArray(cartList)) {
-      return res.status(400).json({ message: 'Cart is empty or invalid' });
-    }
-
-    const cartProducts = cartList;
-
-    // Extract payment details
-    const { amount, currency, razorpay_order_id, razorpay_payment_id } =
-      paymentData;
-
-    // Extract customer details from userDetails
-    const { azst_customer_id, azst_customer_email } = req.userDetails;
-
-    // Generate a unique order ID
-    const orderId = generateOrderId();
-
-    // Calculate order total, tax, and subtotal
-    const { subTotal, taxAmount } = getCartTotal(cartProducts);
-    const orderTotalAmount =
-      subTotal + taxAmount + shippingCharge - discountAmount;
-
-    // Determine financial status
-    const financialStatus =
-      amount === orderTotalAmount ? 'paid' : 'partially paid';
-    const paidOn = moment().format('YYYY-MM-DD HH:mm:ss');
-
-    // Determine fulfillment status
-    const fulfillmentStatus =
-      financialStatus === 'paid' ? 'fulfilled' : 'unfulfilled';
-    const fulfilledOn =
-      fulfillmentStatus === 'fulfilled'
-        ? moment().format('YYYY-MM-DD HH:mm:ss')
-        : null;
-
-    // Determine payment reference
-    const paymentReference = paymentMethod === 'COD' ? 'COD' : 'ONLINE';
-    const checkOutId = paymentMethod === 'COD' ? null : razorpay_order_id;
-    const paymentId = paymentMethod === 'COD' ? null : razorpay_payment_id;
-
-    // SQL query for inserting order data
-    const query = `INSERT INTO azst_orders_tbl (
-                      azst_orders_id, azst_orders_email, azst_orders_financial_status, azst_orders_paid_on,
-                      azst_orders_fulfillment_status, azst_orders_fulfilled_on,
-                      azst_orders_currency, azst_orders_subtotal, azst_orders_taxes, azst_orders_total,
-                      azst_orders_discount_code, azst_orders_discount_amount, azst_orders_customer_id,  
-                      azst_orders_payment_method, azst_orders_payment_reference,
-                      azst_orders_source, azst_orders_checkout_id, azst_orders_payment_id
-                    )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-
-    const values = [
-      orderId,
-      azst_customer_email,
-      financialStatus,
-      paidOn,
-      fulfillmentStatus,
-      fulfilledOn,
-      currency,
-      subTotal,
-      taxAmount,
-      orderTotalAmount,
-      discountCode,
-      discountAmount,
-      azst_customer_id,
-      paymentMethod,
-      paymentReference,
-      orderSource,
-      checkOutId,
-      paymentId,
-    ];
-
-    // Execute query
-    const result = await db(query, values);
-    if (result.affectedRows === 0) {
-      throw new Error('Failed to place order');
-    }
-
-    // Pass order ID to the next middleware
-    req.orderData = orderId;
-    next();
-  } catch (error) {
-    next(error);
-  }
-});
-
-exports.orderInfo = catchAsync(async (req, res, next) => {
-  const { paymentData, addressId, isBillingAdsame, shippingCharge } = req.body;
-
-  const orderId = req.orderData;
-  const customerId = req.empId;
-
-  if (!paymentData || !addressId || !orderId || !customerId) {
-    return res
-      .status(400)
-      .json({ message: 'Missing required order information' });
-  }
-
-  const { notes = '', noteAttributes = '' } = paymentData;
-
-  const query = `
-    INSERT INTO azst_orderinfo_tbl (
-      azst_orders_id,
-      azst_orders_customer_id,
-      azst_addressbook_id,
-      azst_orderinfo_notes,
-      azst_orderinfo_note_attributes,
-      azst_orderinfo_shippingtype,
-      azst_orderinfo_shpping_amount,
-      azst_orderinfo_billing_adrs_issame
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `;
-
-  const shippingType = shippingCharge > 0 ? 'paid shipping' : 'free shipping';
-
-  const values = [
-    orderId,
-    customerId,
-    addressId,
-    notes,
-    noteAttributes,
-    shippingType,
-    shippingCharge,
-    isBillingAdsame,
-  ];
-
-  try {
-    await db(query, values);
-    next(); // Proceed to the next middleware
-  } catch (error) {
-    console.error('Error inserting order info:', error.message);
-    next(error); // Passes the error to the global error handler
-  }
-});
-
-exports.orderSummary = catchAsync(async (req, res, next) => {
-  const { cartList } = req.body;
-  const orderId = req.orderData;
-
-  if (!cartList || !Array.isArray(cartList) || cartList.length === 0) {
-    return res.status(400).json({ message: 'Cart is empty or invalid' });
-  }
-
-  const insertQuery = `
-    INSERT INTO azst_ordersummary_tbl (
-      azst_orders_id,
-      azst_order_product_id,
-      azst_order_variant_id,
-      azst_order_qty,
-      azst_order_delivery_method,
-      azst_product_price
-    ) VALUES (?, ?, ?, ?, ?, ?)
-  `;
-
-  const removeQuery = `DELETE FROM azst_cart_tbl WHERE azst_cart_id = ?`;
-
-  for (let product of cartList) {
-    const {
-      azst_cart_product_id,
-      azst_cart_variant_id,
-      azst_cart_quantity,
-      price,
-      azst_cart_id,
-    } = product;
-
-    const values = [
-      orderId,
-      azst_cart_product_id,
-      azst_cart_variant_id,
-      azst_cart_quantity,
-      'POSTAL',
-      price,
-    ];
-
-    const result = await db(insertQuery, values);
-
-    if (result.affectedRows > 0) {
-      await db(removeQuery, [azst_cart_id]);
-    } else {
-      return next(
-        new AppError(
-          `Failed to insert product ${azst_cart_product_id} into order summary`,
-          400
-        )
-      );
-    }
-  }
-
-  res.status(200).json({ message: 'Order placed successfully' });
-});
-
 exports.viewInvoice = (req, res, next) => {
   const { orderId } = req.params;
 
@@ -492,134 +559,3 @@ exports.downloadInvoice = (req, res, next) => {
     res.status(404).json({ status: 'error', message: 'Invoice not found.' });
   }
 };
-
-// exports.placeOrder = catchAsync(async (req, res, next) => {
-//   const {
-//     paymentMethod,
-//     cartProducts,
-//     addressId,
-//     isBillingAdsame,
-//     discountAmount,
-//     discountCode,
-//     shippingCharge,
-//   } = req.body;
-//   const customerId = req.empId;
-//   const userDetails = req.userDetails;
-
-//   // Generate a unique order ID
-//   const orderId = generateOrderId();
-
-//   // Calculate the subtotal and tax amount
-//   const { subTotal, taxAmount } = getCartTotal(cartProducts);
-//   // console.log(subTotal, taxAmount);
-
-//   // Prepare order data
-//   const orderData = {
-//     orderId,
-//     customerId,
-//     subTotal,
-//     taxAmount,
-//     discountAmount,
-//     shippingCharge,
-//     paymentMethod,
-//     createdOn: new Date(),
-//   };
-
-//   // // Save order data to the database
-//   // await db.azst_orders_tbl.create(orderData);
-//   // Save cart products data to the database...
-//   // const folder = `Uploads/invoices/`;
-//   // Define the path for the uploads/invoices directory
-//   const invoicesDir = path.join(__dirname, '../../Uploads/invoices');
-
-//   // Ensure the uploads/invoices directory exists
-//   if (!fs.existsSync(invoicesDir)) {
-//     fs.mkdirSync(invoicesDir, { recursive: true }); // Create the directory if it doesn't exist
-//   }
-
-//   // Define the file path for the invoice
-//   const invoiceFilePath = path.join(invoicesDir, `${orderId}.pdf`);
-
-//   generateInvoice(orderData, userDetails, cartProducts, invoiceFilePath);
-
-//   res.status(201).json({
-//     status: 'success',
-//     data: {
-//       orderId,
-//       subTotal,
-//       taxAmount,
-//       total: subTotal + taxAmount,
-//     },
-//   });
-// });
-
-// exports.addedOrder = catchAsync(async (req, res, next) => {
-//   const { paymentMethod, cartProduct, addressId } = req.body;
-//   const orderId = generateOrderId();
-//   const { subTotal, taxeAmount } = getCartTotal(cartProducts);
-//   if (paymentMethod === 'COD') {
-//     // generate invoice pdf and store in table
-//     // in this in tables
-//   }
-// });
-
-// ** azst_orderinfo_tbl **
-
-//   azst_orderinfo_id,
-//   azst_orders_id,
-//   azst_orders_customer_id,
-//   azst_addressbook_id,
-//   azst_orderinfo_notes,
-//   azst_orderinfo_note_attributes,
-//   azst_orderinfo_created_on,
-//   azst_orderinfo_shippingtype,
-//   azst_orderinfo_shpping_amount,
-//   azst_orderinfo_billing_adrs_issame;
-
-// ** azst_orders_tbl ** contains
-
-// it store about order amount financial information
-
-// azst_orders_tbl_id,
-//   azst_orders_id,
-//   azst_orders_email,
-//   azst_orders_financial_status,
-//   azst_orders_paid_on,
-//   azst_orders_fulfillment_status,
-//   azst_orders_fulfilled_on,
-//   azst_orders_currency,
-//   azst_orders_subtotal,
-//   azst_orders_shipping,
-//   azst_orders_taxes,
-//   azst_orders_total,
-//   azst_orders_discount_code,
-//   azst_orders_discount_amount,
-//   azst_orders_shipping_method,
-
-//   azst_orders_created_on,
-//   azst_orders_confirm_by,
-//   azst_orders_confirm_on,
-//   azst_orders_confirm_status,
-//   azst_orders_customer_id,
-//   azst_orders_checkout_id,
-//   azst_orders_status,
-//   azst_orders_cancelled_at,
-//   azst_orders_payment_method,
-//   azst_orders_payment_reference,
-//   azst_orders_vendor,
-//   azst_orders_vendor_code,
-//   azst_orders_tags,
-//   azst_orders_source,
-//   azst_orders_billing_province_name,
-//   azst_orders_shipping_province_name,
-//   azst_orders_payment_id;
-
-// ** azst_ordersummary_tbl **
-// it  store the details of order who many products are in order and quantity and price , method of payment
-// azst_ordersummary_id,
-//   azst_orders_id,
-//   azst_order_product_id,
-//   azst_order_variant_id,
-//   azst_order_qty,
-//   azst_order_delivery_method,
-//   azst_product_price;
