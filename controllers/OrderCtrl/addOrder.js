@@ -310,14 +310,13 @@ exports.getOrderSummary = catchAsync(async (req, res, next) => {
   const { error } = schema.validate({ orderId });
   if (error) return next(new AppError(error.message, 400));
 
-  //      azst_orderinfo_tbl.*,
   const orderQuery = `SELECT
                       azst_orders_created_on,
                       azst_orders_payment_method,
                       azst_orders_tbl.azst_orders_id as azst_order_id,
-                       azst_orders_taxes,
-                       azst_orderinfo_shpping_amount,
-                       azst_orders_discount_amount,
+                      azst_orders_taxes,
+                      azst_orderinfo_shpping_amount,
+                      azst_orders_discount_amount,
                       azst_orders_total,
                       ${productDetailsQuery}                   
                     FROM azst_orders_tbl
@@ -329,9 +328,7 @@ exports.getOrderSummary = catchAsync(async (req, res, next) => {
                       ON azst_ordersummary_tbl.azst_order_product_id = azst_products.id
                     LEFT JOIN azst_sku_variant_info
                       ON azst_ordersummary_tbl.azst_order_variant_id = azst_sku_variant_info.id
-                    WHERE azst_orders_tbl.azst_orders_id = ?
-                  
-                    `;
+                    WHERE azst_orders_tbl.azst_orders_id = ?`;
 
   await db("SET SESSION sql_mode = ''");
   const result = await db(orderQuery, [orderId]);
@@ -349,6 +346,7 @@ exports.getOrderSummary = catchAsync(async (req, res, next) => {
       }`,
     })),
   }));
+
   const orderSummary = ordersData[0];
   res.status(200).json(orderSummary);
 });

@@ -1,13 +1,14 @@
 const Joi = require('joi');
 const catchAsync = require('../Utils/catchAsync');
+const AppError = require('../Utils/appError');
 
 const orderSchema = Joi.object({
   paymentMethod: Joi.string().valid('COD', 'RazorPay').required(), // Validate against specific values
   paymentData: Joi.object({
     amount: Joi.number().min(0).required(),
     currency: Joi.string().valid('INR', 'USD', 'EUR').required(),
-    razorpay_order_id: Joi.string().required(),
-    razorpay_payment_id: Joi.string().required(),
+    razorpay_order_id: Joi.string().allow('').required(),
+    razorpay_payment_id: Joi.string().allow('').required(),
   }).required(), // Ensure the object and its properties are required
   discountAmount: Joi.number().min(0).required(),
   discountCode: Joi.string().allow('').required(), // Allow an empty string
@@ -27,9 +28,8 @@ const orderSchema = Joi.object({
 });
 
 const validateOrder = catchAsync(async (req, res, next) => {
-  console.log('validateOrder', req.body);
   const { error } = orderSchema.validate(req.body);
-  if (error) return next(error.message, 400);
+  if (error) return next(new AppError(error.message, 400));
   next();
 });
 
