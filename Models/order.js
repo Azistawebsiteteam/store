@@ -9,6 +9,8 @@ const orderSchema = Joi.object({
     currency: Joi.string().valid('INR', 'USD', 'EUR').required(),
     razorpay_order_id: Joi.string().allow('').required(),
     razorpay_payment_id: Joi.string().allow('').required(),
+    notes: Joi.string().allow('').required(),
+    noteAttributes: Joi.string().allow('').required(),
   }).required(), // Ensure the object and its properties are required
   discountAmount: Joi.number().min(0).required(),
   discountCode: Joi.string().allow('').required(), // Allow an empty string

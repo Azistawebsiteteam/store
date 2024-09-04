@@ -95,19 +95,31 @@ exports.placeOrder = catchAsync(async (req, res, next) => {
       shippingCharge,
     } = req.body;
 
-    // Validate cartList
-    if (!cartList || !Array.isArray(cartList)) {
-      return res.status(400).json({ message: 'Cart is empty or invalid' });
-    }
-
-    const cartProducts = cartList;
-
     // Extract payment details
     const { amount, currency, razorpay_order_id, razorpay_payment_id } =
       paymentData;
 
     // Extract customer details from userDetails
     const { user_id, user_email, user_district } = req.userDetails;
+
+    if (
+      paymentMethod === 'RazorPay' &&
+      (razorpay_order_id === '' || razorpay_payment_id === '')
+    ) {
+      return next(
+        new AppError(
+          `razorpay_order_id and razorpay_payment_id can't be empty`,
+          400
+        )
+      );
+    }
+
+    if (!cartList || !Array.isArray(cartList)) {
+      // Validate cartList
+      return res.status(400).json({ message: 'Cart is empty or invalid' });
+    }
+
+    const cartProducts = cartList;
 
     // Generate a unique order ID
     const orderId = generateOrderId();
@@ -130,9 +142,15 @@ exports.placeOrder = catchAsync(async (req, res, next) => {
         ? moment().format('YYYY-MM-DD HH:mm:ss')
         : null;
 
+    const getCheckOutId = () => {
+      const timestamp = Date.now().toString(36).toUpperCase(); // Converts timestamp to base36
+      return 'AZSTA-' + timestamp;
+    };
+
     // Determine payment reference
     const paymentReference = paymentMethod === 'COD' ? 'COD' : 'ONLINE';
-    const checkOutId = paymentMethod === 'COD' ? null : razorpay_order_id;
+    const checkOutId =
+      paymentMethod === 'COD' ? getCheckOutId() : razorpay_order_id;
     const paymentId = paymentMethod === 'COD' ? null : razorpay_payment_id;
 
     // SQL query for inserting order data
