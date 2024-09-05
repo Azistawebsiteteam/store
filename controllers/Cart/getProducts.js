@@ -31,7 +31,7 @@ const getCartData = catchAsync(async (req, res, next) => {
     filterQuery = 'azst_customer_id = ?';
   } else {
     fvaues = [sessionId];
-    filterQuery = 'azst_session_id = ?';
+    filterQuery = 'azst_customer_id = 0 AND azst_session_id = ?';
   }
 
   const query = `
