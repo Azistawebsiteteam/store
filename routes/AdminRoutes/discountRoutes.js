@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const multer = require('multer');
 
-const discCtrl = require('../../controllers/DiscountCtrl/crudCtrl');
+const discCtrl = require('../../controllers/DiscountCtrl/productDiscCtrl');
 const xyDiscCtrl = require('../../controllers/DiscountCtrl/buyXgetYCtrl');
 const disSchemaCtrl = require('../../Models/disscount');
 

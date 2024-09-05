@@ -2,8 +2,13 @@ const Joi = require('joi');
 const AppError = require('../Utils/appError');
 
 const baseSchema = Joi.object({
+  method: Joi.string().required().valid('Automatic', 'Manual'),
   title: Joi.string().min(3).max(100).required(),
-  code: Joi.string().alphanum().min(4).max(10).required(),
+  code: Joi.when('method', {
+    is: 'Manual',
+    then: Joi.string().alphanum().min(4).max(10).required(),
+    otherwise: Joi.optional().allow(''), // No 'code' field when method is 'Automatic'
+  }),
   mode: Joi.string().required().valid('amount', 'percentage'),
   value: Joi.number().required(), // Assuming value is a number. Change to string if necessary.
   applyMode: Joi.string().required().valid('collection', 'product', 'combo'),

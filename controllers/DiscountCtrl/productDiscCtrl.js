@@ -6,6 +6,7 @@ const AppError = require('../../Utils/appError');
 exports.createDisscount = catchAsync(async (req, res, next) => {
   const {
     title,
+    method,
     code,
     mode,
     value,
@@ -21,6 +22,7 @@ exports.createDisscount = catchAsync(async (req, res, next) => {
   } = req.body;
 
   const disQuery = `INSERT INTO azst_discount_tbl (
+  azst_dsc_method,
                     azst_dsc_title,
                     azst_dsc_code,
                     azst_dsc_mode,
@@ -35,9 +37,10 @@ exports.createDisscount = catchAsync(async (req, res, next) => {
                     azst_dsc_start_tm,
                     azst_dsc_end_tm,
                     azst_dsc_cr_by
-                  ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
+                  ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
 
   const values = [
+    method,
     title,
     code,
     mode,

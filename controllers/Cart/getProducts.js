@@ -24,6 +24,16 @@ const getCartData = catchAsync(async (req, res, next) => {
   const { error } = getCartSchema.validate(req.body);
   if (error) return next(new AppError(error.message, 400));
 
+  let filterQuery = '';
+  let fvaues = [];
+  if (customerId && customerId.toString() !== '0') {
+    fvaues = [customerId];
+    filterQuery = 'azst_customer_id = ?';
+  } else {
+    fvaues = [sessionId];
+    filterQuery = 'azst_session_id = ?';
+  }
+
   const query = `
                 SELECT 
                     ac.azst_cart_id,
@@ -57,8 +67,8 @@ const getCartData = catchAsync(async (req, res, next) => {
                         azst_cart_tbl
                     WHERE  
                         azst_cart_status = 1 
-                        AND azst_customer_id = ? 
-                        AND azst_session_id = ?
+                        AND ${filterQuery}
+                        
                     GROUP BY 
                         azst_cart_product_id, 
                         azst_cart_variant_id
@@ -80,7 +90,7 @@ const getCartData = catchAsync(async (req, res, next) => {
                     ac.max_created_on DESC;`;
 
   await db("SET SESSION sql_mode = ''");
-  const result = await db(query, [customerId, sessionId]);
+  const result = await db(query, fvaues);
 
   const cart_products = result.map((product) => ({
     ...product,
