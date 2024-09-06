@@ -10,7 +10,6 @@ const enterLoginLogs = require('./CustomerCtrls/Authentication/logsCtrl');
 const generateOTP = () => {
   // Generate a random 6-digit number
   const otp = Math.floor(100000 + Math.random() * 900000);
-  // Ensure the generated number is exactly 6 digits
   return String(otp).substring(0, 6);
 };
 
@@ -21,29 +20,52 @@ const varifyInput = (mailOrMobile) => {
   return !isMobileNumber && !isEmail;
 };
 
-const sendingOTPMobile = async (mailOrMobile, otp) => {
+// Helper to check environment variables
+const checkEnvVariables = () => {
+  const requiredEnvVars = [
+    'SMS_API_KEY',
+    'SMS_SENDER_ID',
+    'SMS_TEMPLATE_ID',
+    'SMS_PEID',
+    'SMS_ROUTE',
+  ];
+
+  requiredEnvVars.forEach((variable) => {
+    if (!process.env[variable]) {
+      throw Error(`Missing environment variable: ${variable}`, 500);
+    }
+  });
+};
+
+const sendingOTPMobile = async (mobileNum, otp) => {
   try {
-    const apiKey = process.env.SMS_API_KEY;
-    const sender_id = process.env.SMS_SENDER_ID;
-    const templated_id = process.env.SMS_TEMPLATE_ID;
-    const peid = process.env.SMS_PEID;
-    const route = process.env.SMS_ROUTE;
+    checkEnvVariables(); // Ensure env vars are set
+    const {
+      SMS_API_KEY: apiKey,
+      SMS_SENDER_ID: senderId,
+      SMS_TEMPLATE_ID: templateId,
+      SMS_PEID: peid,
+      SMS_ROUTE: route,
+    } = process.env;
 
     const smsContent = `Hello, We have Successfully Generated OTP ${otp} on login and registration request. Azista`;
-    const url = `http://push.smsc.co.in/api/mt/SendSMS?APIkey=${apiKey}&senderid=${sender_id}&channel=2&DCS=0&flashsms=0&number=91${mailOrMobile}&text=${smsContent}&route=${route}&DLTTemplateId=${templated_id}&PEID=${peid}`;
+    const url = `http://push.smsc.co.in/api/mt/SendSMS?APIkey=${apiKey}&senderid=${senderId}&channel=2&DCS=0&flashsms=0&number=91${mobileNum}&text=${smsContent}&route=${route}&DLTTemplateId=${templateId}&PEID=${peid}`;
 
     const response = await axios.post(url);
-    if (response.status === 200) {
+
+    if (response.data.ErrorCode) {
+      return Promise.reject(new Error('unable to send otp'));
+    } else if (response.status === 200) {
       return Promise.resolve();
     } else {
-      return Promise.reject(new Error('Failed to send SMS'));
+      return Promise.reject(new Error('unable to send otp'));
     }
   } catch (error) {
     return Promise.reject(error);
   }
 };
 
-const sendingOTPEmail = () => {
+const sendingOTPEmail = (mail, otp) => {
   // Emial Logic for sending otpmail
   return 0;
 };
@@ -67,7 +89,9 @@ exports.sendOtp = catchAsync(async (req, res, next) => {
       sendingOTPEmail(mailOrMobile, otp);
     }
   } catch (error) {
-    return next(new AppError('Error Occurred OTP Sending', 400));
+    return next(
+      new AppError('Unable to send OTP. Please use your credentials.', 400)
+    );
   }
 
   const insertOtp = `INSERT INTO azst_otp_verification 
@@ -81,7 +105,7 @@ exports.sendOtp = catchAsync(async (req, res, next) => {
   await db(insertOtp, values);
   res
     .status(200)
-    .json({ message: 'OTP sent to your registered mobile number', otp });
+    .json({ message: 'OTP sent to your registered mobile number' });
 });
 
 exports.checkOtpExisting = catchAsync(async (req, res, next) => {
@@ -95,16 +119,17 @@ exports.checkOtpExisting = catchAsync(async (req, res, next) => {
   }
 
   const getOtpQuery = `SELECT azst_otp_verification_id, azst_otp_verification_value , azst_otp_verification_reason,
-                        DATE_FORMAT(azst_otp_verification_createdon, '%Y-%m-%d %H:%i:%s') AS createdTime
-                         FROM azst_otp_verification
-                         WHERE azst_otp_verification_mobile=? AND azst_otp_verification_status= 1 
-                         ORDER BY azst_otp_verification_createdon DESC LIMIT 1`;
+                          DATE_FORMAT(azst_otp_verification_createdon, '%Y-%m-%d %H:%i:%s') AS createdTime
+                        FROM azst_otp_verification
+                        WHERE azst_otp_verification_mobile=? AND azst_otp_verification_status= 1 
+                        ORDER BY azst_otp_verification_createdon DESC LIMIT 1`;
 
   const result = await db(getOtpQuery, [mailOrMobile]);
   // verify OTP existing or not
   if (result.length === 0) {
     return next(new AppError('OTP expired or does not exist', 400));
   }
+
   const {
     azst_otp_verification_id,
     azst_otp_verification_value,
@@ -120,7 +145,7 @@ exports.checkOtpExisting = catchAsync(async (req, res, next) => {
     const updateOtpSDetais = `UPDATE azst_otp_verification
                             SET azst_otp_verification_userid = ?, azst_otp_verification_status = ?
                             WHERE azst_otp_verification_id = ?`;
-    const otpValues = [azst_customer_id, 0, verificationId];
+    const otpValues = [azst_customer_id, 0, azst_otp_verification_id];
     await db(updateOtpSDetais, otpValues);
     return next(new AppError('OTP expired or does not exist', 400));
   }
@@ -139,6 +164,11 @@ exports.checkOtpExisting = catchAsync(async (req, res, next) => {
 exports.updateOtpDetails = catchAsync(async (req, res, next) => {
   const { verificationId, reason } = req.otpDetails;
 
+  // if the reason is forgot password go to authcontroll and update the password with the new password
+  if (reason === 'forgot password') {
+    return next();
+  }
+
   let azst_customer_id = req.userDetails?.azst_customer_id ?? 0;
 
   const updateOtpSDetais = `UPDATE azst_otp_verification
@@ -147,13 +177,9 @@ exports.updateOtpDetails = catchAsync(async (req, res, next) => {
 
   const otpValues = [azst_customer_id, 0, verificationId];
 
-  // if the reason is forgot password go to authcontroll and update the password with the new password
-  if (reason === 'forgot password') {
-    return next();
-  }
-
   await db(updateOtpSDetais, otpValues);
   const key = process.env.JWT_SECRET;
+
   // if the Reason is Registration no need to send the Token
   const jwtToken =
     reason === 'Registration' ? '' : createSendToken(azst_customer_id, key);

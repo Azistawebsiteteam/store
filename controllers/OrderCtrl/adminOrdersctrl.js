@@ -32,7 +32,8 @@ exports.getAllOrdrs = catchAsync(async (req, res, next) => {
                         LEFT JOIN azst_customers_tbl
                         ON azst_customers_tbl.azst_customer_id = azst_orders_tbl.azst_orders_customer_id 
                        ${filterQuery}
-                       GROUP BY azst_orders_tbl.azst_orders_id`;
+                       GROUP BY azst_orders_tbl.azst_orders_id
+                       ORDER BY azst_orders_tbl.azst_orders_created_on DESC `;
   const results = await db(ordersQuery, values);
   res.status(200).json(results);
 });
@@ -93,7 +94,7 @@ exports.getCustomerOrders = catchAsync(async (req, res, next) => {
 
   const { error } = schema.validate({ customerId });
   if (error) return next(new AppError(error.message, 400));
-  //      azst_orderinfo_tbl.*,
+
   const orderQuery = `SELECT
                       azst_orders_status,
                       azst_orders_created_on,azst_orders_confirm_status,
@@ -108,7 +109,8 @@ exports.getCustomerOrders = catchAsync(async (req, res, next) => {
                     LEFT JOIN azst_sku_variant_info
                       ON azst_ordersummary_tbl.azst_order_variant_id = azst_sku_variant_info.id
                     WHERE azst_orders_tbl.azst_orders_customer_id = ?
-                    GROUP BY azst_orders_tbl.azst_orders_id;
+                    GROUP BY azst_orders_tbl.azst_orders_id
+                    ORDER BY azst_orders_tbl.azst_orders_created_on DESC ;
                     `;
 
   await db("SET SESSION sql_mode = ''");
