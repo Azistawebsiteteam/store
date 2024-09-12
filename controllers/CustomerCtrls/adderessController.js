@@ -1,4 +1,4 @@
-const db = require('../../dbconfig');
+const db = require('../../Database/dbconfig');
 const moment = require('moment');
 
 const AppError = require('../../Utils/appError');

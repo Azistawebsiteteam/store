@@ -1,16 +1,6 @@
-const mysql = require('mysql2');
 const util = require('util');
-const AppError = require('./Utils/appError');
-
-const db = mysql.createPool({
-  host: process.env.DB_HOSTIP,
-  user: process.env.DB_USERNAME,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  waitForConnections: true,
-  queueLimit: 0, // Unlimited queueing
-  connectTimeout: 15000,
-});
+const db = require('./dbPool.js');
+const AppError = require('../Utils/appError.js');
 
 // Function to establish database connection
 const connectToDatabase = () => {
@@ -18,7 +8,7 @@ const connectToDatabase = () => {
     if (error) {
       // console.error('Error connecting to the database:', error.message);
       // Handle the error appropriately, such as logging or displaying an error message
-      return new AppError(error.message, 4000);
+      return new AppError(error.message, 400);
     }
 
     console.log('Connected to the MYsql database');

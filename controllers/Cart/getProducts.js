@@ -1,5 +1,6 @@
 const Joi = require('joi');
-const db = require('../../dbconfig');
+const moment = require('moment');
+const db = require('../../Database/dbconfig');
 
 const catchAsync = require('../../Utils/catchAsync');
 const AppError = require('../../Utils/appError');
@@ -159,15 +160,8 @@ const abandonmentCart = catchAsync(async (req, res, next) => {
   res.status(200).json(result);
 });
 
-module.exports = { getCartData, removeFromCart, abandonmentCart };
-
-//   azst_cart_id,
-//   azst_cart_product_id,
-//   azst_cart_variant_id,
-//   azst_cart_quantity,
-//   azst_customer_id,
-//   azst_session_id,
-//   azst_cart_status,
-//   azst_cart_created_on,
-//   azst_cart_updated_on,
-//   azst_cart_collection_id;
+module.exports = {
+  getCartData,
+  removeFromCart,
+  abandonmentCart,
+};

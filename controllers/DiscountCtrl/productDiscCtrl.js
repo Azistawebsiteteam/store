@@ -1,71 +1,269 @@
-const db = require('../../dbconfig');
-
+const db = require('../../Database/dbconfig'); // Adjust path as necessary
+const runTransaction = require('../../Database/dbtransctions');
 const catchAsync = require('../../Utils/catchAsync');
 const AppError = require('../../Utils/appError');
 
-exports.createDisscount = catchAsync(async (req, res, next) => {
+const {
+  discountSchema,
+  discountConditionSchema,
+} = require('../../Models/disscount');
+
+// exports.createDiscount = catchAsync(async (req, res, next) => {
+//   const { discount, conditions } = req.body;
+
+//   const {
+//     title,
+//     code,
+//     method,
+//     type,
+//     value,
+//     customers,
+//     usageCount,
+//     startTime,
+//     endTime,
+//   } = discount;
+
+//   const { error } = discountSchema.validate(discount);
+//   if (error) return next(new AppError(error.message, 400));
+
+//   try {
+//     // Run the transaction using runTransaction wrapper
+//     await runTransaction(async (connection) => {
+//       // Insert discount details
+//       const queryDiscount = `INSERT INTO azst_discounts_tbl (title, code, method, type, value, usage_count,
+//                               start_time, end_time, eligible_customers)
+//                               VALUES (?, ?, ?, ?, ?, ?, ?, ?,?)`;
+
+//       const values = [
+//         title,
+//         code,
+//         method,
+//         type,
+//         value,
+//         usageCount,
+//         startTime,
+//         endTime,
+//         customers,
+//       ];
+
+//       const [discountResults] = await db(queryDiscount, values);
+
+//       if (discountResults.affectedRows === 0)
+//         throw new AppError('Discount not created, something went wrong', 400);
+
+//       const discountId = discountResults.insertId;
+
+//       // Validate discount conditions
+//       const { error: conditionError } = discountConditionSchema.validate({
+//         ...conditions,
+//         discountId,
+//       });
+
+//       if (conditionError) throw new AppError(conditionError.message, 400);
+
+//       const {
+//         scope,
+//         minCartValue,
+//         buyProductId,
+//         minBuyQty,
+//         getYproductId,
+//         maxGetYQty,
+//       } = conditions;
+
+//       // Insert discount conditions
+//       const queryCondition = `
+//           INSERT INTO azst_discount_conditions (discount_id, scope, min_cart_value, buy_x_product_id,
+//           min_buy_x_qty, get_y_product_id, max_get_y_qty)
+//           VALUES (?, ?, ?, ?, ?, ?, ?)`;
+
+//       const cvalues = [
+//         discountId,
+//         scope,
+//         minCartValue,
+//         buyProductId,
+//         minBuyQty,
+//         getYproductId,
+//         maxGetYQty,
+//       ];
+
+//       const [conditionResults] = await db(
+//         queryCondition,
+//         cvalues
+//       );
+
+//       if (conditionResults.affectedRows === 0)
+//         throw new AppError(
+//           'Something went wrong while creating discount conditions',
+//           400
+//         );
+//     });
+
+//     // Respond with success if everything is committed
+//     res.status(200).json({ message: 'Discount created successfully' });
+//   } catch (err) {
+//     return next(err); // Error handling, rollback happens automatically inside runTransaction
+//   }
+// });
+
+exports.createDiscount = catchAsync(async (req, res, next) => {
+  const { discount, conditions } = req.body;
+  let discountId = null;
+
   const {
     title,
-    method,
     code,
-    mode,
+    method,
+    type,
     value,
-    applyMode,
-    applyId,
-    prcMode,
-    prcValue,
-    elgCustomers,
-    maxApplyValue,
-    usgCount,
+    customers,
+    usageCount,
     startTime,
     endTime,
-  } = req.body;
+  } = discount;
 
-  const disQuery = `INSERT INTO azst_discount_tbl (
-  azst_dsc_method,
-                    azst_dsc_title,
-                    azst_dsc_code,
-                    azst_dsc_mode,
-                    azst_dsc_value,
-                    azst_dsc_apply_mode,
-                    azst_dsc_apply_id,
-                    azst_dsc_prc_mode,
-                    azst_dsc_prc_value,
-                    azst_dsc_elg_cus,
-                    azst_dsc_apply_qty,
-                    azst_dsc_usage_cnt,
-                    azst_dsc_start_tm,
-                    azst_dsc_end_tm,
-                    azst_dsc_cr_by
-                  ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
+  const { error } = discountSchema.validate(discount);
+  if (error) return next(new AppError(error.message, 400));
+
+  // Validate discount conditions
+  const { error: conditionError } = discountConditionSchema.validate({
+    ...conditions,
+    discountId,
+  });
+
+  if (conditionError) throw new AppError(conditionError.message, 400);
+
+  // Insert discount details
+  const queryDiscount = `INSERT INTO azst_discounts_tbl (title, code, method, type, value, usage_count,
+                            start_time, end_time, eligible_customers,created_by)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?,?,?)`;
 
   const values = [
-    method,
     title,
     code,
-    mode,
+    method,
+    type,
     value,
-    applyMode,
-    applyId,
-    prcMode,
-    prcValue,
-    elgCustomers,
-    maxApplyValue,
-    usgCount,
+    usageCount,
     startTime,
     endTime,
+    customers,
     req.empId,
   ];
 
-  const response = await db(disQuery, values);
+  const discountResults = await db(queryDiscount, values);
 
-  if (response.affectedRows > 0)
-    return res.status(200).json({
-      discountId: response.insertId,
-      message: 'discount created successfully',
-    });
-  next(new AppError('opps Something went wrong', 400));
+  if (discountResults.affectedRows === 0)
+    return next(
+      new AppError('Discount not created, something went wrong', 400)
+    );
+
+  discountId = discountResults.insertId;
+
+  const {
+    scope,
+    minCartValue,
+    buyProductType,
+    buyProductId,
+    minBuyQty,
+    getProductType,
+    getYproductId,
+    maxGetYQty,
+  } = conditions;
+
+  // Insert discount conditions
+  const queryCondition = `
+        INSERT INTO azst_discount_conditions (discount_id, scope, min_cart_value, x_product_type, buy_x_product_id,
+        min_buy_x_qty, y_product_type ,get_y_product_id, max_get_y_qty)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+
+  const cvalues = [
+    discountId,
+    scope,
+    minCartValue,
+    buyProductType,
+    buyProductId,
+    minBuyQty,
+    getProductType,
+    getYproductId,
+    maxGetYQty,
+  ];
+
+  const conditionResults = await db(queryCondition, cvalues);
+
+  if (conditionResults.affectedRows === 0)
+    return next(
+      new AppError(
+        'Something went wrong while creating discount conditions',
+        400
+      )
+    );
+
+  res.status(200).json({ message: 'Discount created successfully' });
 });
+
+// exports.createDisscount = catchAsync(async (req, res, next) => {
+//   const {
+//     title,
+//     method,
+//     code,
+//     mode,
+//     value,
+//     applyMode,
+//     applyId,
+//     prcMode,
+//     prcValue,
+//     elgCustomers,
+//     maxApplyValue,
+//     usgCount,
+//     startTime,
+//     endTime,
+//   } = req.body;
+
+//   const disQuery = `INSERT INTO azst_discount_tbl (
+//                     azst_dsc_method,
+//                     azst_dsc_title,
+//                     azst_dsc_code,
+//                     azst_dsc_mode,
+//                     azst_dsc_value,
+//                     azst_dsc_apply_mode,
+//                     azst_dsc_apply_id,
+//                     azst_dsc_prc_mode,
+//                     azst_dsc_prc_value,
+//                     azst_dsc_elg_cus,
+//                     azst_dsc_apply_qty,
+//                     azst_dsc_usage_cnt,
+//                     azst_dsc_start_tm,
+//                     azst_dsc_end_tm,
+//                     azst_dsc_cr_by
+//                   ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
+
+//   const values = [
+//     method,
+//     title,
+//     code,
+//     mode,
+//     value,
+//     applyMode,
+//     applyId,
+//     prcMode,
+//     prcValue,
+//     elgCustomers,
+//     maxApplyValue,
+//     usgCount,
+//     startTime,
+//     endTime,
+//     req.empId,
+//   ];
+
+//   const response = await db(disQuery, values);
+
+//   if (response.affectedRows > 0)
+//     return res.status(200).json({
+//       discountId: response.insertId,
+//       message: 'discount created successfully',
+//     });
+//   next(new AppError('opps Something went wrong', 400));
+// });
 
 exports.getDiscounts = catchAsync(async (req, res, next) => {
   const query = `SELECT * FROM  azst_discount_tbl WHERE azst_dsc_status = 1;`;

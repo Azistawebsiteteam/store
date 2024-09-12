@@ -30,10 +30,10 @@ router.post('/order-summary', orderAddCtrl.getOrderSummary);
 router.get('/payment/:paymentId', razorpayCtrl.rezorpayPayment);
 
 // Route to download the invoice
-router.get('/invoice/download/:orderId', orderAddCtrl.downloadInvoice);
+//router.get('/invoice/download/:orderId', orderAddCtrl.downloadInvoice);
 
 // Route to view the invoice in the browser
-router.get('/invoice/view/:orderId', orderAddCtrl.viewInvoice);
+//router.get('/invoice/view/:orderId', orderAddCtrl.viewInvoice);
 
 router.get('/all', ordersCtrl.getCustomerOrders);
 router.post('/order/details', ordersCtrl.getOrderDetails);

@@ -1,53 +1,80 @@
 const Joi = require('joi');
 const AppError = require('../Utils/appError');
 
-const baseSchema = Joi.object({
-  method: Joi.string().required().valid('Automatic', 'Manual'),
-  title: Joi.string().min(3).max(100).required(),
-  code: Joi.when('method', {
-    is: 'Manual',
-    then: Joi.string().alphanum().min(4).max(10).required(),
-    otherwise: Joi.optional().allow(''), // No 'code' field when method is 'Automatic'
-  }),
-  mode: Joi.string().required().valid('amount', 'percentage'),
-  value: Joi.number().required(), // Assuming value is a number. Change to string if necessary.
-  applyMode: Joi.string().required().valid('collection', 'product', 'combo'),
-  applyId: Joi.string().required(),
-  prcValue: Joi.number().required(),
-  elgCustomers: Joi.string().required(),
-  usgCount: Joi.number().required(),
-  startTime: Joi.date().iso().required(), // ISO 8601 format validation
-  endTime: Joi.date().iso().required(), // ISO 8601 format validation
+// Joi schema for discount
+const discountSchema = Joi.object({
+  title: Joi.string().required(),
+  code: Joi.string().allow(null),
+  method: Joi.string().valid('Automatic', 'Manual').required(),
+  type: Joi.string().valid('percentage', 'flat').required(),
+  value: Joi.number().positive().required(),
+  customers: Joi.string().required(),
+  usageCount: Joi.number().integer().default(0),
+  startTime: Joi.date().iso().required(),
+  endTime: Joi.date().iso().greater(Joi.ref('startTime')).required(),
 });
 
-const discountSchema = baseSchema.keys({
-  prcMode: Joi.string().required().valid('amount', 'quantity'),
-  maxApplyValue: Joi.number()
-    .required()
-    .when('prcMode', {
-      is: 'quantity',
-      then: Joi.number().min(Joi.ref('prcValue')), // Fix reference to 'prcValue'
+// Joi schema for discount conditions
+
+const discountConditionSchema = Joi.object({
+  discountId: Joi.number().integer().positive().optional().allow(null),
+
+  scope: Joi.string().valid('cart', 'product', 'buy_x_get_y').required(),
+
+  // `minCartValue` is mandatory when `scope` is 'cart', else it can be null or not present.
+  minCartValue: Joi.number()
+    .positive()
+    .when('scope', {
+      is: 'cart',
+      then: Joi.required(),
+      otherwise: Joi.allow(null),
+    }),
+
+  buyProductType: Joi.string().when('scope', {
+    is: Joi.valid('product', 'buy_x_get_y'),
+    then: Joi.required().valid('collection', 'product'),
+    otherwise: Joi.allow(''),
+  }),
+
+  // `buyProductId` is required when `scope` is 'product' or 'buy_x_get_y', otherwise it can be null.
+  buyProductId: Joi.string().when('scope', {
+    is: Joi.valid('product', 'buy_x_get_y'),
+    then: Joi.required(),
+    otherwise: Joi.allow(''),
+  }),
+
+  // `minBuyQty` is required when `scope` is 'product' or 'buy_x_get_y', otherwise it can be null.
+  minBuyQty: Joi.number()
+    .integer()
+    .positive()
+    .when('scope', {
+      is: Joi.valid('product', 'buy_x_get_y'),
+      then: Joi.required(),
+      otherwise: Joi.allow(null),
+    }),
+
+  getProductType: Joi.string().when('scope', {
+    is: 'buy_x_get_y',
+    then: Joi.required().valid('collection', 'product'),
+    otherwise: Joi.allow(''),
+  }),
+
+  // `getYproductId` is required only when `scope` is 'buy_x_get_y', otherwise it can be null.
+  getYproductId: Joi.string().when('scope', {
+    is: 'buy_x_get_y',
+    then: Joi.required(),
+    otherwise: Joi.allow(''),
+  }),
+
+  // `maxGetYQty` is required only when `scope` is 'buy_x_get_y', otherwise it can be null.
+  maxGetYQty: Joi.number()
+    .integer()
+    .positive()
+    .when('scope', {
+      is: Joi.valid('product', 'buy_x_get_y'),
+      then: Joi.required(),
+      otherwise: Joi.allow(null),
     }),
 });
 
-const xyDiscountSchema = baseSchema.keys({
-  id: Joi.number().optional(),
-  discountType: Joi.string().valid('percentage', 'amount', 'free').required(),
-  discountValue: Joi.number().required(),
-  discountApplyMode: Joi.string().valid('products', 'collections').required(),
-  discountApplyTo: Joi.string().required(), // Ensure this field is required if necessary
-});
-
-const validateDiscount = async (req, res, next) => {
-  const { error } = discountSchema.validate(req.body);
-  if (error) return next(new AppError(error.message, 400));
-  next();
-};
-
-const validateXYDiscount = async (req, res, next) => {
-  const { error } = xyDiscountSchema.validate(req.body);
-  if (error) return next(new AppError(error.message, 400));
-  next();
-};
-
-module.exports = { validateDiscount, validateXYDiscount };
+module.exports = { discountSchema, discountConditionSchema };

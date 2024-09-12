@@ -1,6 +1,6 @@
 const multer = require('multer');
 const sharp = require('sharp');
-const db = require('../../dbconfig');
+const db = require('../../Database/dbconfig');
 const AppError = require('../../Utils/appError');
 const catchAsync = require('../../Utils/catchAsync');
 const {

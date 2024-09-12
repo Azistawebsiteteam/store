@@ -12,31 +12,28 @@ const key = process.env.JWT_SECRET_ADMIN;
 router.use(authCtrl.protect(key));
 router.use(multer().any());
 
-router.post(
-  '/create',
-  disSchemaCtrl.validateDiscount,
-  discCtrl.createDisscount
-);
+//disSchemaCtrl.validateDiscount,
+router.post('/create', discCtrl.createDiscount);
 
-router.post(
-  '/xy/create',
-  disSchemaCtrl.validateXYDiscount,
-  xyDiscCtrl.createDiscount
-);
+// router.post(
+//   '/xy/create',
+//   disSchemaCtrl.validateXYDiscount,
+//   xyDiscCtrl.createDiscount
+// );
 
-router
-  .route('/')
-  .get(discCtrl.getDiscounts)
-  .post(discCtrl.discountDetails)
-  .put(disSchemaCtrl.validateDiscount, discCtrl.UpdateDiscount)
-  .patch(discCtrl.deleteDiscount);
+// router
+//   .route('/')
+//   .get(discCtrl.getDiscounts)
+//   .post(discCtrl.discountDetails)
+//   .put(discCtrl.UpdateDiscount)
+//   .patch(discCtrl.deleteDiscount);
 
-router.get('/xy', xyDiscCtrl.getDiscounts); // Handle GET requests to /xy
-router.use(xyDiscCtrl.isExist); // Middleware for checking existence
-router
-  .route('/xy')
-  .post(xyDiscCtrl.getDiscount) // Handle POST requests to /xy
-  .put(disSchemaCtrl.validateXYDiscount, xyDiscCtrl.updateDiscount) // Handle PUT requests to /xy with validation
-  .patch(xyDiscCtrl.deleteDiscount); // Handle PATCH requests to /xy
+// router.get('/xy', xyDiscCtrl.getDiscounts); // Handle GET requests to /xy
+// router.use(xyDiscCtrl.isExist); // Middleware for checking existence
+// router
+//   .route('/xy')
+//   .post(xyDiscCtrl.getDiscount) // Handle POST requests to /xy
+//   .put(xyDiscCtrl.updateDiscount) // Handle PUT requests to /xy with validation
+//   .patch(xyDiscCtrl.deleteDiscount); // Handle PATCH requests to /xy
 
 module.exports = router;

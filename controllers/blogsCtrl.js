@@ -1,4 +1,4 @@
-const db = require('../dbconfig');
+const db = require('../Database/dbconfig');
 const multer = require('multer');
 const sharp = require('sharp');
 const fs = require('fs');

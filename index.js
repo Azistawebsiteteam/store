@@ -5,7 +5,9 @@ const xss = require('xss-clean');
 const compression = require('compression');
 
 require('dotenv').config();
-require('./dbconfig');
+require('./Database/dbPool');
+require('./Database/dbconfig');
+require('./Database/dbtransctions');
 
 const globalErrorHandler = require('./controllers/errorController');
 const AppError = require('./Utils/appError');

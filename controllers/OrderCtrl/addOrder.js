@@ -1,10 +1,8 @@
 const { default: axios } = require('axios');
-const db = require('../../dbconfig');
+const db = require('../../Database/dbconfig');
 const Joi = require('joi');
 const moment = require('moment');
-const path = require('path');
-const PDFDocument = require('pdfkit');
-const fs = require('fs');
+const razorpayInstance = require('../../Utils/razorpayInstance');
 
 const catchAsync = require('../../Utils/catchAsync');
 const AppError = require('../../Utils/appError');
@@ -83,28 +81,37 @@ const getCartTotal = (cartProducts) => {
   return { subTotal, taxAmount };
 };
 
-exports.placeOrder = catchAsync(async (req, res, next) => {
+const initiateRefund = async (paymentId, amount) => {
   try {
-    const {
-      paymentMethod,
-      paymentData,
-      discountAmount,
-      discountCode,
-      cartList,
-      orderSource,
-      shippingCharge,
-    } = req.body;
+    await razorpayInstance.payments.refund(paymentId, {
+      amount: amount * 100, // Assuming amount is in paise (smallest currency unit)
+    });
+  } catch (err) {
+    throw new Error(err?.error?.description);
+  }
+};
 
-    // Extract payment details
-    const { amount, currency, razorpay_order_id, razorpay_payment_id } =
-      paymentData;
+exports.placeOrder = catchAsync(async (req, res, next) => {
+  const {
+    paymentMethod,
+    paymentData,
+    discountAmount,
+    discountCode,
+    cartList,
+    orderSource,
+    shippingCharge,
+  } = req.body;
 
+  // Extract payment details
+  const { amount, currency, razorpay_order_id, razorpay_payment_id } =
+    paymentData;
+  try {
     // Extract customer details from userDetails
     const { user_id, user_email, user_district } = req.userDetails;
 
     if (
       paymentMethod === 'RazorPay' &&
-      (razorpay_order_id === '' || razorpay_payment_id === '')
+      (!razorpay_order_id || !razorpay_payment_id)
     ) {
       return next(
         new AppError(
@@ -158,7 +165,7 @@ exports.placeOrder = catchAsync(async (req, res, next) => {
                       azst_orders_id, azst_orders_email, azst_orders_financial_status, azst_orders_paid_on,
                       azst_orders_fulfillment_status, azst_orders_fulfilled_on,
                       azst_orders_currency, azst_orders_subtotal, azst_orders_taxes, azst_orders_total,
-                      azst_orders_discount_code, azst_orders_discount_amount, azst_orders_customer_id,  
+                      azst_orders_discount_code, azst_orders_discount_amount, azst_orders_customer_id,
                       azst_orders_payment_method, azst_orders_payment_reference,
                       azst_orders_source, azst_orders_checkout_id, azst_orders_payment_id
                     )
@@ -186,16 +193,27 @@ exports.placeOrder = catchAsync(async (req, res, next) => {
     ];
 
     // Execute query
-    const result = await db(query, values);
+    const result = await db(query, value); // Fixed typo from value to values
     if (result.affectedRows === 0) {
-      throw new Error('Failed to place order');
+      throw Error('Failed to place order', 400);
     }
 
     // Pass order ID to the next middleware
     req.orderData = orderId;
     next();
   } catch (error) {
-    next(error);
+    // Attempt to refund if payment was made via RazorPay and order placement failed
+    if (paymentMethod === 'RazorPay' && razorpay_payment_id) {
+      try {
+        const response = await initiateRefund(razorpay_payment_id, amount);
+      } catch (refundError) {
+        return next(new AppError(refundError.message, 400));
+      }
+    }
+
+    return next(
+      new AppError(error.message || 'Oops, something went wrong', 400)
+    );
   }
 });
 
@@ -238,14 +256,8 @@ exports.orderInfo = catchAsync(async (req, res, next) => {
     shippingCharge,
     isBillingAdsame,
   ];
-
-  try {
-    await db(query, values);
-    next(); // Proceed to the next middleware
-  } catch (error) {
-    console.error('Error inserting order info:', error.message);
-    next(error); // Passes the error to the global error handler
-  }
+  await db(query, values);
+  next(); // Proceed to the next middleware
 });
 
 exports.orderSummary = catchAsync(async (req, res, next) => {
@@ -368,210 +380,3 @@ exports.getOrderSummary = catchAsync(async (req, res, next) => {
   const orderSummary = ordersData[0];
   res.status(200).json(orderSummary);
 });
-
-function generateInvoice(orderData, userDetails, cartProducts, filePath) {
-  const {
-    user_id,
-    user_frist_name,
-    user_last_name,
-    user_mobile,
-    user_email,
-    user_hno,
-    user_area,
-    user_city,
-    user_district,
-    user_state,
-    user_country,
-    user_zip,
-  } = userDetails;
-
-  const doc = new PDFDocument({ margin: 50 });
-
-  // Write the PDF to a file
-  doc.pipe(fs.createWriteStream(filePath));
-
-  // Invoice Header
-  doc.fontSize(20).text('Invoice', { align: 'center' }).moveDown();
-
-  // Order Details
-  doc
-    .fontSize(12)
-    .text(`Order ID: ${orderData.orderId}`, { align: 'left' })
-    .text(`Date: ${new Date(orderData.createdOn).toLocaleDateString()}`)
-    .moveDown();
-
-  // Customer Details
-  doc
-    .text(`Customer ID: ${user_frist_name} ${user_last_name}`)
-    .text(`Payment Method: ${orderData.paymentMethod}`)
-    .moveDown();
-
-  // Table Header
-  doc
-    .fontSize(10)
-    .text('Product', 50, doc.y, { width: 200 })
-    .text('Quantity', 250, doc.y)
-    .text('Price', 300, doc.y)
-    .text('Total', 400, doc.y)
-    .moveDown();
-
-  // Products Table
-  cartProducts.forEach((product) => {
-    const total =
-      parseInt(product.azst_cart_quantity) * parseFloat(product.price);
-    doc
-      .fontSize(10)
-      .text(product.product_main_title, 50, doc.y, { width: 200 })
-      .text(product.azst_cart_quantity, 250, doc.y)
-      .text(`$${product.price}`, 300, doc.y)
-      .text(`$${total.toFixed(2)}`, 400, doc.y)
-      .moveDown();
-  });
-
-  // Calculations
-  doc.moveDown().moveTo(50, doc.y).lineTo(550, doc.y).stroke();
-
-  const subTotal = orderData.subTotal.toFixed(2);
-  const taxAmount = orderData.taxAmount.toFixed(2);
-  const discountAmount = orderData.discountAmount.toFixed(2);
-  const shippingCharge = orderData.shippingCharge.toFixed(2);
-  const grandTotal = (
-    parseFloat(subTotal) +
-    parseFloat(taxAmount) -
-    parseFloat(discountAmount) +
-    parseFloat(shippingCharge)
-  ).toFixed(2);
-
-  // Summary
-  doc
-    .fontSize(10)
-    .text(`Subtotal:`, 300, doc.y)
-    .text(`$${subTotal}`, 400, doc.y)
-    .moveDown();
-
-  doc
-    .text(`Tax (10%):`, 300, doc.y)
-    .text(`$${taxAmount}`, 400, doc.y)
-    .moveDown();
-
-  doc
-    .text(`Discount:`, 300, doc.y)
-    .text(`-$${discountAmount}`, 400, doc.y)
-    .moveDown();
-
-  doc
-    .text(`Shipping Charge:`, 300, doc.y)
-    .text(`$${shippingCharge}`, 400, doc.y)
-    .moveDown();
-
-  doc
-    .moveDown()
-    .fontSize(12)
-    .text(`Grand Total:`, 300, doc.y)
-    .text(`$${grandTotal}`, 400, doc.y)
-    .moveDown();
-
-  const shippingAddress = {
-    user_hno: '456',
-    user_area: 'Rose Garden',
-    user_city: 'Mumbai',
-    user_district: 'Mumbai Suburban',
-    user_state: 'Maharashtra',
-    user_country: 'India',
-    user_zip: '400001',
-    user_mobile: '9876543211',
-    user_email: 'user2@example.com',
-  };
-
-  // Invoice Header
-  doc.fontSize(20).text('Invoice', { align: 'center' }).moveDown();
-
-  // Left Side: Billing Address
-  const startX = 50;
-  const startY = doc.y;
-
-  doc
-    .fontSize(12)
-    .text('Billing Address:', startX, startY)
-    .text(`${user_hno}, ${user_area}, ${user_city}`, startX, doc.y)
-    .text(`${user_district}, ${user_state}, ${user_country}`, startX, doc.y)
-    .text(`Pincode: ${user_zip}`, startX, doc.y)
-    .text(`Mobile: ${user_mobile}`, startX, doc.y)
-    .text(`Email: ${user_email}`, startX, doc.y)
-    .moveDown();
-
-  // Right Side: Shipping Address
-  const rightX = doc.page.width / 2 + 20; // Start position for the right side content
-
-  doc
-    .fontSize(12)
-    .text('Shipping Address:', rightX, startY)
-    .text(
-      `${shippingAddress.user_hno}, ${shippingAddress.user_area}, ${shippingAddress.user_city}`,
-      rightX,
-      doc.y
-    )
-    .text(
-      `${shippingAddress.user_district}, ${shippingAddress.user_state}, ${shippingAddress.user_country}`,
-      rightX,
-      doc.y
-    )
-    .text(`Pincode: ${shippingAddress.user_zip}`, rightX, doc.y)
-    .text(`Mobile: ${shippingAddress.user_mobile}`, rightX, doc.y)
-    .text(`Email: ${shippingAddress.user_email}`, rightX, doc.y)
-    .moveDown();
-
-  // Footer
-  doc
-    .fontSize(10)
-    .text('Thank you for your purchase!', { align: 'center' })
-    .moveDown();
-
-  // Finalize the PDF and end the stream
-  doc.end();
-}
-
-exports.viewInvoice = (req, res, next) => {
-  const { orderId } = req.params;
-
-  // Define the file path
-  const invoiceFilePath = path.join(
-    __dirname,
-    '../../Uploads/invoices',
-    `${orderId}.pdf`
-  );
-
-  // Check if the file exists
-  if (fs.existsSync(invoiceFilePath)) {
-    // Send the file for viewing in the browser
-    res.sendFile(invoiceFilePath);
-  } else {
-    res.status(404).json({ status: 'error', message: 'Invoice not found.' });
-  }
-};
-
-exports.downloadInvoice = (req, res, next) => {
-  const { orderId } = req.params; // Get the orderId from the request parameters
-
-  // Define the file path
-  const invoiceFilePath = path.join(
-    __dirname,
-    '../../Uploads/invoices',
-    `${orderId}.pdf`
-  );
-
-  // Check if the file exists
-  if (fs.existsSync(invoiceFilePath)) {
-    // Serve the file for download
-    res.download(invoiceFilePath, `${orderId}.pdf`, (err) => {
-      if (err) {
-        console.error('Error in downloading the file:', err);
-        res
-          .status(500)
-          .json({ status: 'error', message: 'Error in downloading the file.' });
-      }
-    });
-  } else {
-    res.status(404).json({ status: 'error', message: 'Invoice not found.' });
-  }
-};

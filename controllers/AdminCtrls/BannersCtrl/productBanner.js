@@ -1,5 +1,5 @@
 const moment = require('moment');
-const db = require('../../../dbconfig');
+const db = require('../../../Database/dbconfig');
 const catchAsync = require('../../../Utils/catchAsync');
 const AppError = require('../../../Utils/appError');
 

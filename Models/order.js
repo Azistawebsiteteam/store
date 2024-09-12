@@ -17,16 +17,22 @@ const orderSchema = Joi.object({
   cartList: Joi.array()
     .items(
       Joi.object({
-        azst_cart_product_id: Joi.string().required(),
-        azst_cart_variant_id: Joi.string().required(),
+        azst_cart_product_id: Joi.number().required(),
+        azst_cart_variant_id: Joi.number().required(),
         azst_cart_quantity: Joi.number().min(1).required(),
         price: Joi.number().min(1).required(),
-        azst_cart_id: Joi.string().required(),
+        azst_cart_id: Joi.number().min(1).required(),
+        product_compare_at_price: Joi.number().min(1).optional(),
+        compare_at_price: Joi.number().min(1).optional(),
+        offer_price: Joi.number().min(1).optional(),
+        offer_percentage: Joi.number().optional(),
       })
     )
     .required(), // Validate that each cart item has the correct structure
   orderSource: Joi.string().allow('').required(), // Allow an empty string
   shippingCharge: Joi.number().min(0).required(),
+  addressId: Joi.number().min(0).required(),
+  isBillingAdsame: Joi.boolean().required(),
 });
 
 const validateOrder = catchAsync(async (req, res, next) => {

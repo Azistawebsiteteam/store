@@ -1,4 +1,4 @@
-const db = require('../../../dbconfig');
+const db = require('../../../Database/dbconfig');
 const bcrypt = require('bcrypt');
 const moment = require('moment');
 
