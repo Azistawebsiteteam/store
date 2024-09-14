@@ -2,6 +2,7 @@ const router = require('express').Router();
 const multer = require('multer');
 
 const discCtrl = require('../../controllers/DiscountCtrl/EligibleCrtl');
+const dscApplyCtrl = require('../../controllers/DiscountCtrl/dscApplyCtrl');
 
 const authCtrl = require('../../controllers/authController');
 
@@ -11,6 +12,10 @@ router.use(authCtrl.protect(key));
 router.use(multer().any());
 
 router.post('/', discCtrl.getEligibleDiscounts);
-router.post('/apply', discCtrl.applyDiscountByCode, discCtrl.myDiscounts);
+router.post(
+  '/apply',
+  dscApplyCtrl.applyDiscountByCode,
+  dscApplyCtrl.myDiscounts
+);
 
 module.exports = router;

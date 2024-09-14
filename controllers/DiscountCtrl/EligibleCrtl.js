@@ -109,254 +109,6 @@ exports.getEligibleDiscounts = catchAsync(async (req, res, next) => {
   res.status(200).json(mergedResults);
 });
 
-const getDiscountByCode = async (code, id, date) => {
-  const query = `
-    SELECT 
-      azst_discount_tbl.*,
-      COUNT(azst_cus_dsc_mapping_tbl.azst_cdm_dsc_id) AS discount_used 
-    FROM 
-      azst_discount_tbl
-    LEFT JOIN 
-      azst_cus_dsc_mapping_tbl 
-    ON 
-      azst_cus_dsc_mapping_tbl.azst_cdm_dsc_id = azst_discount_tbl.azst_dsc_id 
-      AND azst_cus_dsc_mapping_tbl.azst_cdm_cus_id = ?
-    WHERE 
-      azst_dsc_code = ? 
-      AND (azst_dsc_elg_cus = 'all' OR JSON_CONTAINS(azst_dsc_elg_cus, JSON_ARRAY(?)))
-      AND azst_dsc_status = 1 
-      AND ? BETWEEN azst_dsc_start_tm AND azst_dsc_end_tm
-    GROUP BY 
-      azst_dsc_id
-    HAVING 
-      discount_used < azst_dsc_usage_cnt
-  `;
-  const result = await db(query, [id, code, id, date]);
-
-  return result.length ? result[0] : null;
-};
-
-const getXyDiscountByCode = async (code, id, date) => {
-  const query = `
-    SELECT 
-      azst_x_y_dsc_applyto AS azst_dsc_apply_mode,t
-      azst_x_y_dsc_applid AS azst_dsc_apply_id,
-      azst_x_y_dsc_buy_mode AS azst_dsc_prc_mode,
-      azst_x_y_dsc_min_add_qty AS azst_dsc_prc_value,
-      azst_x_y_dsc_apply_to AS discount_apply_to,
-      azst_x_y_dsc_apply_id AS discount_apply_id,
-      azst_x_y_dsc_min_prc_qty AS azst_dsc_apply_qty,
-      azst_x_y_dsc_type AS azst_dsc_mode,
-      azst_x_y_dsc_value AS azst_dsc_value,
-      azst_x_y_dsc_max_use, 
-      COUNT(azst_cus_dsc_mapping_tbl.azst_cdm_dsc_id) AS discount_used 
-    FROM 
-      azst_buy_x_get_y_discount_tbl
-    LEFT JOIN 
-      azst_cus_dsc_mapping_tbl 
-    ON 
-      azst_cus_dsc_mapping_tbl.azst_cdm_dsc_id = azst_buy_x_get_y_discount_tbl.azst_x_y_dsc_id 
-      AND azst_cus_dsc_mapping_tbl.azst_cdm_cus_id = ?
-    WHERE 
-      azst_buy_x_get_y_discount_tbl.azst_x_y_dsc_code = ?
-      AND (azst_buy_x_get_y_discount_tbl.azst_x_y_dsc_elg_cus = 'all' 
-      OR JSON_CONTAINS(azst_buy_x_get_y_discount_tbl.azst_x_y_dsc_elg_cus, JSON_ARRAY(?)))
-      AND azst_buy_x_get_y_discount_tbl.azst_x_y_dsc_status = 1
-      AND ? BETWEEN azst_buy_x_get_y_discount_tbl.azst_x_y_dsc_start_time AND azst_x_y_dsc_end_time
-    GROUP BY 
-      azst_buy_x_get_y_discount_tbl.azst_x_y_dsc_id
-    HAVING 
-      discount_used < azst_buy_x_get_y_discount_tbl.azst_x_y_dsc_max_use
-  `;
-  const result = await db(query, [id, code, id, date]);
-  return result.length ? result[0] : null;
-};
-
-const findApplicableProduct = (discount, products) => {
-  if (discount.azst_dsc_apply_mode === 'product') {
-    return products.filter(
-      (p) =>
-        p.product_id === discount.azst_dsc_apply_id &&
-        p.quantity >= discount.azst_dsc_apply_qty
-    );
-  }
-
-  const discountIds = JSON.parse(discount.azst_dsc_apply_id);
-
-  return products.filter((p) => {
-    const collectionIds = Array.isArray(p.collection_id)
-      ? p.collection_id
-      : JSON.parse(p.collection_id);
-    return (
-      collectionIds.some((id) => discountIds.includes(id)) &&
-      p.quantity >= discount.azst_dsc_apply_qty
-    );
-  });
-};
-
-const calculateTotalAmount = (products) => {
-  return products.reduce((acc, p) => acc + p.quantity * p.price, 0);
-};
-
-const isEligibleForDiscount = (discount, products, next) => {
-  let message = '';
-  const isEligible = products.some((product) => {
-    if (discount.azst_dsc_prc_mode === 'quantity') {
-      message = `Please add ${
-        discount.azst_dsc_prc_value - product.quantity
-      } more quantity to get the discount`;
-      return product.quantity >= discount.azst_dsc_prc_value;
-    } else if (discount.azst_dsc_prc_mode === 'amount') {
-      // here one more Doubt it on total cart amount are the perticular product amount
-      message = `Please add  ${
-        discount.azst_dsc_prc_value - product.quantity * product.price
-      } Rs more value to get the discount`;
-      return product.quantity * product.price >= discount.azst_dsc_prc_value;
-    }
-    return false;
-  });
-
-  if (!isEligible) {
-    next(new AppError(message, 400));
-  }
-
-  return isEligible;
-};
-
-const calculateDiscountAmount = (discount, product, totalAmt) => {
-  let discountAmt = 0;
-  let totalPrice = 0;
-
-  if (discount.azst_dsc_mode === 'amount') {
-    discountAmt = discount.azst_dsc_value;
-    totalPrice = totalAmt - discountAmt;
-  } else {
-    const applyQty = Math.min(product.quantity, discount.azst_dsc_apply_qty);
-    discountAmt = ((product.price * applyQty) / 100) * discount.azst_dsc_value;
-    totalPrice = totalAmt - discountAmt;
-  }
-
-  return { discountAmt, totalPrice };
-};
-
-const calculateXyDiscountAmount = (
-  discount,
-  cartProducts,
-  product,
-  totalAmt,
-  next
-) => {
-  let discountAmt = 0;
-  let totalPrice = totalAmt;
-
-  const products = cartProducts.filter(
-    (p) => p.product_id !== product.product_id
-  );
-  const discountIds = JSON.parse(discount.discount_apply_id);
-
-  const yProducts = products.filter((p) => {
-    if (discount.discount_apply_to === 'products') {
-      return (
-        discountIds.includes(`${p.product_id}`) &&
-        p.quantity >= discount.azst_dsc_apply_qty
-      );
-    } else if (discount.discount_apply_to === 'collections') {
-      const collectionIds = Array.isArray(p.collection_id)
-        ? p.collection_id
-        : JSON.parse(p.collection_id);
-      return (
-        collectionIds.some((id) => discountIds.includes(id)) &&
-        p.quantity >= discount.azst_dsc_apply_qty
-      );
-    }
-    return false;
-  });
-
-  if (yProducts.length) {
-    return calculateDiscountAmount(discount, yProducts[0], totalAmt);
-  }
-
-  return { discountAmt, totalPrice };
-};
-
-const calculateNormalDiscount = async (
-  discountCode,
-  cartProducts,
-  date,
-  id,
-  next
-) => {
-  try {
-    const discount = await getDiscountByCode(discountCode, id, date);
-
-    if (!discount) {
-      return next(new AppError('Invalid discount', 400));
-    }
-
-    const products = findApplicableProduct(discount, cartProducts);
-
-    if (!products.length) {
-      return next(new AppError('You are not eligible for this discount', 400));
-    }
-
-    const totalAmt = calculateTotalAmount(cartProducts);
-
-    if (!isEligibleForDiscount(discount, products, next)) {
-      return;
-    }
-
-    const { discountAmt, totalPrice } = calculateDiscountAmount(
-      discount,
-      products[0],
-      totalAmt
-    );
-
-    return { totalAmt, discountAmt, totalPrice };
-  } catch (error) {
-    return next(new AppError(error.message, 500));
-  }
-};
-
-const calculateXYDiscount = async (
-  discountCode,
-  cartProducts,
-  date,
-  id,
-  next
-) => {
-  try {
-    const discount = await getXyDiscountByCode(discountCode, id, date);
-
-    if (!discount) {
-      return next(new AppError('Invalid discount', 400));
-    }
-
-    const products = findApplicableProduct(discount, cartProducts);
-
-    if (!products.length) {
-      return next(new AppError('You are not eligible for this discount', 400));
-    }
-
-    const totalAmt = calculateTotalAmount(cartProducts);
-
-    if (!isEligibleForDiscount(discount, products, next)) {
-      return;
-    }
-
-    const { discountAmt, totalPrice } = calculateXyDiscountAmount(
-      discount,
-      cartProducts,
-      products[0],
-      totalAmt,
-      next
-    );
-
-    return { totalAmt, discountAmt, totalPrice };
-  } catch (error) {
-    return next(new AppError(error.message, 500));
-  }
-};
-
 exports.getDiscounts = catchAsync(async (req, res, next) => {
   const { discountCode, discountType, products } = req.body;
 
@@ -411,7 +163,7 @@ const calculateCartTotalValue = (cartList) => {
 };
 
 const percentageCalculator = (total, percent) =>
-  (total * parseInt(percent)) / 100;
+  (total * parseFloat(percent)) / 100;
 
 const flatCalculator = (total, value) => Math.min(total, parseFloat(value));
 
@@ -434,171 +186,334 @@ const calculateCartAmountDiscount = (discount, cart) => {
     message = `Add ${amountNeeded.toFixed(2)}  more to get the discount.`;
   }
 
-  return { discountAmount, message };
+  return { discountAmount, message, newCart: cart };
 };
 
 const getCollectionProducts = async (collectionIds) => {
   // Ensure that collectionIds is an array
-  const idsArray = JSON.parse(collectionIds);
-
+  let idsArray = JSON.parse(collectionIds);
+  if (typeof idsArray === 'string') {
+    idsArray = JSON.parse(idsArray);
+  }
   // Use Promise.all to handle multiple async operations
   const products = await Promise.all(
     idsArray.map(async (id) => {
-      const query = `SELECT id
-                      FROM azista_store.azst_products
+      const query = `SELECT pd.id AS productId ,IFNULL(sku.id, 0) AS variantId
+                      FROM azista_store.azst_products as pd
+                      LEFT JOIN azst_sku_variant_info as sku ON pd.id = sku.product_id
                       WHERE JSON_CONTAINS(collections, '${id}', '$');`;
 
       const result = await db(query);
-      return result.map((p) => p.id);
+      return result;
     })
   );
-  // Flatten the array and get unique ids
-  const uniqueProducts = [...new Set(products.flat())];
+  // Step 1: Flatten the array
+  const flattenedProducts = products.flat();
+  // Step 2: Filter unique products based on productId and variantId
+  const uniqueProducts = flattenedProducts.filter(
+    (product, index, self) =>
+      index ===
+      self.findIndex(
+        (p) =>
+          p.productId === product.productId && p.variantId === product.variantId
+      )
+  );
   return uniqueProducts; // Return unique product ids
+};
+
+const findProductsInCartandNonCart = (cart, products, minBuyQty) => {
+  const inCartProducts = [];
+  const remainProducts = [];
+
+  products.forEach((p) => {
+    const crp = cart.find(
+      (cp) =>
+        p.productId == cp.azst_cart_product_id &&
+        p.variantId == cp.azst_cart_variant_id &&
+        parseInt(cp.azst_cart_quantity) >= minBuyQty
+    );
+
+    if (crp) {
+      inCartProducts.push(crp); // push the product, not the cart item
+    } else {
+      remainProducts.push(p);
+    }
+  });
+
+  return { inCartProducts, remainProducts };
+};
+
+const getCollectionDiscountProducts = async (
+  cart,
+  buy_x_product_id,
+  minBuyQty
+) => {
+  const products = await getCollectionProducts(buy_x_product_id);
+  return findProductsInCartandNonCart(cart, products, minBuyQty);
+};
+
+const fnDiscountProducts = (cart, buy_x_product_id, minBuyQty) => {
+  // Convert the string to an array
+  let products = JSON.parse(buy_x_product_id);
+  if (typeof products === 'string') {
+    products = JSON.parse(products);
+  }
+  // Filter products in the cart based on productId, variantId, and minimum quantity
+  return findProductsInCartandNonCart(cart, products, minBuyQty);
 };
 
 const getXDiscountProducts = async (discount, cart) => {
   const { x_product_type, buy_x_product_id, min_buy_x_qty } = discount;
-  let discountProducts = [];
-
   // Case where the discount is applied based on collection
   if (x_product_type === 'collection') {
-    const products = await getCollectionProducts(buy_x_product_id);
-    discountProducts = cart.filter(
-      (p) =>
-        products.includes(p.azst_cart_product_id) && // Only include products in the collection
-        p.azst_cart_quantity >= min_buy_x_qty // Ensure min quantity condition is met
-    );
+    return getCollectionDiscountProducts(cart, buy_x_product_id, min_buy_x_qty);
+  } else {
+    // Case where discount is applied based on specific product & variant IDs
+    return fnDiscountProducts(cart, buy_x_product_id, min_buy_x_qty);
+  }
+};
+
+const getYDiscountProducts = async (discount, cart) => {
+  const { y_product_type, get_y_product_id } = discount;
+  // Case where the discount is applied based on collection
+  if (y_product_type === 'collection') {
+    return getCollectionDiscountProducts(cart, get_y_product_id, 1);
   } else {
     // Case where discount is applied based on specific product IDs
-    const products = JSON.parse(buy_x_product_id);
-    discountProducts = cart.filter(
-      (p) =>
-        products.includes(p.azst_cart_product_id) &&
-        p.azst_cart_quantity >= min_buy_x_qty
-    );
+    return fnDiscountProducts(cart, get_y_product_id, 1);
   }
-  return discountProducts;
+};
+
+const updateProductDaiscountIncart = async (id, amount) => {
+  const query =
+    'UPDATE azst_cart_tbl SET azst_cart_product_type = ? , azst_cart_dsc_amount = ? WHERE azst_cart_id =?';
+  const values = ['dsc', amount, id];
+  await db(query, values);
+  return;
 };
 
 const calculateProductAmountDiscount = async (discount, cart) => {
   const { type, value, max_get_y_qty } = discount;
 
-  const discountProducts = await getXDiscountProducts(discount, cart);
+  const { inCartProducts } = await getXDiscountProducts(discount, cart);
   let discountAmount = 0;
   let message = '';
-  if (discountProducts.length === 0) {
+  if (inCartProducts.length === 0) {
     return { discountAmount, message: 'No discount products' };
   }
 
+  const updatedNewCartProducts = [];
+  const remainProducts = cart.filter(
+    (cp) =>
+      !inCartProducts.some(
+        (product) => product.azst_cart_id === cp.azst_cart_id
+      )
+  );
+
   if (type === 'percentage') {
-    discountProducts.forEach((p) => {
+    for (let p of inCartProducts) {
       const total = calculateCartTotalValue([
         {
           ...p,
           azst_cart_quantity: Math.min(
             max_get_y_qty,
-            parseFloat(p.azst_cart_quantity)
+            parseInt(p.azst_cart_quantity)
           ),
         },
       ]);
-      discountAmount += percentageCalculator(total, value);
-    });
+
+      const amount = percentageCalculator(total, value);
+
+      updatedNewCartProducts.push({
+        ...p,
+        azst_cart_product_type: 'dsc',
+        azst_cart_dsc_amount: parseFloat(amount),
+      });
+      await updateProductDaiscountIncart(p.azst_cart_id, amount);
+      discountAmount += amount;
+    }
   } else {
-    discountProducts.forEach((p) => {
+    for (let p of inCartProducts) {
       const total = calculateCartTotalValue([p]);
-      discountAmount += flatCalculator(total, value);
-    });
+      const amount = flatCalculator(total, value);
+      updatedNewCartProducts.push({
+        ...p,
+        azst_cart_product_type: 'dsc',
+        azst_cart_dsc_amount: parseFloat(amount),
+      });
+      await updateProductDaiscountIncart(p.azst_cart_id, amount);
+      discountAmount += amount;
+    }
   }
 
-  return { discountAmount, message };
+  return {
+    discountAmount,
+    message,
+    newCart: [...updatedNewCartProducts, ...remainProducts],
+  };
 };
 
-const getYDiscountProducts = async (discount, cart) => {
-  const { y_product_type, get_y_product_id } = discount;
-  let YdiscountProducts = [];
-  let products = [];
-  // Case where the discount is applied based on collection
-  if (y_product_type === 'collection') {
-    products = await getCollectionProducts(get_y_product_id);
-    YdiscountProducts = cart.filter(
-      (p) =>
-        products.includes(p.azst_cart_product_id) && // Only include products in the collection
-        p.azst_cart_quantity >= 1 // Ensure min quantity condition is met
-    );
-  } else {
-    // Case where discount is applied based on specific product IDs
-    products = JSON.parse(get_y_product_id);
-    YdiscountProducts = cart.filter(
-      (p) =>
-        products.includes(p.azst_cart_product_id) && p.azst_cart_quantity >= 1
-    );
-  }
-  return { YdiscountProducts, products };
+const getAddedProdctData = async (productId, variantId) => {
+  const query = `
+                SELECT
+                    p.id as azst_cart_product_id,
+                    IFNULL(v.id , 0) as azst_cart_variant_id,
+                    p.product_main_title,
+                    p.product_url_title,
+                    p.min_cart_quantity,
+                    p.max_cart_quantity,
+                    v.variant_image,
+                    p.compare_at_price AS product_compare_at_price,            
+                    p.price,
+                    v.compare_at_price AS variant_compare_at_price,
+                    v.offer_price,
+                    v.offer_percentage,
+                    p.image_src,
+                    p.is_varaints_aval,
+                    v.option1,
+                    v.option2,
+                    v.option3
+                FROM azst_products p
+                LEFT JOIN 
+                    azst_sku_variant_info v 
+                    ON p.id = v.product_id AND v.id = ?
+                WHERE p.id = ?;`;
+
+  // Assuming `db` returns an array where the first element is the result
+  const [result] = await db(query, [variantId, productId]);
+  return result;
 };
 
-const addProductsToCart = async (products) => {
-  // Corrected SELECT query
-  const productsQuery = `SELECT * FROM azst_products WHERE id IN (?)`;
+const addProductsToCart = async (products, maxQty, customerId, sessionId) => {
+  const query = `INSERT INTO azst_cart_tbl (azst_cart_product_id,
+                      azst_cart_variant_id,
+                      azst_cart_quantity,
+                      azst_customer_id,
+                      azst_session_id
+                    ) VALUES (?, ?, ?, ?, ?)`;
 
-  // Execute the query to get the products from the database using the product IDs
-  const productsFromDb = await db(productsQuery, [products]); // Pass products as an array
+  const addedProducts = [];
 
-  console.log(productsFromDb);
+  // Use Promise.all to execute all insertions in parallel
+  await Promise.all(
+    products.map(async (product) => {
+      const { productId, variantId } = product;
+      const values = [productId, variantId, maxQty, customerId, sessionId];
 
-  // // Prepare an INSERT query for adding the products to the cart
-  // const insertQuery = `INSERT INTO azst_cart_tbl (
-  //                         azst_cart_product_id,
-  //                         azst_cart_variant_id,
-  //                         azst_cart_quantity,
-  //                         azst_customer_id,
-  //                         azst_session_id
-  //                     ) VALUES (?, ?, ?, ?, ?)`;
+      // Assuming db is a function that returns a promise
+      const result = await db(query, values);
+      if (result.affectedRows > 0) {
+        const product = await getAddedProdctData(productId, variantId);
+        addedProducts.push({
+          ...product,
+          azst_cart_id: result.insertId,
+          azst_cart_quantity: maxQty,
+          azst_cart_product_type: 'dsc',
+        });
+      }
+    })
+  );
 
-  // // Execute insert for each product (this assumes you have the necessary values for each field)
-  // productsFromDb.forEach((product) => {
-  //  await db(insertQuery, [
-  //     product.azst_cart_product_id, // Product ID from DB
-  //     product.azst_cart_variant_id, // Variant ID from DB
-  //     product.azst_cart_quantity, // Assuming quantity is available
-  //     product.azst_customer_id, // Assuming customer ID is available
-  //     product.azst_session_id, // Assuming session ID is available
-  //   ]);
-  // });
+  return addedProducts;
 };
 
-const calculateBuyXGetYDiscount = async (discount, cart) => {
-  const {
-    type,
-    value,
-    x_product_type,
-    buy_x_product_id,
-    min_buy_x_qty,
-    y_product_type,
-    get_y_product_id,
-    max_get_y_qty,
-  } = discount;
+const calculateBuyXGetYDiscount = async (
+  discount,
+  cart,
+  customerId,
+  sessionId
+) => {
+  const { type, value, max_get_y_qty } = discount;
 
-  const discountProducts = await getXDiscountProducts(discount, cart);
+  const { inCartProducts } = await getXDiscountProducts(discount, cart);
 
-  if (discountProducts.length === 0) {
+  if (inCartProducts.length === 0) {
     return { discountAmount: 0, message: 'No discount products' };
   }
 
   // calculate the discount on y products
-  const { YdiscountProducts, products } = await getYDiscountProducts(
-    discount,
-    cart
-  );
+  const cProducts = await getYDiscountProducts(discount, cart);
 
-  const addToCartProducts = products.filter(
-    (product) =>
-      !YdiscountProducts.some((p) => p.azst_cart_product_id === product)
-  );
+  const YdiscountProducts = cProducts.inCartProducts;
+  const toAddCart = cProducts.remainProducts;
 
-  const newCartProducts = addProductsToCart([79, 80]);
+  let newCartProducts = [];
+  if (toAddCart.length > 0) {
+    newCartProducts = await addProductsToCart(
+      toAddCart,
+      max_get_y_qty,
+      customerId,
+      sessionId
+    );
+  }
 
-  return { discountAmount: 0, message: 'working on  x-y' };
+  const allYproducts = [...YdiscountProducts, ...newCartProducts];
+
+  const updatedNewCartProducts = [];
+
+  let discountAmount = 0;
+  let message = '';
+
+  if (type === 'percentage') {
+    for (let p of allYproducts) {
+      const total = calculateCartTotalValue([
+        {
+          ...p,
+          azst_cart_quantity: Math.min(
+            parseInt(max_get_y_qty),
+            parseInt(p.azst_cart_quantity)
+          ),
+        },
+      ]);
+      const amount = percentageCalculator(total, value);
+      if (newCartProducts.length > 0) {
+        newCartProducts.forEach((product) => {
+          if (p.azst_cart_id === product.azst_cart_id) {
+            updatedNewCartProducts.push({
+              ...product,
+              azst_cart_product_type: 'dsc',
+              azst_cart_dsc_amount: amount,
+            });
+          }
+        });
+        await updateProductDaiscountIncart(p.azst_cart_id, amount);
+      }
+      discountAmount += amount;
+    }
+  } else {
+    for (let p of allYproducts) {
+      const total = calculateCartTotalValue([p]);
+      const amount = flatCalculator(total, value);
+      if (newCartProducts.length > 0) {
+        newCartProducts.forEach((product) => {
+          if (p.azst_cart_id === product.azst_cart_id) {
+            updatedNewCartProducts.push({
+              ...product,
+              azst_cart_product_type: 'dsc',
+              azst_cart_dsc_amount: amount,
+            });
+          }
+        });
+        await updateProductDaiscountIncart(p.azst_cart_id, amount);
+      }
+
+      discountAmount += amount;
+    }
+  }
+
+  console.log(YdiscountProducts, 'YdiscountProducts');
+
+  console.log(updatedNewCartProducts, 'updatedNewCartProducts');
+
+  return {
+    discountAmount,
+    newCart: [
+      ...inCartProducts,
+      ...YdiscountProducts,
+      ...updatedNewCartProducts,
+    ],
+    message,
+  };
 };
 
 exports.myDiscounts = catchAsync(async (req, res, next) => {
@@ -607,6 +522,7 @@ exports.myDiscounts = catchAsync(async (req, res, next) => {
     discountCode,
     discountType = 'Automatic',
     cartList,
+    sessionId,
   } = req.body;
 
   if (!customerId || !cartList) {
@@ -642,27 +558,15 @@ exports.myDiscounts = catchAsync(async (req, res, next) => {
                                 discountCode ? 'AND code = ?' : ''
                               }
                           GROUP BY
-                            cdm.azst_cdm_dsc_id,
-                            dc.discount_id ,
-                            ds.title,
-                            ds.code,
-                            ds.type,
-                            ds.value,
-                            dc.scope,
-                            dc.min_cart_value,
-                            dc.x_product_type,
-                            dc.buy_x_product_id,
-                            dc.min_buy_x_qty,
-                            dc.y_product_type,
-                            dc.get_y_product_id,
-                            dc.max_get_y_qty,
-                            ds.usage_count
+                            cdm.azst_cdm_dsc_id
                           HAVING
                             discount_used < ds.usage_count
                           ;`;
 
   const values = [customerId, discountType, customerId, today];
   if (discountCode) values.push(discountCode);
+
+  await db("SET SESSION sql_mode = ''");
   const discounts = await db(discountQuery, values);
 
   // If manual discount is requested and none are found, return an error
@@ -673,7 +577,8 @@ exports.myDiscounts = catchAsync(async (req, res, next) => {
   let totalDiscountAmount = 0;
   let discountMessage = '';
 
-  const cart = JSON.parse(cartList);
+  const cart = typeof cartList === 'string' ? JSON.parse(cartList) : cartList;
+  let newCart = [];
 
   for (let discount of discounts) {
     let result = { discountAmount: 0, message: '' };
@@ -688,25 +593,49 @@ exports.myDiscounts = catchAsync(async (req, res, next) => {
         break;
 
       case 'buy_x_get_y':
-        result = await calculateBuyXGetYDiscount(discount, cart);
+        result = await calculateBuyXGetYDiscount(
+          discount,
+          cart,
+          customerId,
+          sessionId
+        );
         break;
       default:
         result.message = 'No valid discount found.';
         break;
     }
-
     totalDiscountAmount += result.discountAmount;
+    newCart = result.newCart ? result.newCart : [];
     if (result.message) discountMessage = result.message; // Last message will be displayed
   }
 
-  const cartTotal = calculateCartTotalValue(cart);
+  newCart = newCart.length > 0 ? newCart : cart;
+  const cartTotal = calculateCartTotalValue(newCart);
+
   const discountAmount = Math.min(cartTotal, totalDiscountAmount).toFixed(2);
   res.status(200).json({
+    cart_products: newCart,
+    cart_total: cartTotal,
     discountCode,
     discountAmount,
     message: discountMessage,
   });
 });
+
+//  dc.discount_id,
+//    ds.title,
+//    ds.code,
+//    ds.type,
+//    ds.value,
+//    dc.scope,
+//    dc.min_cart_value,
+//    dc.x_product_type,
+//    dc.buy_x_product_id,
+//    dc.min_buy_x_qty,
+//    dc.y_product_type,
+//    dc.get_y_product_id,
+//    dc.max_get_y_qty,
+//    ds.usage_count;
 
 // {
 //             "azst_cart_id": 126,

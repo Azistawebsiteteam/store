@@ -99,6 +99,7 @@ exports.getCollectionProducts = catchAsync(async (req, res, next) => {
                       price,
                       compare_at_price,
                       product_url_title,
+                      is_varaints_aval,
                       CASE
                         WHEN wl.azst_product_id IS NOT NULL THEN true
                         ELSE false

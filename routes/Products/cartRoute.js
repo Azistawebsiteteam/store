@@ -11,6 +11,7 @@ const {
 const addToCartCtrl = require('../../controllers/Cart/addProducts');
 
 const dscCtrl = require('../../controllers/DiscountCtrl/EligibleCrtl');
+const dscApplyCtrl = require('../../controllers/DiscountCtrl/dscApplyCtrl');
 
 router.use(multer().any());
 
@@ -21,7 +22,7 @@ router
   .post(addToCartCtrl.addProductToCart)
   .put(addToCartCtrl.handleProductQuantityUpdate);
 
-router.post('/data', getCartData);
+router.post('/data', getCartData, dscCtrl.myDiscounts);
 router.patch('/data', removeFromCart);
 
 const ukey = process.env.JWT_SECRET;

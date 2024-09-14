@@ -181,12 +181,19 @@ exports.createDiscount = catchAsync(async (req, res, next) => {
     scope,
     minCartValue,
     buyProductType,
-    buyProductId,
+    JSON.stringify(buyProductId),
     minBuyQty,
     getProductType,
-    getYproductId,
+    JSON.stringify(getYproductId),
     maxGetYQty,
   ];
+
+  console.log(
+    JSON.stringify([
+      { productId: '80', variantId: 260 },
+      { productId: 79, variantId: 20 },
+    ])
+  );
 
   const conditionResults = await db(queryCondition, cvalues);
 
