@@ -4,6 +4,8 @@ const multer = require('multer');
 const discCtrl = require('../../controllers/DiscountCtrl/EligibleCrtl');
 const dscApplyCtrl = require('../../controllers/DiscountCtrl/dscApplyCtrl');
 
+const { getCartData } = require('../../controllers/Cart/getProducts');
+
 const authCtrl = require('../../controllers/authController');
 
 const key = process.env.JWT_SECRET;
@@ -15,6 +17,7 @@ router.post('/', discCtrl.getEligibleDiscounts);
 router.post(
   '/apply',
   dscApplyCtrl.applyDiscountByCode,
+  getCartData,
   dscApplyCtrl.myDiscounts
 );
 

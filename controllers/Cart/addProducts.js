@@ -146,9 +146,12 @@ exports.handleProductQuantityUpdate = catchAsync(async (req, res, next) => {
         'Update azst_cart_tbl set azst_cart_status = 0 where azst_cart_id = ?';
       await db(query, [cartId]);
     }
+
     const values = [quantity, customerId, cartId];
     await updateProductQuantity(values);
-    res.status(200).json({ message: 'quantity updated' });
+    req.body = { customerId };
+    next();
+    // res.status(200).json({ message: 'quantity updated' });
   } catch (err) {
     return next(
       new AppError(

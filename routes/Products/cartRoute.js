@@ -20,7 +20,11 @@ router.get('/discount', dscCtrl.myDiscounts);
 router
   .route('/')
   .post(addToCartCtrl.addProductToCart)
-  .put(addToCartCtrl.handleProductQuantityUpdate);
+  .put(
+    addToCartCtrl.handleProductQuantityUpdate,
+    getCartData,
+    dscApplyCtrl.myDiscounts
+  );
 
 router.post('/data', getCartData, dscCtrl.myDiscounts);
 router.patch('/data', removeFromCart);

@@ -80,6 +80,11 @@ router.delete(
 router.patch('/delete/images', productUpdateCtrl.deleteProductImages);
 
 router.post('/all-products', productDataCtrl.getAllProducts);
+router.get(
+  '/all-products/variants',
+  productDataCtrl.getAllProductsWithVariants
+);
+
 router.post(
   '/get/details',
   editCtrl.getProductDetails,
