@@ -26,7 +26,7 @@ router
     dscApplyCtrl.myDiscounts
   );
 
-router.post('/data', getCartData, dscCtrl.myDiscounts);
+router.post('/data', getCartData, dscApplyCtrl.myDiscounts);
 router.patch('/data', removeFromCart);
 
 const ukey = process.env.JWT_SECRET;

@@ -1,5 +1,5 @@
 const db = require('../../Database/dbconfig'); // Adjust path as necessary
-const runTransaction = require('../../Database/dbtransctions');
+
 const catchAsync = require('../../Utils/catchAsync');
 const AppError = require('../../Utils/appError');
 
@@ -91,13 +91,6 @@ exports.createDiscount = catchAsync(async (req, res, next) => {
     maxGetYQty,
   ];
 
-  console.log(
-    JSON.stringify([
-      { productId: '80', variantId: 260 },
-      { productId: 79, variantId: 20 },
-    ])
-  );
-
   const conditionResults = await db(queryCondition, cvalues);
 
   if (conditionResults.affectedRows === 0)
@@ -112,87 +105,126 @@ exports.createDiscount = catchAsync(async (req, res, next) => {
 });
 
 exports.getDiscounts = catchAsync(async (req, res, next) => {
-  const query = `SELECT * FROM  azst_discount_tbl WHERE azst_dsc_status = 1;`;
+  const query = `SELECT * , ds.id as dsc_id FROM  azst_discounts_tbl ds 
+                  LEFT JOIN azst_discount_conditions dc  ON  ds.id = dc.discount_id
+                  WHERE  status = 1;`;
+
   const result = await db(query);
   res.status(200).json(result);
 });
 
 exports.discountDetails = catchAsync(async (req, res, next) => {
   const { discountId } = req.body;
-  const query = `SELECT * FROM  azst_discount_tbl WHERE azst_dsc_id = ? AND azst_dsc_status = 1; `;
+
+  const query = `SELECT * FROM  azst_discounts_tbl ds  
+                  LEFT JOIN azst_discount_conditions dc  ON  ds.id = dc.discount_id
+                  WHERE ds.id = ? AND status = 1; `;
+
   const result = await db(query, [discountId]);
 
   res.status(200).json(result.length > 0 ? result[0] : {});
 });
 
 exports.UpdateDiscount = catchAsync(async (req, res, next) => {
+  const { discountId, discount, conditions } = req.body;
+
   const {
-    discountId, // Assuming id is passed in the request body to identify the record to update
     title,
     code,
-    mode,
+    method,
+    type,
     value,
-    applyMode,
-    applyId,
-    prcMode,
-    prcValue,
-    elgCustomers,
-    maxApplyValue,
-    usgCount,
+    customers,
+    usageCount,
     startTime,
     endTime,
-  } = req.body;
+  } = discount;
 
-  const disQuery = `UPDATE azst_discount_tbl
-                  SET 
-                    azst_dsc_title = ?,
-                    azst_dsc_code = ?,
-                    azst_dsc_mode = ?,
-                    azst_dsc_value = ?,
-                    azst_dsc_apply_mode = ?,
-                    azst_dsc_apply_id = ?,
-                    azst_dsc_prc_mode = ?,
-                    azst_dsc_prc_value = ?,
-                    azst_dsc_elg_cus = ?,
-                    azst_dsc_apply_qty = ?,
-                    azst_dsc_usage_cnt = ?,
-                    azst_dsc_start_tm = ?,
-                    azst_dsc_end_tm = ?,
-                    azst_dsc_cr_by = ?
-                  WHERE azst_dsc_id = ?`;
+  // Validate discount data
+  const { error } = discountSchema.validate(discount);
+  if (error) return next(new AppError(error.message, 400));
 
-  const values = [
+  // Validate discount conditions
+  const { error: conditionError } = discountConditionSchema.validate({
+    ...conditions,
+    discountId,
+  });
+  if (conditionError) return next(new AppError(conditionError.message, 400));
+
+  // Update discount details
+  const queryDiscount = `
+    UPDATE azst_discounts_tbl 
+    SET title = ?, code = ?, method = ?, type = ?, value = ?, usage_count = ?,
+        start_time = ?, end_time = ?, eligible_customers = ?, updated_by = ?
+    WHERE id = ?`;
+
+  const discountValues = [
     title,
     code,
-    mode,
+    method,
+    type,
     value,
-    applyMode,
-    applyId,
-    prcMode,
-    prcValue,
-    elgCustomers,
-    maxApplyValue,
-    usgCount,
+    usageCount,
     startTime,
     endTime,
-    req.empId,
-    discountId, // Make sure the id is included at the end of the values array
+    customers,
+    req.empId, // Assuming req.empId is the employee updating the record
+    discountId,
   ];
 
-  const response = await db(disQuery, values);
+  const discountResults = await db(queryDiscount, discountValues);
 
-  if (response.affectedRows > 0)
-    return res.status(200).json({
-      message: 'Discount updated successfully',
-    });
+  if (discountResults.affectedRows === 0)
+    return next(
+      new AppError('Discount not updated, something went wrong', 400)
+    );
 
-  next(new AppError('Oops! Something went wrong', 400));
+  // Extract and validate conditions
+  const {
+    scope,
+    minCartValue,
+    buyProductType,
+    buyProductId,
+    minBuyQty,
+    getProductType,
+    getYproductId,
+    maxGetYQty,
+  } = conditions;
+
+  // Update discount conditions
+  const queryCondition = `
+    UPDATE azst_discount_conditions 
+    SET scope = ?, min_cart_value = ?, x_product_type = ?, buy_x_product_id = ?, 
+        min_buy_x_qty = ?, y_product_type = ?, get_y_product_id = ?, max_get_y_qty = ?
+    WHERE discount_id = ?`;
+
+  const conditionValues = [
+    scope,
+    minCartValue,
+    buyProductType,
+    JSON.stringify(buyProductId), // Convert arrays/objects to JSON strings
+    minBuyQty,
+    getProductType,
+    JSON.stringify(getYproductId), // Convert arrays/objects to JSON strings
+    maxGetYQty,
+    discountId,
+  ];
+
+  const conditionResults = await db(queryCondition, conditionValues);
+
+  if (conditionResults.affectedRows === 0)
+    return next(
+      new AppError('Discount conditions not updated, something went wrong', 400)
+    );
+
+  // Respond with success message
+  res.status(200).json({ message: 'Discount updated successfully' });
 });
 
 exports.deleteDiscount = catchAsync(async (req, res, next) => {
   const { discountId } = req.body;
 
-  const query = `UPDATE azst_discount_tbl SET azst_dsc_status = 0 WHERE azst_dsc_id = ? `;
+  const query = `UPDATE azst_discounts_tbl SET status = 0 WHERE  id = ? `;
   const response = await db(query, [discountId]);
 
   if (response.affectedRows > 0)
@@ -202,24 +234,3 @@ exports.deleteDiscount = catchAsync(async (req, res, next) => {
 
   next(new AppError('Oops! Something went wrong', 400));
 });
-
-// azst_dsc_id,
-//   azst_dsc_title,
-//   azst_dsc_code,
-//   azst_dsc_mode,
-//   azst_dsc_value,
-//   azst_dsc_apply_mode,
-//   azst_dsc_apply_id,
-//   azst_dsc_prc_value,
-//   azst_dsc_elg_cus,
-//   azst_dsc_apply_qty,
-//   azst_dsc_usage_cnt,
-//   azst_dsc_prc_mode,
-// azst_dsc_start_tm,
-// azst_dsc_end_tm,
-
-//   azst_dsc_cr_by,
-//   azst_dsc_up_by,
-//   azst_dsc_cr_on,
-//   azst_dsc_up_on,
-//   azst_dsc_status,

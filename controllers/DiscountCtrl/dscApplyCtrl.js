@@ -4,10 +4,14 @@ const AppError = require('../../Utils/appError');
 const catchAsync = require('../../Utils/catchAsync');
 
 exports.applyDiscountByCode = catchAsync(async (req, res, next) => {
-  const { discountCode, cartList } = req.body;
+  const { discountCode } = req.body;
   const customerId = req.empId;
 
-  req.body = { customerId, discountCode, discountType: 'Manual', cartList };
+  if (!discountCode) {
+    return next(new AppError('Discount Code is required', 400));
+  }
+
+  req.body = { customerId, discountCode, discountType: 'Manual' };
   next();
 });
 
@@ -462,7 +466,7 @@ exports.myDiscounts = catchAsync(async (req, res, next) => {
                             COUNT(cdm.azst_cdm_dsc_id) AS discount_used
                           FROM  azst_discounts_tbl as ds
                           LEFT JOIN azst_discount_conditions as dc ON ds.id = dc.discount_id
-                          LEFT JOIN azst_cus_dsc_mapping_tbl as cdm ON ds.id = cdm.azst_cdm_dsc_id  AND cdm.azst_cdm_cus_id = ?
+                          LEFT JOIN azst_cus_dsc_mapping_tbl as cdm ON ds.code = cdm.azst_cdm_dsc_id  AND cdm.azst_cdm_cus_id = ?
                           WHERE  method = ?
                               AND status = 1
                               AND (eligible_customers = 'all'
@@ -475,7 +479,7 @@ exports.myDiscounts = catchAsync(async (req, res, next) => {
                           HAVING
                             discount_used < ds.usage_count
                           ;`;
-
+  // ds.id
   const values = [customerId, discountType, customerId, today];
   if (discountCode) values.push(discountCode);
 

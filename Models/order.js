@@ -13,7 +13,7 @@ const orderSchema = Joi.object({
     noteAttributes: Joi.string().allow('').required(),
   }).required(), // Ensure the object and its properties are required
   discountAmount: Joi.number().min(0).required(),
-  discountCode: Joi.string().allow('').required(), // Allow an empty string
+  discountCode: Joi.array().items(Joi.string()).required(), // Allow an empty string
   cartList: Joi.array()
     .items(
       Joi.object({

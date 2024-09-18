@@ -91,6 +91,28 @@ const initiateRefund = async (paymentId, amount) => {
   }
 };
 
+const updateDiscountUsageOfCustomer = async function (
+  customerId,
+  discountCode,
+  orderId
+) {
+  const query = `INSERT INTO azst_cus_dsc_mapping_tbl (azst_cdm_cus_id, azst_cdm_dsc_id, azst_cdm_order_id) VALUES (?, ?, ?)`;
+  let codes = [];
+
+  if (typeof discountCode === 'string') {
+    codes = JSON.parse(discountCode); // Ensure it's a valid JSON array
+  } else {
+    codes = discountCode; // Assume it's an array already
+  }
+
+  for (let code of codes) {
+    const values = [customerId, code, orderId];
+    try {
+      await db(query, values); // Assuming db is your database function
+    } catch (error) {}
+  }
+};
+
 exports.placeOrder = catchAsync(async (req, res, next) => {
   const {
     paymentMethod,
@@ -182,7 +204,7 @@ exports.placeOrder = catchAsync(async (req, res, next) => {
       subTotal,
       taxAmount,
       orderTotalAmount,
-      discountCode,
+      JSON.stringify(discountCode),
       discountAmount,
       user_id,
       paymentMethod,
@@ -193,7 +215,7 @@ exports.placeOrder = catchAsync(async (req, res, next) => {
     ];
 
     // Execute query
-    const result = await db(query, value); // Fixed typo from value to values
+    const result = await db(query, values); // Fixed typo from value to values
     if (result.affectedRows === 0) {
       throw Error('Failed to place order', 400);
     }
@@ -261,8 +283,9 @@ exports.orderInfo = catchAsync(async (req, res, next) => {
 });
 
 exports.orderSummary = catchAsync(async (req, res, next) => {
-  const { cartList, paymentMethod } = req.body;
+  const { cartList, discountCode } = req.body;
   const orderId = req.orderData;
+  const customerId = req.empId;
 
   if (!cartList || !Array.isArray(cartList) || cartList.length === 0) {
     return res.status(400).json({ message: 'Cart is empty or invalid' });
@@ -312,7 +335,7 @@ exports.orderSummary = catchAsync(async (req, res, next) => {
       );
     }
   }
-
+  updateDiscountUsageOfCustomer(customerId, discountCode, orderId);
   res.status(200).json({ orderId, message: 'Order placed successfully' });
 });
 
