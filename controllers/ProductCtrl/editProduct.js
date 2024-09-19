@@ -362,7 +362,6 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
   `;
 
   const collectionsArry = collections.map((id) => parseInt(id, 10));
-  console.log(collectionsArry);
 
   const values = [
     productMainTitle,
@@ -508,10 +507,14 @@ exports.skuvarientsUpdate = catchAsync(async (req, res, next) => {
         const option2 = subValues[0];
         const option3 = subValues.length > 1 ? subValues[1] : null;
 
-        if (!comparePrice) {
-          comparePrice = offer_price;
-        }
-        const offerPercentage = getofferPercentage(comparePrice, offer_price);
+        const effectiveComparePrice = Math.max(
+          parseInt(comparePrice),
+          parseInt(offer_price)
+        );
+        const offerPercentage = getofferPercentage(
+          effectiveComparePrice,
+          offer_price
+        );
         const values = [
           productId,
           JSON.stringify(
@@ -527,7 +530,7 @@ exports.skuvarientsUpdate = catchAsync(async (req, res, next) => {
           variantService,
           shippingRequired,
           isTaxable,
-          comparePrice,
+          effectiveComparePrice,
           offer_price,
           offerPercentage,
           productActiveStatus,
@@ -568,9 +571,10 @@ exports.skuvarientsUpdate = catchAsync(async (req, res, next) => {
         variantService,
       } = mainVariant;
 
-      if (!comparePrice) {
-        comparePrice = offer_price;
-      }
+      const effectiveComparePrice = Math.max(
+        parseInt(comparePrice),
+        parseInt(offer_price)
+      );
       const offerPercentage = getofferPercentage(comparePrice, offer_price);
 
       const values = [
@@ -586,7 +590,7 @@ exports.skuvarientsUpdate = catchAsync(async (req, res, next) => {
         variantService,
         shippingRequired,
         isTaxable,
-        comparePrice,
+        effectiveComparePrice,
         offer_price,
         offerPercentage,
         productActiveStatus,
@@ -626,7 +630,15 @@ exports.variantUpdate = catchAsync(async (req, res, next) => {
     variantImage,
   } = req.body;
 
-  const offerPercentage = getofferPercentage(comparePrice, offer_price);
+  const effectiveComparePrice = Math.max(
+    parseInt(comparePrice),
+    parseInt(offer_price)
+  );
+
+  const offerPercentage = getofferPercentage(
+    effectiveComparePrice,
+    offer_price
+  );
 
   let variantImgQuery = 'variant_image =? ,';
 
@@ -645,7 +657,7 @@ exports.variantUpdate = catchAsync(async (req, res, next) => {
     variantService,
     shippingRequired,
     isTaxable,
-    comparePrice,
+    effectiveComparePrice,
     offer_price,
     offerPercentage,
     quantity,
@@ -690,13 +702,6 @@ exports.deleteProductImages = catchAsync(async (req, res, next) => {
   const productImages = JSON.parse(result[0].product_images);
 
   const mainImage = result[0].image_src;
-  // // Filter pImages to remove elements that match any element in oldImages
-  // const filteredImages = pImages.filter((image) => {
-  //   // Check if image includes any element from deleteImage
-  //   return !deleteImgs.some((dleteImage) => image.includes(deleteImage));
-  // });
-
-  // Filter pImages to exclude elements at specified indexes
 
   const filteredImages = productImages.filter((image, index) => {
     if (deleteImgs.includes(index)) {

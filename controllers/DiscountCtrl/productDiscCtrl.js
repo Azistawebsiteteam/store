@@ -10,6 +10,7 @@ const {
 
 exports.createDiscount = catchAsync(async (req, res, next) => {
   const { discount, conditions } = req.body;
+  console.log({ discount, conditions });
   let discountId = null;
 
   const {

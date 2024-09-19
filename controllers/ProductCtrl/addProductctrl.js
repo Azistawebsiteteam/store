@@ -279,7 +279,10 @@ exports.skuVariantsProduct = catchAsync(async (req, res, next) => {
         const option2 = subValues[0];
         const option3 = subValues.length > 1 ? subValues[1] : null;
 
-        const effectiveComparePrice = comparePrice || offer_price;
+        const effectiveComparePrice = Math.max(
+          parseInt(comparePrice),
+          parseInt(offer_price)
+        );
         const offerPercentage = getofferPercentage(
           effectiveComparePrice,
           offer_price
@@ -328,7 +331,11 @@ exports.skuVariantsProduct = catchAsync(async (req, res, next) => {
         variantService,
       } = mainVariant;
 
-      const effectiveComparePrice = comparePrice || offer_price;
+      const effectiveComparePrice = Math.max(
+        parseInt(comparePrice),
+        parseInt(offer_price)
+      );
+
       const offerPercentage = getofferPercentage(
         effectiveComparePrice,
         offer_price

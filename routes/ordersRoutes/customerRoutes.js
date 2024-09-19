@@ -1,9 +1,11 @@
 const router = require('express').Router();
 const multer = require('multer');
 
+const orderModel = require('../../Models/order');
+
 const authCtrl = require('../../controllers/authController');
 const ordersCtrl = require('../../controllers/OrderCtrl/adminOrdersctrl');
-const orderModel = require('../../Models/order');
+const cancelCtrl = require('../../controllers/OrderCtrl/cancellOrder');
 const orderAddCtrl = require('../../controllers/OrderCtrl/addOrder');
 const razorpayCtrl = require('../../controllers/OrderCtrl/razorpay');
 
@@ -26,8 +28,9 @@ router.post(
 );
 
 router.post('/order-summary', orderAddCtrl.getOrderSummary);
-
 router.get('/payment/:paymentId', razorpayCtrl.rezorpayPayment);
+
+router.post('/cancel-order', cancelCtrl.cancelOrder);
 
 // Route to download the invoice
 //router.get('/invoice/download/:orderId', orderAddCtrl.downloadInvoice);
