@@ -1,5 +1,5 @@
 const util = require('util');
-const db = require('./dbPool.js');
+const { db } = require('./dbPool.js');
 const AppError = require('../Utils/appError.js');
 
 // Function to establish database connection

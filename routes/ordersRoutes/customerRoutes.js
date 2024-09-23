@@ -7,6 +7,7 @@ const authCtrl = require('../../controllers/authController');
 const ordersCtrl = require('../../controllers/OrderCtrl/adminOrdersctrl');
 const cancelCtrl = require('../../controllers/OrderCtrl/cancellOrder');
 const orderAddCtrl = require('../../controllers/OrderCtrl/addOrder');
+const createOrderCtrl = require('../../controllers/OrderCtrl/createOrder');
 const razorpayCtrl = require('../../controllers/OrderCtrl/razorpay');
 
 router.use(multer().any());
@@ -19,13 +20,18 @@ router.use(authCtrl.protect(key));
 router.post('/creat-payment', razorpayCtrl.razorPayCreateOrder);
 router.post('/validate-payment', razorpayCtrl.razorPayValidatePayment);
 
-router.post(
-  '/place-order',
-  orderModel,
-  orderAddCtrl.placeOrder,
-  orderAddCtrl.orderInfo,
-  orderAddCtrl.orderSummary
-);
+// router.post(
+//   '/place-order',
+//   orderModel,
+//   orderAddCtrl.placeOrder,
+//   orderAddCtrl.orderInfo,
+//   orderAddCtrl.orderSummary
+// );
+
+router.post('/place-order', orderModel, createOrderCtrl.placeOrder);
+
+//  orderAddCtrl.orderInfo,
+// orderAddCtrl.orderSummary
 
 router.post('/order-summary', orderAddCtrl.getOrderSummary);
 router.get('/payment/:paymentId', razorpayCtrl.rezorpayPayment);

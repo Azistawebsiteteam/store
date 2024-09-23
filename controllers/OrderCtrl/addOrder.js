@@ -1,9 +1,9 @@
-const { default: axios } = require('axios');
-const db = require('../../Database/dbconfig');
+const axios = require('axios');
 const Joi = require('joi');
 const moment = require('moment');
-const razorpayInstance = require('../../Utils/razorpayInstance');
 
+const db = require('../../Database/dbconfig');
+const razorpayInstance = require('../../Utils/razorpayInstance');
 const catchAsync = require('../../Utils/catchAsync');
 const AppError = require('../../Utils/appError');
 
@@ -224,6 +224,7 @@ exports.placeOrder = catchAsync(async (req, res, next) => {
     req.orderData = orderId;
     next();
   } catch (error) {
+    console.log(error);
     // Attempt to refund if payment was made via RazorPay and order placement failed
     if (paymentMethod === 'RazorPay' && razorpay_payment_id) {
       try {
