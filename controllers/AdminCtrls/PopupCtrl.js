@@ -92,7 +92,7 @@ exports.currentPopup = catchAsync(async (req, res, next) => {
 
 exports.getPopups = catchAsync(async (req, res, next) => {
   const popupsQuery = `SELECT *
-                        FROM azst_popups_table WHERE status = 1`;
+                        FROM azst_popups_table`;
   const result = await db(popupsQuery);
   const popups = result.map((popup) => modifyBrandData(req, popup));
   res.status(200).json(popups);

@@ -442,7 +442,7 @@ exports.myDiscounts = catchAsync(async (req, res, next) => {
     sessionId,
   } = req.body;
 
-  if (!customerId || !cartList) {
+  if (customerId === '' || !cartList) {
     return next(new AppError('Customer ID and Cart List are required.', 400));
   }
 

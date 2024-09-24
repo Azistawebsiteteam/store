@@ -206,7 +206,6 @@ const updateInventory = async (
                                 `;
 
   try {
-
     const [currentInventory] = await db(getInventoryQuery, [
       inventoryId,
       productId,
@@ -341,9 +340,17 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
   const firstVariant = parsedVariants ? getPricess(parsedVariants[0]) : null;
 
   const price = firstVariant ? firstVariant.offer_price : productPrice;
-  const comparePrice = firstVariant
-    ? firstVariant.comparePrice
-    : productComparePrice;
+  const vComapre = Math.max(
+    parseInt(firstVariant.comparePrice),
+    parseInt(firstVariant.offer_price)
+  );
+
+  const comparePrice = firstVariant ? vComapre : productComparePrice;
+
+  // const comparePrice = firstVariant
+  //   ? firstVariant.comparePrice
+  //   : productComparePrice;
+
   const urlTitle = productTitle.replace(/ /g, '-');
   const inventory = !variantsThere ? JSON.parse(inventoryInfo) : [];
 

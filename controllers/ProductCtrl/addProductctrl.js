@@ -146,12 +146,16 @@ exports.addProduct = catchAsync(async (req, res, next) => {
   } = req.body;
 
   const parsedVariants = variantsThere ? JSON.parse(variants) : null;
-  const firstVariant = parsedVariants ? getPricess(parsedVariants[0]) : null;
+  const firstVariant = parsedVariants ? getPricess(parsedVariants) : null;
 
   const price = firstVariant ? firstVariant.offer_price : productPrice;
-  const comparePrice = firstVariant
-    ? firstVariant.comparePrice
-    : productComparePrice;
+
+  const vComapre = Math.max(
+    parseInt(firstVariant.comparePrice),
+    parseInt(firstVariant.offer_price)
+  );
+
+  const comparePrice = firstVariant ? vComapre : productComparePrice;
 
   const urlTitle = productTitle.replace(/ /g, '-');
   const productImage = productImages[0];
@@ -163,6 +167,7 @@ exports.addProduct = catchAsync(async (req, res, next) => {
                             url_handle, status, azst_updatedby, origin_country, product_url_title, is_varaints_aval,brand_id,
                             min_cart_quantity ,max_cart_quantity )
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ,?, ?, ?, ?)`;
+
   const collectionsArry = collections.map((id) => parseInt(id, 10));
 
   const values = [
@@ -354,8 +359,8 @@ exports.skuVariantsProduct = catchAsync(async (req, res, next) => {
         variantService,
         shippingRequired,
         isTaxable,
-        offer_price,
         effectiveComparePrice,
+        offer_price,
         offerPercentage,
         productActiveStatus,
         value,
