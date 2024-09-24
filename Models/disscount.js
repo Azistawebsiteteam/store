@@ -96,14 +96,11 @@ const discountConditionSchema = Joi.object({
   }),
 
   // `minBuyQty` is required when `scope` is 'product' or 'buy_x_get_y', otherwise it can be null.
-  minBuyQty: Joi.number()
-    .integer()
-    .positive()
-    .when('scope', {
-      is: Joi.valid('product', 'buy_x_get_y'),
-      then: Joi.required(),
-      otherwise: Joi.allow(null),
-    }),
+  minBuyQty: Joi.when('scope', {
+    is: Joi.valid('product', 'buy_x_get_y'),
+    then: Joi.number().integer().min(1).required(),
+    otherwise: Joi.allow(null),
+  }),
 
   getProductType: Joi.string()
     .valid('collection', 'product')
@@ -135,115 +132,11 @@ const discountConditionSchema = Joi.object({
   }),
 
   // `maxGetYQty` is required only when `scope` is 'buy_x_get_y', otherwise it can be null.
-  maxGetYQty: Joi.number()
-    .integer()
-    .positive()
-    .when('scope', {
-      is: 'buy_x_get_y',
-      then: Joi.required(),
-      otherwise: Joi.allow(null),
-    }),
+  maxGetYQty: Joi.when('scope', {
+    is: 'buy_x_get_y',
+    then: Joi.number().integer().min(1).required(),
+    otherwise: Joi.allow(null),
+  }),
 });
 
-// const validateProductIds = (products, schema) => {
-//   const parsedProducts = JSON.parse(products);
-//   const validationResults = parsedProducts.map((subCat) =>
-//     schema.validate(subCat)
-//   );
-
-//   for (let result of validationResults) {
-//     if (result.error) {
-//       throw new Error(result.error.message);
-//     }
-//   }
-//   return parsedProducts; // Return parsed and validated ingredients
-// };
-
-// const validateCollectionIds = (collections, schema) => {
-//   const parsedCollections = JSON.parse(collections);
-//   const validationResults = schema.validate(parsedCollections);
-
-//   for (let result of validationResults) {
-//     if (result.error) {
-//       throw new Error(result.error.message);
-//     }
-//   }
-//   return parsedCollections; // Return parsed and validated ingredients
-// };
-
-// // Joi schema for discount conditions
-
-// const discountConditionSchema = Joi.object({
-//   discountId: Joi.number().integer().positive().optional().allow(null),
-
-//   scope: Joi.string().valid('cart', 'product', 'buy_x_get_y').required(),
-
-//   // `minCartValue` is mandatory when `scope` is 'cart', else it can be null or not present.
-//   minCartValue: Joi.number()
-//     .positive()
-//     .when('scope', {
-//       is: 'cart',
-//       then: Joi.required(),
-//       otherwise: Joi.allow(null),
-//     }),
-
-//   buyProductType: Joi.string().when('scope', {
-//     is: Joi.valid('product', 'buy_x_get_y'),
-//     then: Joi.required().valid('collection', 'product'),
-//     otherwise: Joi.allow(''),
-//   }),
-
-//   // `buyProductId` is required when `scope` is 'product' or 'buy_x_get_y', otherwise it can be null.
-//   buyProductId: Joi.custom((value, helpers) => {
-//     try {
-//       if (buyProductType === 'collection') {
-//         return validateCollectionIds(value, collectionSchema);
-//       } else {
-//         return validateProductIds(value, productIdSchema);
-//       }
-//     } catch (error) {
-//       return helpers.message(error.message);
-//     }
-//   }).required(),
-
-//   // `minBuyQty` is required when `scope` is 'product' or 'buy_x_get_y', otherwise it can be null.
-//   minBuyQty: Joi.number()
-//     .integer()
-//     .positive()
-//     .when('scope', {
-//       is: Joi.valid('product', 'buy_x_get_y'),
-//       then: Joi.required(),
-//       otherwise: Joi.allow(null),
-//     }),
-
-//   getProductType: Joi.string().when('scope', {
-//     is: 'buy_x_get_y',
-//     then: Joi.required().valid('collection', 'product'),
-//     otherwise: Joi.allow(''),
-//   }),
-
-//   // `getYproductId` is required only when `scope` is 'buy_x_get_y', otherwise it can be null.
-//   getYproductId: Joi.string().when('scope', {
-//     is: 'buy_x_get_y',
-//     then: Joi.required(),
-//     otherwise: Joi.allow(''),
-//   }),
-
-//   // `maxGetYQty` is required only when `scope` is 'buy_x_get_y', otherwise it can be null.
-//   maxGetYQty: Joi.number()
-//     .integer()
-//     .positive()
-//     .when('scope', {
-//       is: Joi.valid('product', 'buy_x_get_y'),
-//       then: Joi.required(),
-//       otherwise: Joi.allow(null),
-//     }),
-// });
-
 module.exports = { discountSchema, discountConditionSchema };
-
-// buyProductId: Joi.string().when('scope', {
-//   is: Joi.valid('product', 'buy_x_get_y'),
-//   then: Joi.required(),
-//   otherwise: Joi.allow(''),
-// }),

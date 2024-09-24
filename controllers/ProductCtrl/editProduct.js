@@ -206,8 +206,7 @@ const updateInventory = async (
                                 `;
 
   try {
-    //console.log([inventoryId, productId, variantId]);
-    //console.log(getInventoryQuery);
+
     const [currentInventory] = await db(getInventoryQuery, [
       inventoryId,
       productId,
@@ -227,8 +226,7 @@ const updateInventory = async (
         productId,
         variantId,
       ];
-      //console.log(invValues);
-      //console.log(updateInventoryQuery);
+
       await db(updateInventoryQuery, invValues);
     } else {
       const query = `INSERT INTO azst_inventory_product_mapping

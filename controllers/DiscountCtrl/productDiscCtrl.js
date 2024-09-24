@@ -10,7 +10,6 @@ const {
 
 exports.createDiscount = catchAsync(async (req, res, next) => {
   const { discount, conditions } = req.body;
-  console.log({ discount, conditions });
   let discountId = null;
 
   const {
@@ -26,6 +25,7 @@ exports.createDiscount = catchAsync(async (req, res, next) => {
   } = discount;
 
   const { error } = discountSchema.validate(discount);
+
   if (error) return next(new AppError(error.message, 400));
 
   // Validate discount conditions

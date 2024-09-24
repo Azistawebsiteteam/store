@@ -10,8 +10,6 @@ const connectToDatabase = () => {
       // Handle the error appropriately, such as logging or displaying an error message
       return new AppError(error.message, 400);
     }
-
-    console.log('Connected to the MYsql database');
     // You can perform additional operations here
 
     // Release the connection when finished

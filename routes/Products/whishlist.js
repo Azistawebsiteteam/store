@@ -10,7 +10,6 @@ const {
 } = require('../../controllers/wishLIstCtrl');
 
 const key = process.env.JWT_SECRET;
-//console.log(key);
 
 router.use(authCtrl.protect(key));
 

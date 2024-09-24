@@ -224,7 +224,6 @@ exports.placeOrder = catchAsync(async (req, res, next) => {
     req.orderData = orderId;
     next();
   } catch (error) {
-    console.log(error);
     // Attempt to refund if payment was made via RazorPay and order placement failed
     if (paymentMethod === 'RazorPay' && razorpay_payment_id) {
       try {
