@@ -85,7 +85,7 @@ exports.getAllBanners = catchAsync(async (req, res, next) => {
 
   let result = await db(defaultsQuery);
   if (result.length === 0) {
-    return next(new AppError('No banner found', 404));
+    return res.status(200).json(result);
   }
   const banners = result.map((b) => ({
     ...b,

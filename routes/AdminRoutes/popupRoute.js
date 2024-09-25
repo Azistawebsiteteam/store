@@ -1,5 +1,6 @@
 const router = require('express').Router();
 
+const multer = require('multer');
 const popupCtrl = require('../../controllers/AdminCtrls/PopupCtrl');
 const authCtrl = require('../../controllers/authController');
 
@@ -25,6 +26,9 @@ router.put(
   popupCtrl.updateImage,
   popupCtrl.updatePopup
 );
+
+router.use(multer().any());
+router.patch('/status', popupCtrl.changeActiveStatus);
 
 router.use(popupCtrl.isPopupExist);
 

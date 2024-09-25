@@ -79,11 +79,13 @@ const modifyBrandData = (req, popup) => ({
   popup_image: `${req.protocol}://${req.get('host')}/api/images/popup/${
     popup.popup_image
   }`,
+  is_active: popup.is_active,
+  popup_btn_color: popup.popup_btn_color,
 });
 
 exports.currentPopup = catchAsync(async (req, res, next) => {
   const popupsQuery = `SELECT *
-                        FROM azst_popups_table WHERE status = 1 ORDER BY created_on DESC Limit 1`;
+                        FROM azst_popups_table WHERE status = 1 And is_active = 1 ORDER BY created_on DESC Limit 1`;
   const result = await db(popupsQuery);
   if (result.length <= 0) return res.status(200).json({});
   const popup = modifyBrandData(req, result[0]);
@@ -92,7 +94,7 @@ exports.currentPopup = catchAsync(async (req, res, next) => {
 
 exports.getPopups = catchAsync(async (req, res, next) => {
   const popupsQuery = `SELECT *
-                        FROM azst_popups_table`;
+                        FROM azst_popups_table WHERE status = 1`;
   const result = await db(popupsQuery);
   const popups = result.map((popup) => modifyBrandData(req, popup));
   res.status(200).json(popups);
@@ -104,16 +106,14 @@ exports.getPopup = catchAsync(async (req, res, next) => {
 });
 
 exports.addPopup = catchAsync(async (req, res, next) => {
-  const { Name, Url, popupImage } = req.body;
+  const { Name, Url, popupImage, btnColor } = req.body;
 
   const { error } = popupSchema.validate(req.body);
-
   if (error) return next(new AppError(error.message, 400));
 
-  const insertQuery =
-    'INSERT INTO azst_popups_table (popup_name,popup_url,popup_image,updated_by) VALUES (?,?,?,?)';
+  const insertQuery = `INSERT INTO azst_popups_table (popup_name,popup_url,popup_image,popup_btn_color,updated_by) VALUES (?,?,?,?)`;
 
-  const values = [Name, Url, popupImage, req.empId];
+  const values = [Name, Url, popupImage, btnColor, req.empId];
 
   const result = await db(insertQuery, values);
   res.status(200).json({
@@ -123,13 +123,13 @@ exports.addPopup = catchAsync(async (req, res, next) => {
 });
 
 exports.updatePopup = catchAsync(async (req, res, next) => {
-  const { Name, Url, popupImage, popupId } = req.body;
+  const { Name, Url, popupImage, popupId, btnColor } = req.body;
   const { error } = popupSchema.validate({ Name, Url, popupImage });
   if (error) return next(new AppError(error, 400));
 
   let updateQuery =
-    'UPDATE azst_popups_table SET popup_name=?, popup_url =? ,popup_image=?,updated_by=? where id =? ';
-  let values = [Name, Url, popupImage, req.empId, popupId];
+    'UPDATE azst_popups_table SET popup_name=?, popup_url =? ,popup_image=?,updated_by=?, popup_btn_color =?  where id =? ';
+  let values = [Name, Url, popupImage, req.empId, btnColor, popupId];
 
   if (popupImage === '') {
     updateQuery = 'UPDATE popup_name=?, popup_url =? ,updated_by=?where id =? ';
@@ -149,4 +149,16 @@ exports.deletePopup = catchAsync(async (req, res, next) => {
 
   await db(deletepopup, values);
   res.status(200).json({ message: 'popup deleted Successfully ' });
+});
+
+exports.changeActiveStatus = catchAsync(async (req, res, next) => {
+  const { popupId, activeStatus } = req.body;
+
+  const changeQuery =
+    'UPDATE azst_popups_table SET is_active = ?, updated_by=? where id = ? ';
+
+  const values = [activeStatus, req.empId, popupId];
+
+  await db(changeQuery, values);
+  res.status(200).json({ message: 'popup status updated Successfully ' });
 });

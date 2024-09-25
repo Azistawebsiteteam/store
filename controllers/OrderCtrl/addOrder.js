@@ -83,9 +83,11 @@ const getCartTotal = (cartProducts) => {
 
 const initiateRefund = async (paymentId, amount) => {
   try {
-    await razorpayInstance.payments.refund(paymentId, {
+    const refund = await razorpayInstance.payments.refund(paymentId, {
       amount: amount * 100, // Assuming amount is in paise (smallest currency unit)
     });
+
+    const insertRefunds = '';
   } catch (err) {
     throw new Error(err?.error?.description);
   }

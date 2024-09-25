@@ -336,20 +336,20 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
     url.substring(url.lastIndexOf('/') + 1)
   );
 
-  const parsedVariants = variantsThere ? JSON.parse(variants) : null;
-  const firstVariant = parsedVariants ? getPricess(parsedVariants[0]) : null;
+  const parsedVariants = variantsThere ? JSON.parse(variants) : [];
+  let vComapre = 0;
+  let price = productPrice;
+  if (parsedVariants.length > 0) {
+    const firstVariant =
+      parsedVariants.length > 0 ? getPricess(parsedVariants[0]) : null;
+    price = firstVariant.offer_price;
+    vComapre = Math.max(
+      parseInt(firstVariant.comparePrice),
+      parseInt(firstVariant.offer_price)
+    );
+  }
 
-  const price = firstVariant ? firstVariant.offer_price : productPrice;
-  const vComapre = Math.max(
-    parseInt(firstVariant.comparePrice),
-    parseInt(firstVariant.offer_price)
-  );
-
-  const comparePrice = firstVariant ? vComapre : productComparePrice;
-
-  // const comparePrice = firstVariant
-  //   ? firstVariant.comparePrice
-  //   : productComparePrice;
+  const comparePrice = variantsThere ? vComapre : productComparePrice;
 
   const urlTitle = productTitle.replace(/ /g, '-');
   const inventory = !variantsThere ? JSON.parse(inventoryInfo) : [];
