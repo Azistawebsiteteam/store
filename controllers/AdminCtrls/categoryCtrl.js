@@ -96,7 +96,7 @@ exports.getCategories = catchAsync(async (req, res, next) => {
     LEFT JOIN 
       azst_products p 
     ON 
-      c.azst_category_id = p.product_category
+      c.azst_category_id = p.product_category AND p.status = 1
     WHERE 
       c.azst_category_status = 1
     GROUP BY 
