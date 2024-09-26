@@ -126,7 +126,7 @@ exports.addPopup = catchAsync(async (req, res, next) => {
 exports.updatePopup = catchAsync(async (req, res, next) => {
   const { Name, Url, popupImage, popupId, btnColor } = req.body;
   const { error } = popupSchema.validate({ Name, Url, popupImage, btnColor });
-  if (error) return next(new AppError(error, 400));
+  if (error) return next(new AppError(error.message, 400));
 
   let updateQuery =
     'UPDATE azst_popups_table SET popup_name=?, popup_url =? ,popup_image=?,updated_by=?, popup_btn_color =?  where id =? ';
