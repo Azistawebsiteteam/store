@@ -163,3 +163,5 @@ exports.changeActiveStatus = catchAsync(async (req, res, next) => {
   await db(changeQuery, values);
   res.status(200).json({ message: 'popup status updated Successfully ' });
 });
+
+// new popup status
