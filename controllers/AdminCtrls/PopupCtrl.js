@@ -12,6 +12,7 @@ const popupSchema = Joi.object({
   Name: Joi.string().min(3).max(50).required(),
   Url: Joi.string().min(2).required(),
   popupImage: Joi.string().required().allow(''),
+  btnColor: Joi.string().required().allow(''),
 });
 
 exports.isPopupExist = catchAsync(async (req, res, next) => {
@@ -111,7 +112,7 @@ exports.addPopup = catchAsync(async (req, res, next) => {
   const { error } = popupSchema.validate(req.body);
   if (error) return next(new AppError(error.message, 400));
 
-  const insertQuery = `INSERT INTO azst_popups_table (popup_name,popup_url,popup_image,popup_btn_color,updated_by) VALUES (?,?,?,?)`;
+  const insertQuery = `INSERT INTO azst_popups_table (popup_name,popup_url,popup_image,popup_btn_color,updated_by) VALUES (?,?,?,?,?)`;
 
   const values = [Name, Url, popupImage, btnColor, req.empId];
 
@@ -124,7 +125,7 @@ exports.addPopup = catchAsync(async (req, res, next) => {
 
 exports.updatePopup = catchAsync(async (req, res, next) => {
   const { Name, Url, popupImage, popupId, btnColor } = req.body;
-  const { error } = popupSchema.validate({ Name, Url, popupImage });
+  const { error } = popupSchema.validate({ Name, Url, popupImage, btnColor });
   if (error) return next(new AppError(error, 400));
 
   let updateQuery =

@@ -90,7 +90,7 @@ exports.getbrand = catchAsync(async (req, res, next) => {
 });
 
 exports.addBrnad = catchAsync(async (req, res, next) => {
-  const { brandName, image, description } = req.body;
+  const { brandName, image, description = '' } = req.body;
 
   if (!brandName) return next(new AppError('Brand Name Required', 400));
 

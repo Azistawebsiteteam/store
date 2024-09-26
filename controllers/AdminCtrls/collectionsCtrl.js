@@ -121,14 +121,14 @@ exports.getcollection = catchAsync(async (req, res, next) => {
 
 const collectionSchema = Joi.object({
   title: Joi.string().min(1).required(),
-  content: Joi.string().min(1).optional(),
+  content: Joi.string().optional().allow(''),
   metaTitle: Joi.string().min(1).required(),
   metaDescription: Joi.string().min(1).required(),
   urlHandle: Joi.string().min(1).required(),
 });
 
 exports.Addcollection = catchAsync(async (req, res, next) => {
-  const { title, content, metaDetails, collectionImg } = req.body;
+  const { title, content = '', metaDetails, collectionImg } = req.body;
   const { metaTitle, metaDescription, urlHandle } = JSON.parse(metaDetails);
 
   const { error } = collectionSchema.validate({

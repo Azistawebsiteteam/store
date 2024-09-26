@@ -523,7 +523,7 @@ exports.skuvarientsUpdate = catchAsync(async (req, res, next) => {
         const values = [
           productId,
           JSON.stringify(
-            newVariantImages([mainVariant.variantImage, variantImage])
+            newVariantImages([variantImage, mainVariant.variantImage])
           ),
           variantWeightUnit,
           hsCode,

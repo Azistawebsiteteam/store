@@ -299,7 +299,7 @@ exports.skuVariantsProduct = catchAsync(async (req, res, next) => {
 
         const values = [
           productId,
-          JSON.stringify([mainVariant.variantImage, variantImage]),
+          JSON.stringify([variantImage, mainVariant.variantImage]),
           variantWeightUnit,
           hsCode,
           barCode,
