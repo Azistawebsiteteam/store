@@ -85,7 +85,7 @@ exports.collections = catchAsync(async (req, res, next) => {
                             LEFT JOIN 
                                 azst_products 
                             ON 
-                                JSON_CONTAINS(azst_products.collections, CONCAT('"', azst_collections_tbl.azst_collection_id, '"'))
+                                JSON_CONTAINS(azst_products.collections, CONCAT('"', azst_collections_tbl.azst_collection_id, '"')) AND azst_products.status = 1
                             WHERE 
                                 azst_collections_tbl.azst_collection_status = 1
                             GROUP BY 
