@@ -440,6 +440,7 @@ exports.myDiscounts = catchAsync(async (req, res, next) => {
     discountType = 'Automatic',
     cartList,
     sessionId,
+    similarProducts,
   } = req.body;
 
   if (customerId === '' || !cartList) {
@@ -540,5 +541,6 @@ exports.myDiscounts = catchAsync(async (req, res, next) => {
     discountCodes,
     discountAmount,
     message: discountMessage,
+    similarProducts,
   });
 });

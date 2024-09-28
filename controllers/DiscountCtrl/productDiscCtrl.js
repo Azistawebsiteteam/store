@@ -117,7 +117,7 @@ exports.getDiscounts = catchAsync(async (req, res, next) => {
 exports.discountDetails = catchAsync(async (req, res, next) => {
   const { discountId } = req.body;
 
-  const query = `SELECT * FROM  azst_discounts_tbl ds  
+  const query = `SELECT * , ds.id as dsc_id FROM  azst_discounts_tbl ds  
                   LEFT JOIN azst_discount_conditions dc  ON  ds.id = dc.discount_id
                   WHERE ds.id = ? AND status = 1; `;
 

@@ -428,7 +428,7 @@ exports.getAllProductsWithVariants = catchAsync(async (req, res, next) => {
   const productsQuery = `SELECT P.id AS product_id ,IFNULL(V.id , 0) AS variant_id,product_main_title, product_title ,option1,
             option2,
             option3 FROM azst_products P
-                    LEFT JOIN azst_sku_variant_info V ON P.id = V.product_id WHERE P.status = 1`;
+                    LEFT JOIN azst_sku_variant_info V ON P.id = V.product_id AND V.status =1 WHERE P.status = 1`;
   const products = await db(productsQuery);
   res.status(200).json({ products, message: 'Product fetched successfully' });
 });

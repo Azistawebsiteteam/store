@@ -6,6 +6,7 @@ const {
   getCartData,
   removeFromCart,
   abandonmentCart,
+  getCartSimilarProducts,
 } = require('../../controllers/Cart/getProducts');
 
 const addToCartCtrl = require('../../controllers/Cart/addProducts');
@@ -23,10 +24,16 @@ router
   .put(
     addToCartCtrl.handleProductQuantityUpdate,
     getCartData,
+    getCartSimilarProducts,
     dscApplyCtrl.myDiscounts
   );
 
-router.post('/data', getCartData, dscApplyCtrl.myDiscounts);
+router.post(
+  '/data',
+  getCartData,
+  getCartSimilarProducts,
+  dscApplyCtrl.myDiscounts
+);
 router.patch('/data', removeFromCart);
 
 const ukey = process.env.JWT_SECRET;

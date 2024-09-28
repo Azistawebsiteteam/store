@@ -124,6 +124,126 @@ const getCartData = catchAsync(async (req, res, next) => {
   next();
 });
 
+const getCartSimilarProducts = catchAsync(async (req, res, next) => {
+  const { cartList } = req.body;
+
+  if (!cartList || !Array.isArray(cartList) || cartList.length === 0) {
+    return res.status(400).json({ message: 'Cart list is empty or invalid' });
+  }
+
+  // Extract product IDs from the cart list
+  const productIds = cartList.map((p) => p.azst_cart_product_id);
+
+  // Fetch features of the products in the cart (category, type, tags, collections, brand)
+  const cartProductsQuery = `
+    SELECT id, product_category, type, tags, collections, brand_id, price
+    FROM azst_products 
+    WHERE id IN (?)
+  `;
+
+  const cartProducts = await db(cartProductsQuery, [productIds]);
+
+  if (!cartProducts || cartProducts.length === 0) {
+    return res.status(404).json({ message: 'Cart products not found' });
+  }
+
+  // Helper function to parse JSON and return an array
+  const parseJsonArray = (jsonString) => {
+    try {
+      return JSON.parse(jsonString) || [];
+    } catch {
+      return [];
+    }
+  };
+
+  // Separate product attributes into arrays for running the single query later
+  const categories = new Set();
+  const types = new Set();
+  const brands = new Set();
+  const tags = new Set();
+  const collections = new Set();
+  let minPrice = Infinity;
+  let maxPrice = 0;
+
+  // Collect all product attributes in separate arrays
+  cartProducts.forEach((product) => {
+    categories.add(product.product_category);
+    types.add(product.type);
+    brands.add(product.brand_id);
+
+    // Parse tags and collections and merge them into sets
+    parseJsonArray(product.tags).forEach((tag) => tags.add(tag));
+    parseJsonArray(product.collections).forEach((collection) =>
+      collections.add(collection)
+    );
+
+    // Calculate min and max price ranges
+    const lowerPriceRange = product.price * 0.8;
+    const upperPriceRange = product.price * 1.2;
+    minPrice = Math.min(minPrice, lowerPriceRange);
+    maxPrice = Math.max(maxPrice, upperPriceRange);
+  });
+
+  // Convert sets to arrays for query
+  const uniqueCategories = [...categories];
+  const uniqueTypes = [...types];
+  const uniqueBrands = [...brands];
+  const uniqueTags = [...tags];
+  const uniqueCollections = [...collections];
+
+  const similarProductsQuery = `
+  SELECT 
+    P.id AS product_id,
+    IFNULL(V.id, 0) AS variant_id, 
+    P.product_main_title, 
+    P.product_title,
+    P.product_url_title,
+    CONCAT('${req.protocol}://${req.get(
+    'host'
+  )}/api/images/product/', P.image_src) AS image_src,
+    P.image_alt_text,
+    P.price, 
+    P.compare_at_price as product_compare_at_price,
+    P.min_cart_quantity,
+    P.max_cart_quantity,
+    P.is_varaints_aval,
+    V.compare_at_price,
+    V.offer_price,
+    V.option1, V.option2, V.option3,
+    COALESCE(AVG(prt.review_points), 1) AS product_review_points
+  FROM azst_products P
+  LEFT JOIN azst_sku_variant_info V ON P.id = V.product_id AND V.status = 1
+  LEFT JOIN product_review_rating_tbl prt ON P.id = prt.product_id
+  WHERE 
+    (P.product_category IN (?) 
+    OR P.type IN (?) 
+    OR P.brand_id IN (?)
+    OR (FIND_IN_SET(?, P.tags) > 0 OR FIND_IN_SET(?, P.collections) > 0)
+    OR P.price BETWEEN ? AND ?)
+    AND P.id NOT IN (?)
+    AND P.status = 1
+  GROUP BY
+    P.id, P.product_main_title, P.product_title, P.product_url_title, P.image_src,
+    P.image_alt_text, P.price, P.compare_at_price, P.min_cart_quantity,
+    P.max_cart_quantity, P.is_varaints_aval, V.option1, V.option2, V.option3
+  LIMIT 10
+`;
+
+  // Perform the database query to find similar products
+  const similarProducts = await db(similarProductsQuery, [
+    uniqueCategories,
+    uniqueTypes,
+    uniqueBrands,
+    uniqueTags.join(','), // Combine unique tags
+    uniqueCollections.join(','), // Combine unique collections
+    minPrice,
+    maxPrice,
+    productIds,
+  ]);
+  req.body.similarProducts = similarProducts;
+  next();
+});
+
 const removeFromCart = catchAsync(async (req, res, next) => {
   const { cartId } = req.body;
 
@@ -190,4 +310,5 @@ module.exports = {
   getCartData,
   removeFromCart,
   abandonmentCart,
+  getCartSimilarProducts,
 };
