@@ -12,18 +12,32 @@ const getofferPercentage = (comparePrice, offer_price) => {
   return offerPercentage;
 };
 
-const getPricess = (variant) => {
-  if (variant.main) {
-    return {
-      offer_price: variant.main.offer_price,
-      comparePrice: variant.main.comparePrice,
-    };
+// Function to get min and max prices from variants
+const getPricess = (variants, priceKey) => {
+  const prices = [];
+
+  // Loop through each variant to extract prices
+  variants.forEach((variant) => {
+    if (variant.main) {
+      // Push the price from the main variant
+      prices.push(parseInt(variant.main[priceKey]));
+    } else if (variant.sub && variant.sub.length > 0) {
+      // Loop through sub-variants and push prices
+      variant.sub.forEach((sv) => {
+        prices.push(parseInt(sv[priceKey]));
+      });
+    }
+  });
+
+  // Get minimum and maximum prices from the prices array
+  const lowPrice = Math.min(...prices);
+  const highPrice = Math.max(...prices);
+
+  // Return formatted price range
+  if (lowPrice !== highPrice) {
+    return `Rs. ${lowPrice} - Rs. ${highPrice}`;
   } else {
-    const variant = variant.sub[0];
-    return {
-      offer_price: variant.main.offer_price,
-      comparePrice: variant.main.comparePrice,
-    };
+    return `Rs. ${lowPrice}`;
   }
 };
 

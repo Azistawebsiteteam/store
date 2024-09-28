@@ -145,21 +145,18 @@ exports.addProduct = catchAsync(async (req, res, next) => {
     maxCartQty = 10,
   } = req.body;
 
+  // Parse variants if available
   const parsedVariants = variantsThere ? JSON.parse(variants) : [];
-  let vComapre = 0;
+  let comparePrice = productComparePrice;
   let price = productPrice;
 
+  // If there are variants, update the price and compare price
   if (parsedVariants.length > 0) {
-    const firstVariant =
-      parsedVariants.length > 0 ? getPricess(parsedVariants[0]) : null;
-    price = firstVariant.offer_price;
-    vComapre = Math.max(
-      parseInt(firstVariant.comparePrice),
-      parseInt(firstVariant.offer_price)
-    );
+    price = getPricess(parsedVariants, 'offer_price');
+    comparePrice = getPricess(parsedVariants, 'comparePrice');
   }
 
-  const comparePrice = variantsThere ? vComapre : productComparePrice;
+  console.log({ price, comparePrice });
 
   const urlTitle = productTitle.replace(/ /g, '-');
   const productImage = productImages[0];

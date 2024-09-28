@@ -34,6 +34,7 @@ router.post(
   getCartSimilarProducts,
   dscApplyCtrl.myDiscounts
 );
+
 router.patch('/data', removeFromCart);
 
 const ukey = process.env.JWT_SECRET;
