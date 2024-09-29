@@ -156,8 +156,6 @@ exports.addProduct = catchAsync(async (req, res, next) => {
     comparePrice = getPricess(parsedVariants, 'comparePrice');
   }
 
-  console.log({ price, comparePrice });
-
   const urlTitle = productTitle.replace(/ /g, '-');
   const productImage = productImages[0];
 

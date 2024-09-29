@@ -92,7 +92,7 @@ const variantsSchema = Joi.object({
       Joi.object(), // Allow number type
       Joi.array() // Allow array type
     )
-    .required(),
+    .optional(),
   variantWeight: Joi.string().allow(''),
   variantWeightUnit: Joi.string().allow(''),
   value: Joi.string().required(),

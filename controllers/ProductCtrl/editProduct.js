@@ -336,21 +336,16 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
     url.substring(url.lastIndexOf('/') + 1)
   );
 
+  // Parse variants if available
   const parsedVariants = variantsThere ? JSON.parse(variants) : [];
-  let vComapre = 0;
+  let comparePrice = productComparePrice;
   let price = productPrice;
+
+  // If there are variants, update the price and compare price
   if (parsedVariants.length > 0) {
-    const firstVariant =
-      parsedVariants.length > 0 ? getPricess(parsedVariants[0]) : null;
-    price = firstVariant.offer_price;
-    vComapre = Math.max(
-      parseInt(firstVariant.comparePrice),
-      parseInt(firstVariant.offer_price)
-    );
+    price = getPricess(parsedVariants, 'offer_price');
+    comparePrice = getPricess(parsedVariants, 'comparePrice');
   }
-
-  const comparePrice = variantsThere ? vComapre : productComparePrice;
-
   const urlTitle = productTitle.replace(/ /g, '-');
   const inventory = !variantsThere ? JSON.parse(inventoryInfo) : [];
 
@@ -615,6 +610,22 @@ exports.skuvarientsUpdate = catchAsync(async (req, res, next) => {
   }
   res.status(200).json({ message: 'Product & variants inserted successfully' });
 });
+// offer_price, effectiveComparePrice;
+const updateProductPrices = async (variantId) => {
+  try {
+    const query = `
+      SELECT product_id ,offer_price, compare_at_price 
+      FROM azst_sku_variant_info 
+      WHERE product_id = (SELECT product_id FROM azst_sku_variant_info WHERE id = ?)
+    `;
+    const result = await db(query, [variantId]);
+    const productId = result[0].product_id;
+    const price = getPricess(result, 'offer_price');
+    const comparePrice = getPricess(result, 'compare_at_price');
+    const updateProduct = `UPDATE azst_products SET price = ? ,compare_at_price = ? WHERE id = ?`;
+    await db(updateProduct, [price, comparePrice, productId]);
+  } catch (error) {}
+};
 
 exports.variantUpdate = catchAsync(async (req, res, next) => {
   const {
@@ -682,6 +693,9 @@ exports.variantUpdate = catchAsync(async (req, res, next) => {
                  WHERE id = ? `;
 
   await db(query, values);
+  console.log(variantId, 'variant');
+
+  updateProductPrices(variantId, offer_price, effectiveComparePrice);
 
   res.status(200).json({ message: 'Variant data updated successfully' });
 });

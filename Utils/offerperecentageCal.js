@@ -18,14 +18,16 @@ const getPricess = (variants, priceKey) => {
 
   // Loop through each variant to extract prices
   variants.forEach((variant) => {
-    if (variant.main) {
-      // Push the price from the main variant
-      prices.push(parseInt(variant.main[priceKey]));
-    } else if (variant.sub && variant.sub.length > 0) {
+    if (variant.sub && variant.sub.length > 0) {
       // Loop through sub-variants and push prices
       variant.sub.forEach((sv) => {
         prices.push(parseInt(sv[priceKey]));
       });
+    } else if (variant.main) {
+      // Push the price from the main variant
+      prices.push(parseInt(variant.main[priceKey]));
+    } else {
+      prices.push(parseInt(variant[priceKey]));
     }
   });
 

@@ -25,9 +25,10 @@ const checkEnvVariables = () => {
   const requiredEnvVars = [
     'SMS_API_KEY',
     'SMS_SENDER_ID',
-    'SMS_TEMPLATE_ID',
-    'SMS_PEID',
-    'SMS_ROUTE',
+    'SMS_API_URL',
+    'SMS_CHANNEL',
+    'SMS_DCS',
+    'SMS_FLASH_KEY',
   ];
 
   requiredEnvVars.forEach((variable) => {
@@ -43,17 +44,18 @@ const sendingOTPMobile = async (mobileNum, otp) => {
     const {
       SMS_API_KEY: apiKey,
       SMS_SENDER_ID: senderId,
-      SMS_TEMPLATE_ID: templateId,
-      SMS_PEID: peid,
-      SMS_ROUTE: route,
+      SMS_API_URL: apiUrl,
+      SMS_CHANNEL: channel,
+      SMS_DCS: dcs,
+      SMS_FLASH_KEY: flashKey,
     } = process.env;
 
     const smsContent = `Hello, We have Successfully Generated OTP ${otp} on login and registration request. Azista`;
-    const url = `http://push.smsc.co.in/api/mt/SendSMS?APIkey=${apiKey}&senderid=${senderId}&channel=2&DCS=0&flashsms=0&number=91${mobileNum}&text=${smsContent}&route=${route}&DLTTemplateId=${templateId}&PEID=${peid}`;
+    const url = `${apiUrl}?APIkey=${apiKey}&senderid=${senderId}&channel=${channel}&DCS=${dcs}&flashsms=${flashKey}&number=91${mobileNum}&text=${smsContent}`;
 
     const response = await axios.post(url);
 
-    if (response.data.ErrorCode) {
+    if (response.data.ErrorMessage !== 'Success') {
       return Promise.reject(new Error('unable to send otp'));
     } else if (response.status === 200) {
       return Promise.resolve();
