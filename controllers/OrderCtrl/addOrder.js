@@ -6,6 +6,7 @@ const db = require('../../Database/dbconfig');
 const razorpayInstance = require('../../Utils/razorpayInstance');
 const catchAsync = require('../../Utils/catchAsync');
 const AppError = require('../../Utils/appError');
+const Email = require('../../Utils/email');
 
 const pinocdeSchema = Joi.object({
   pincode: Joi.number().integer().min(100000).max(999999).messages({
@@ -216,6 +217,8 @@ exports.placeOrder = catchAsync(async (req, res, next) => {
       paymentId,
     ];
 
+    console.log(orderId);
+    await new Email().sendOrderStatus(orderId);
     // Execute query
     const result = await db(query, values); // Fixed typo from value to values
     if (result.affectedRows === 0) {

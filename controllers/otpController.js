@@ -183,9 +183,8 @@ exports.updateOtpDetails = catchAsync(async (req, res, next) => {
   const key = process.env.JWT_SECRET;
 
   // if the Reason is Registration no need to send the Token
-  const jwtToken =
-    reason === 'Registration' ? '' : createSendToken(azst_customer_id, key);
-
+  const jwtToken = createSendToken(azst_customer_id, key);
+  //reason === 'Registration' ? '' :
   // if the reason is Login create a login log here
   if (reason === 'Login') {
     enterLoginLogs(azst_customer_id, jwtToken);
