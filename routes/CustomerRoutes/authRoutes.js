@@ -1,4 +1,5 @@
 const express = require('express');
+const multer = require('multer');
 
 const registerCtrl = require('../../controllers/CustomerCtrls/Authentication/RegistrationCtrl');
 const loginCtrl = require('../../controllers/CustomerCtrls/Authentication/LoginCtrl');
@@ -10,6 +11,8 @@ const loginSchema = require('../../Models/Login');
 const resetPasswordSchema = require('../../Models/ResetPassword');
 
 const router = express.Router();
+
+router.use(multer().any());
 
 router.post(
   '/register',
@@ -68,6 +71,8 @@ router.post(
   otpCtrl.updateOtpDetails,
   authControllers.forgotPassword
 );
+
+router.post('/newsletter/subscribe', registerCtrl.subscribeNewLetter);
 
 const key = process.env.JWT_SECRET;
 

@@ -1,10 +1,12 @@
 const bcrypt = require('bcrypt');
 const moment = require('moment');
+const jwt = require('jsonwebtoken');
 
 const db = require('../../../Database/dbconfig');
 const catchAsync = require('../../../Utils/catchAsync');
 const AppError = require('../../../Utils/appError');
 const createSendToken = require('../../../Utils/jwtToken');
+const Joi = require('joi');
 
 exports.checkExistingUser = catchAsync(async (req, res, next) => {
   const { customerMobileNum, customerEmail, mailOrMobile } = req.body;
@@ -133,4 +135,26 @@ exports.deleteAccount = catchAsync(async (req, res, next) => {
   const deleteQuery = `UPDATE azst_customers_tbl SET azst_customer_status = 0 WHERE azst_customer_id = ?`;
   await db(deleteQuery, [req.empId]);
   res.status(200).json({ message: 'Your account has been deleted' });
+});
+
+exports.subscribeNewLetter = catchAsync(async (req, res, next) => {
+  const { email, token } = req.body;
+  const newLetterSchema = Joi.object({
+    email: Joi.string().trim().email().required(),
+  });
+
+  const { error } = newLetterSchema.validate({ email });
+  if (error) return next(new AppError(error.message, 400));
+
+  let userId = 0;
+  if (token && token !== '') {
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    const { id } = payload;
+    userId = id;
+  }
+
+  const query = `INSERT INTO azst_newsletter_tbl (email, userId) VALUES(?,?)`;
+  await db(query, [email, userId]);
+
+  res.status(200).json({ message: 'subscription success' });
 });
