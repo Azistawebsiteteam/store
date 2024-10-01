@@ -147,10 +147,18 @@ exports.subscribeNewLetter = catchAsync(async (req, res, next) => {
   if (error) return next(new AppError(error.message, 400));
 
   let userId = 0;
+
   if (token && token !== '') {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
     const { id } = payload;
     userId = id;
+  }
+
+  const isExist = `SELECT email FROM azst_newsletter_tbl WHERE email = '${email}'`;
+  const [user] = await db(isExist);
+
+  if (user) {
+    return next(new AppError('already subscribed', 400));
   }
 
   const query = `INSERT INTO azst_newsletter_tbl (email, userId) VALUES(?,?)`;
@@ -158,3 +166,43 @@ exports.subscribeNewLetter = catchAsync(async (req, res, next) => {
 
   res.status(200).json({ message: 'subscription success' });
 });
+
+// exports.subscribeNewLetter = catchAsync(async (req, res, next) => {
+//   const { email, token } = req.body;
+
+//   // Validate email
+//   const newLetterSchema = Joi.object({
+//     email: Joi.string().trim().email().required(),
+//   });
+
+//   const { error } = newLetterSchema.validate({ email });
+//   if (error) return next(new AppError(error.message, 400));
+
+//   // Initialize userId as 0 (default)
+//   let userId = 0;
+
+//   // Verify token and extract userId if token exists
+//   if (token && token !== '') {
+//     const payload = jwt.verify(token, process.env.JWT_SECRET);
+//     const { id } = payload;
+//     userId = id;
+//   }
+
+//   // Combine the queries: check existence and insert if not exists
+//   const query = `
+//     INSERT INTO azst_newsletter_tbl (email, userId)
+//     SELECT ?, ?
+//     WHERE NOT EXISTS (SELECT 1 FROM azst_newsletter_tbl WHERE email = ?)
+//   `;
+
+//   // Execute the combined query
+//   const result = await db(query, [email, userId, email]);
+
+//   // Check if the subscription was successful
+//   if (result.affectedRows === 0) {
+//     return next(new AppError('already subscribed', 400));
+//   }
+
+//   // Success response
+//   res.status(200).json({ message: 'subscription success' });
+// });
