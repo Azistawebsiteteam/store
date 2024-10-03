@@ -6,7 +6,7 @@ const nodemailer = require('nodemailer');
 module.exports = class Email {
   constructor(user, url) {
     this.to = user.user_email;
-    this.firstname = user.name.split(' ')[0];
+    this.userName = user.user_name;
     this.url = url;
     this.from = process.env.EMIAL_FROM;
   }
@@ -30,7 +30,7 @@ module.exports = class Email {
 
   async send(subject, htmlContent) {
     const mailOptions = {
-      to: 'rajender.cheerneni@heterohealthcare.com',
+      to: process.env.EMAL_TO,
       from: this.from,
       subject,
       html: htmlContent,
@@ -56,10 +56,9 @@ module.exports = class Email {
   }
 
   async sendOrderStatus(orderId) {
-    console.log(orderId);
     await this.send(
       'orderStatus',
-      `Your order palced successfully , you can order status by ${orderId}`
+      `Your order palced successfully , you can check order status by ${orderId}`
     );
   }
 };

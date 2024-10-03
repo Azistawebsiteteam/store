@@ -11,71 +11,101 @@ const organizUserData = require('../Utils/userDateMadifier');
 
 exports.protect = (token_key) => {
   return catchAsync(async (req, res, next) => {
-    // Ensure to return the result of catchAsync
-
     if (!token_key) {
-      return next('please provide a token key', 500);
+      return next(new AppError('Please provide a token key', 500));
     }
-    let token;
 
-    if (
-      req.headers.authorization &&
-      req.headers.authorization.startsWith('Bearer')
-    ) {
-      token = req.headers.authorization.split(' ')[1];
-    }
-    // 1) Getting Token and Check is there or not available
+    // Extract token from headers
+    const token = extractToken(req.headers.authorization);
     if (!token) {
       return next(
         new AppError('You are not logged in! Please log in to get access.', 401)
       );
     }
-    // 2) check it is valid token or not
-    const payload = jwt.verify(token, token_key);
+
+    // Verify token and extract payload
+    let payload;
+    try {
+      payload = jwt.verify(token, token_key);
+    } catch (err) {
+      return next(new AppError('Invalid token. Please log in again.', 401));
+    }
+
     const { id } = payload;
 
-    // 3) check user active or not  or dleted account
-    let query = '';
-    if (token_key === process.env.JWT_SECRET) {
-      query = `SELECT * FROM azst_customers_tbl 
-                      WHERE azst_customer_id = ? AND azst_customer_status = 1`;
-    } else {
-      query = `SELECT * FROM azst_admin_details 
-                      WHERE azst_admin_details_admin_id = ? AND azst_admin_details_status = 1`;
-    }
+    // Determine the appropriate query based on token_key
+    const query = getUserQuery(token_key);
     const result = await db(query, [id]);
-    if (result.length <= 0)
+
+    if (result.length === 0) {
       return next(
         new AppError(
           'The user belonging to this token no longer exists. Login again.',
           401
         )
       );
+    }
+
     const user = result[0];
 
-    const userDetails = {
-      user_id: user.azst_customer_id || user.azst_admin_details_admin_id,
-      user_frist_name:
-        user.azst_customer_fname || user.azst_admin_details_fname,
-      user_last_name: user.azst_customer_lname || user.azst_admin_details_lname,
-      user_mobile: user.azst_customer_mobile || user.azst_admin_details_mobile,
-      user_email: user.azst_customer_email || user.azst_admin_details_email,
-      user_hno: user.azst_customer_hno || null,
-      user_area: user.azst_customer_area || null,
-      user_city: user.azst_customer_city || null,
-      user_district: user.azst_customer_district || null,
-      user_state: user.azst_customer_state || null,
-      user_country: user.azst_customer_country || null,
-      user_zip: user.azst_customer_zip || null,
-      user_role: user.azst_admin_details_type || null,
-    };
-
-    req.userDetails = userDetails;
-
-    req.empId = payload.id;
+    // Map user details based on token_key
+    req.userDetails = mapUserDetails(user, token_key);
+    req.empId = id;
 
     next();
   });
+};
+
+// Utility function to extract token from authorization header
+const extractToken = (authorization) => {
+  if (authorization && authorization.startsWith('Bearer')) {
+    return authorization.split(' ')[1];
+  }
+  return null;
+};
+
+// Utility function to get the appropriate user query based on the token_key
+const getUserQuery = (token_key) => {
+  if (token_key === process.env.JWT_SECRET) {
+    return `SELECT * FROM azst_customers_tbl 
+            WHERE azst_customer_id = ? AND azst_customer_status = 1`;
+  }
+  return `SELECT * FROM azst_admin_details 
+          WHERE azst_admin_details_admin_id = ? AND azst_admin_details_status = 1`;
+};
+
+// Utility function to map user details based on token_key
+const mapUserDetails = (user, token_key) => {
+  if (token_key === process.env.JWT_SECRET) {
+    return {
+      user_id: user.azst_customer_id,
+      user_name: `${user.azst_customer_fname} ${user.azst_customer_lname}`,
+      user_mobile: user.azst_customer_mobile,
+      user_email: user.azst_customer_email,
+      user_hno: user.azst_customer_hno,
+      user_area: user.azst_customer_area,
+      user_city: user.azst_customer_city,
+      user_district: user.azst_customer_district,
+      user_state: user.azst_customer_state,
+      user_country: user.azst_customer_country,
+      user_zip: user.azst_customer_zip,
+      user_role: user.azst_admin_details_type,
+    };
+  }
+  return {
+    user_id: user.azst_admin_details_admin_id,
+    user_name: `${user.azst_admin_details_fname} ${user.azst_admin_details_lname}`,
+    user_mobile: user.azst_admin_details_mobile,
+    user_email: user.azst_admin_details_email,
+    user_hno: null,
+    user_area: null,
+    user_city: null,
+    user_district: null,
+    user_state: null,
+    user_country: null,
+    user_zip: null,
+    user_role: null,
+  };
 };
 
 exports.resetPassword = catchAsync(async (req, res, next) => {
