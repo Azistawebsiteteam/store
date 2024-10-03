@@ -13,8 +13,9 @@ exports.checkExistingUser = catchAsync(async (req, res, next) => {
 
   const mobileNum = customerMobileNum || mailOrMobile;
   const email = customerEmail || mailOrMobile;
-  const checkQuery =
-    'SELECT azst_customer_id FROM  azst_customers_tbl  WHERE azst_customer_mobile = ? OR azst_customer_email = ? ';
+  const checkQuery = `SELECT azst_customer_id 
+                      FROM  azst_customers_tbl
+                      WHERE (azst_customer_mobile = ? OR azst_customer_email = ?) AND azst_customer_status = 1`;
 
   const result = await db(checkQuery, [mobileNum, email]);
 
@@ -23,6 +24,20 @@ exports.checkExistingUser = catchAsync(async (req, res, next) => {
 
   next();
 });
+
+const getCustomerName = (customerName) => {
+  // Split customer name into first and last name
+  let firstName = '';
+  let lastName = '';
+
+  if (customerName) {
+    const nameParts = customerName.trim().split(' ');
+    firstName = nameParts[0];
+    lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+  }
+
+  return { firstName, lastName };
+};
 
 exports.signup = catchAsync(async (req, res, next) => {
   const { mailOrMobile, customerName, password } = req.body;
@@ -44,8 +59,7 @@ exports.signup = catchAsync(async (req, res, next) => {
     email = mailOrMobile.toLowerCase();
   }
 
-  // Split customer name into first and last name
-  const [firstName = '', lastName = ''] = customerName.split(' ');
+  const { firstName = '', lastName = '' } = getCustomerName(customerName);
 
   const registerQuery = `
     INSERT INTO azst_customers_tbl (
@@ -79,32 +93,138 @@ exports.signup = catchAsync(async (req, res, next) => {
 });
 
 exports.mobileSignup = catchAsync(async (req, res, next) => {
-  req.reason = 'Registration';
-  next();
-});
-
-exports.mobileSignupInsert = catchAsync(async (req, res, next) => {
   const { mailOrMobile, customerName } = req.body;
 
-  const today = moment().format('YYYY-MM-DD HH:mm:ss');
-
-  const registerQuery = `INSERT INTO azst_customers_tbl (azst_customer_fname,azst_customer_lname,azst_customer_mobile,azst_customer_email,azst_customer_updatedon)
-                          VALUES(?,?,?,?,?)`;
-
-  let values = [];
   const isMobileNumber = /^[6-9]\d{9}$/.test(mailOrMobile);
-  const firstName = customerName ? customerName.split(' ')[0] : '';
-  const lastName = customerName ? customerName.split(' ')[1] : '';
+  let column = '';
   if (isMobileNumber) {
-    values = [firstName, lastName, mailOrMobile, '', today];
+    column = 'azst_customer_mobile';
   } else {
-    values = [firstName, lastName, '', mailOrMobile, today];
+    column = 'azst_customer_email';
+  }
+  const { firstName = '', lastName = '' } = getCustomerName(customerName);
+  const query = `INSERT INTO azst_customers_tbl (${column},azst_customer_fname,azst_customer_lname,azst_customer_status ) VALUES (?,?,?,?)`;
+  const result = await db(query, [mailOrMobile, firstName, lastName, 0]);
+
+  if (result.affectedRows > 0) {
+    req.reason = 'Registration';
+    const userDetails = { azst_customer_id: result.insertId };
+    req.userDetails = userDetails;
+    next();
+    return;
   }
 
-  const result = await db(registerQuery, values);
-  req.userDetails = { azst_customer_id: result.insertId };
-  next();
+  return next(AppError('opps something went wrong', 400));
 });
+
+exports.updateUserData = catchAsync(async (req, res, next) => {
+  const { mailOrMobile, customerName, password } = req.body;
+
+  // Validate inputs
+  if (!mailOrMobile || !password) {
+    return res
+      .status(400)
+      .json({ message: 'Email/Mobile and password are required.' });
+  }
+
+  // Hash the password
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  // Determine if input is mobile number or email
+  let mobileNum = null;
+  let email = null;
+
+  if (/^[6-9]\d{9}$/.test(mailOrMobile)) {
+    mobileNum = mailOrMobile;
+  } else if (/^\S+@\S+\.\S+$/.test(mailOrMobile)) {
+    email = mailOrMobile.toLowerCase();
+  } else {
+    return res
+      .status(400)
+      .json({ message: 'Invalid email or mobile number format.' });
+  }
+
+  const { firstName = '', lastName = '' } = getCustomerName(customerName);
+
+  // Construct dynamic update query
+  let updateFields = 'azst_customer_pwd = ?';
+  const values = [hashedPassword];
+
+  if (firstName) {
+    updateFields += ', azst_customer_fname = ?';
+    values.push(firstName);
+  }
+
+  if (lastName) {
+    updateFields += ', azst_customer_lname = ?';
+    values.push(lastName);
+  }
+
+  values.push(mobileNum, email);
+
+  const updateQuery = `
+    UPDATE azst_customers_tbl
+    SET ${updateFields}
+    WHERE azst_customer_mobile = ? OR azst_customer_email = ?`;
+
+  // Execute the database query
+  const updateResults = await db(updateQuery, values);
+
+  // Check if update was successful
+  if (updateResults.affectedRows === 0) {
+    return next(new AppError("Couldn't update user data", 400));
+  }
+
+  // Now, fetch the customer details for the updated row
+  const selectQuery = `
+    SELECT azst_customer_id, CONCAT(azst_customer_fname, ' ', azst_customer_lname) AS customerName
+    FROM azst_customers_tbl
+    WHERE azst_customer_mobile = ? OR azst_customer_email = ?  AND azst_customer_status = 1 `;
+
+  const [user] = await db(selectQuery, [mobileNum, email]);
+
+  if (!user) {
+    return next(new AppError('User not found after update.', 404));
+  }
+
+  // Generate JWT token
+  const token = createSendToken(user.azst_customer_id, process.env.JWT_SECRET);
+
+  // Send response
+  res.status(200).json({
+    jwtToken: token,
+    user_details: {
+      azst_customer_id: user.azst_customer_id,
+      azst_customer_name: user.customerName,
+      azst_customer_mobile: mobileNum,
+      azst_customer_email: email,
+    },
+    message: 'User data updated successfully!',
+  });
+});
+
+// exports.mobileSignupInsert = catchAsync(async (req, res, next) => {
+//   const { mailOrMobile, customerName } = req.body;
+
+//   const today = moment().format('YYYY-MM-DD HH:mm:ss');
+
+//   const registerQuery = `INSERT INTO azst_customers_tbl (azst_customer_fname,azst_customer_lname,azst_customer_mobile,azst_customer_email,azst_customer_updatedon)
+//                           VALUES(?,?,?,?,?)`;
+
+//   let values = [];
+//   const isMobileNumber = /^[6-9]\d{9}$/.test(mailOrMobile);
+//   const firstName = customerName ? customerName.split(' ')[0] : '';
+//   const lastName = customerName ? customerName.split(' ')[1] : '';
+//   if (isMobileNumber) {
+//     values = [firstName, lastName, mailOrMobile, '', today];
+//   } else {
+//     values = [firstName, lastName, '', mailOrMobile, today];
+//   }
+
+//   const result = await db(registerQuery, values);
+//   req.userDetails = { azst_customer_id: result.insertId };
+//   next();
+// });
 
 exports.otpSignupDetails = catchAsync(async (req, res, next) => {
   const { firstName, lastName, password, gender } = req.body;
@@ -166,43 +286,3 @@ exports.subscribeNewLetter = catchAsync(async (req, res, next) => {
 
   res.status(200).json({ message: 'subscription success' });
 });
-
-// exports.subscribeNewLetter = catchAsync(async (req, res, next) => {
-//   const { email, token } = req.body;
-
-//   // Validate email
-//   const newLetterSchema = Joi.object({
-//     email: Joi.string().trim().email().required(),
-//   });
-
-//   const { error } = newLetterSchema.validate({ email });
-//   if (error) return next(new AppError(error.message, 400));
-
-//   // Initialize userId as 0 (default)
-//   let userId = 0;
-
-//   // Verify token and extract userId if token exists
-//   if (token && token !== '') {
-//     const payload = jwt.verify(token, process.env.JWT_SECRET);
-//     const { id } = payload;
-//     userId = id;
-//   }
-
-//   // Combine the queries: check existence and insert if not exists
-//   const query = `
-//     INSERT INTO azst_newsletter_tbl (email, userId)
-//     SELECT ?, ?
-//     WHERE NOT EXISTS (SELECT 1 FROM azst_newsletter_tbl WHERE email = ?)
-//   `;
-
-//   // Execute the combined query
-//   const result = await db(query, [email, userId, email]);
-
-//   // Check if the subscription was successful
-//   if (result.affectedRows === 0) {
-//     return next(new AppError('already subscribed', 400));
-//   }
-
-//   // Success response
-//   res.status(200).json({ message: 'subscription success' });
-// });

@@ -5,6 +5,8 @@ const organizCustomerData = (customer) => {
     azst_customer_id: customer.azst_customer_id,
     azst_customer_fname: customer.azst_customer_fname,
     azst_customer_lname: customer.azst_customer_lname,
+    azst_customer_name:
+      customer.azst_customer_fname + ' ' + customer.azst_customer_lname,
     azst_customer_mobile: customer.azst_customer_mobile,
     azst_customer_email: customer.azst_customer_email,
     azst_customer_hno: customer.azst_customer_hno,

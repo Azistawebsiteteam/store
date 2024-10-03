@@ -75,7 +75,7 @@ const sendingOTPEmail = (mail, otp) => {
 exports.sendOtp = catchAsync(async (req, res, next) => {
   const { mailOrMobile } = req.body;
   const otpReason = req.reason;
-  const customerId = req.userDetails?.azst_customer_id || 0;
+  const customerId = req.userDetails.azst_customer_id ?? 0;
 
   const notvalidate = varifyInput(mailOrMobile);
   if (notvalidate) {
@@ -112,7 +112,7 @@ exports.sendOtp = catchAsync(async (req, res, next) => {
 
 exports.checkOtpExisting = catchAsync(async (req, res, next) => {
   const { mailOrMobile, otp } = req.body;
-  const { azst_customer_id } = req.userDetails || 0;
+  const { azst_customer_id = 0 } = req.userDetails ?? {};
 
   const notvalidate = varifyInput(mailOrMobile);
 
@@ -121,7 +121,7 @@ exports.checkOtpExisting = catchAsync(async (req, res, next) => {
   }
 
   const getOtpQuery = `SELECT azst_otp_verification_id, azst_otp_verification_value , azst_otp_verification_reason,
-                          DATE_FORMAT(azst_otp_verification_createdon, '%Y-%m-%d %H:%i:%s') AS createdTime
+                         azst_otp_verification_userid, DATE_FORMAT(azst_otp_verification_createdon, '%Y-%m-%d %H:%i:%s') AS createdTime
                         FROM azst_otp_verification
                         WHERE azst_otp_verification_mobile=? AND azst_otp_verification_status= 1 
                         ORDER BY azst_otp_verification_createdon DESC LIMIT 1`;
@@ -135,6 +135,7 @@ exports.checkOtpExisting = catchAsync(async (req, res, next) => {
   const {
     azst_otp_verification_id,
     azst_otp_verification_value,
+    azst_otp_verification_userid,
     createdTime,
     azst_otp_verification_reason,
   } = result[0];
@@ -143,11 +144,15 @@ exports.checkOtpExisting = catchAsync(async (req, res, next) => {
     .add(5, 'minutes')
     .isBefore(moment());
   // verify OTP is Expires
+
+  const userId =
+    azst_customer_id === 0 ? azst_otp_verification_userid : azst_customer_id;
   if (isExpired) {
     const updateOtpSDetais = `UPDATE azst_otp_verification
-                            SET azst_otp_verification_userid = ?, azst_otp_verification_status = ?
-                            WHERE azst_otp_verification_id = ?`;
-    const otpValues = [azst_customer_id, 0, azst_otp_verification_id];
+                              SET azst_otp_verification_userid = ?, azst_otp_verification_status = ?
+                              WHERE azst_otp_verification_id = ?`;
+
+    const otpValues = [userId, 0, azst_otp_verification_id];
     await db(updateOtpSDetais, otpValues);
     return next(new AppError('OTP expired or does not exist', 400));
   }
@@ -160,18 +165,20 @@ exports.checkOtpExisting = catchAsync(async (req, res, next) => {
     verificationId: azst_otp_verification_id,
     reason: azst_otp_verification_reason,
   };
+
+  req.userDetails = { azst_customer_id: userId };
   next();
 });
 
 exports.updateOtpDetails = catchAsync(async (req, res, next) => {
   const { verificationId, reason } = req.otpDetails;
+  const { mailOrMobile } = req.body;
+  let { azst_customer_id } = req.userDetails;
 
   // if the reason is forgot password go to authcontroll and update the password with the new password
   if (reason === 'forgot password') {
     return next();
   }
-
-  let azst_customer_id = req.userDetails?.azst_customer_id ?? 0;
 
   const updateOtpSDetais = `UPDATE azst_otp_verification
                             SET azst_otp_verification_userid = ?, azst_otp_verification_status = ?
@@ -182,11 +189,16 @@ exports.updateOtpDetails = catchAsync(async (req, res, next) => {
   await db(updateOtpSDetais, otpValues);
   const key = process.env.JWT_SECRET;
 
-  // if the Reason is Registration no need to send the Token
+  if (reason === 'Registration') {
+    const query = `UPDATE azst_customers_tbl SET azst_customer_status = 1 
+                    WHERE azst_customer_id =  ? `;
+    await db(query, [azst_customer_id]);
+  }
+
   const jwtToken = createSendToken(azst_customer_id, key);
-  //reason === 'Registration' ? '' :
-  // if the reason is Login create a login log here
-  if (reason === 'Login') {
+
+  // if the reason is Login OR Registration create a login log here
+  if (reason === 'Login' || reason === 'Registration') {
     enterLoginLogs(azst_customer_id, jwtToken);
   }
 
