@@ -23,6 +23,7 @@ router.post(
 
 router.post(
   '/register/otp',
+  registerCtrl.validateMobileSingup,
   registerCtrl.checkExistingUser,
   registerCtrl.mobileSignup,
   otpCtrl.sendOtp

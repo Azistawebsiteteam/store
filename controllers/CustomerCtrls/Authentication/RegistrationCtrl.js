@@ -92,6 +92,17 @@ exports.signup = catchAsync(async (req, res, next) => {
   });
 });
 
+const mobileSignupSchema = Joi.object({
+  mailOrMobile: Joi.string().required(),
+  customerName: Joi.string().optional().allow(''),
+});
+
+exports.validateMobileSingup = catchAsync(async (req, res, next) => {
+  const { error } = mobileSignupSchema.validate(req.body);
+  if (error) return next(new AppError(error.message, 400));
+  next();
+});
+
 exports.mobileSignup = catchAsync(async (req, res, next) => {
   const { mailOrMobile, customerName } = req.body;
 
