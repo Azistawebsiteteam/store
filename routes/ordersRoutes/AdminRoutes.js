@@ -11,6 +11,7 @@ router.use(authCtrl.protect(key));
 router.use(multer().any());
 
 router.post('/all', ordersCtrl.getAllOrdrs);
+router.post('/stats', ordersCtrl.getOrderStatics);
 router.post('/confirm', ordersCtrl.confirmOrder, ordersCtrl.updateInventory);
 router.post('/delivery', ordersCtrl.deliveryOrder);
 router.post('/order/details', ordersCtrl.getOrderDetails);

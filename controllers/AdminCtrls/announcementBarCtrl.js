@@ -171,3 +171,22 @@ exports.changeAnnoucementViewStatus = catchAsync(async (req, res, next) => {
 
   next(new AppError('oops something went wrong', 400));
 });
+
+exports.deleteAnnoucement = catchAsync(async (req, res, next) => {
+  const { announcementId } = req.body;
+  if (!announcementId)
+    return next(new AppError('announcementId is required', 404));
+
+  const deleteQuery = `DELETE FROM azst_announcements_tbl  WHERE announcement_id = ?`;
+
+  // Execute the query
+  const result = await db(deleteQuery, [announcementId]);
+
+  // Check if a row was actually deleted
+  if (result.affectedRows === 0) {
+    return next(new AppError('Announcement not found', 404));
+  }
+
+  // Return success response
+  res.status(200).json({ message: 'Announcement deleted successfully' });
+});

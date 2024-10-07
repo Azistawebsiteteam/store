@@ -5,6 +5,75 @@ const moment = require('moment');
 const catchAsync = require('../../Utils/catchAsync');
 const AppError = require('../../Utils/appError');
 
+exports.getOrderStatics = catchAsync(async (req, res, next) => {
+  const { formDays } = req.body;
+
+  // Validate input using Joi
+  const schema = Joi.object({
+    formDays: Joi.number().min(0).max(30).required(),
+  });
+
+  const { error } = schema.validate({ formDays });
+  if (error) return next(new AppError(error.message, 400));
+
+  // Calculate the form date based on the input formDays
+  const formDate = moment().subtract(formDays, 'days').format('YYYY-MM-DD');
+
+  // SQL queries to fetch order statistics
+  const ordersQuery = `
+    SELECT
+        COUNT(DISTINCT O.azst_orders_id) AS TotalOrders,
+        COUNT(os.azst_ordersummary_id) AS TotalItems
+    FROM
+        azst_orders_tbl O
+    LEFT JOIN
+        azst_ordersummary_tbl os
+    ON
+        O.azst_orders_id = os.azst_orders_id
+    WHERE
+        O.azst_orders_created_on >= ?
+  `;
+
+  const returnsQuery = `
+    SELECT COUNT(*) AS ReturnItems
+    FROM azst_ordersummary_tbl os
+    WHERE os.azst_product_is_returned = 1
+    AND os.azst_product_return_date >= ?
+  `;
+
+  const fulfillmentOrdersQuery = `
+    SELECT COUNT(*) AS FullFilOrders
+    FROM azst_orders_tbl O
+    WHERE O.azst_orders_fulfillment_status = 1
+    AND O.azst_orders_fulfilled_on >= ?
+  `;
+
+  const deliveryOrdersQuery = `
+    SELECT COUNT(*) AS deliveryOrders
+    FROM azst_orders_tbl O
+    WHERE O.azst_orders_delivery_status = 1
+    AND O.azst_orders_delivery_on >= ?
+  `;
+
+  // Use Promise.all to execute the database queries concurrently
+  const [results, returnOrders, fulfillmentOrders, deliveryOrders] =
+    await Promise.all([
+      db(ordersQuery, [formDate]),
+      db(returnsQuery, [formDate]),
+      db(fulfillmentOrdersQuery, [formDate]),
+      db(deliveryOrdersQuery, [formDate]),
+    ]);
+
+  // Send the result as a JSON response
+  res.status(200).json({
+    TotalOrders: results[0].TotalOrders ?? 0,
+    TotalItems: results[0].TotalItems ?? 0,
+    ReturnItems: returnOrders[0].ReturnItems ?? 0,
+    FullFilOrders: fulfillmentOrders[0].FullFilOrders ?? 0,
+    deliveryOrders: deliveryOrders[0].deliveryOrders ?? 0,
+  });
+});
+
 exports.getAllOrdrs = catchAsync(async (req, res, next) => {
   const { customerId } = req.body;
 

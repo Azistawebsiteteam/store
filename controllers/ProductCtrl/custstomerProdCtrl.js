@@ -217,7 +217,7 @@ exports.getProductsSerach = catchAsync(async (req, res, next) => {
     return;
   }
 
-  const getProducts = `SELECT product_title,image_src,price,product_main_title,product_url_title
+  const getProducts = `SELECT product_title,image_src,compare_at_price,price,product_main_title,product_url_title
                         FROM azst_products
                         WHERE (product_title LIKE '%${searchText}%' OR 
                             product_category LIKE '%${searchText}%' OR 

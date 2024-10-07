@@ -16,8 +16,6 @@ router.post('/add', announcementCtrl.addAnnoucement);
 router.post('/getdetails', announcementCtrl.getAnnouncementDetails);
 router.post('/update', announcementCtrl.updateAnnoucement);
 router.post('/viewstatus', announcementCtrl.changeAnnoucementViewStatus);
-
-// router.use(brandCtrl.isBrandExit);
-// router.route('/').post(brandCtrl.getbrand).patch(brandCtrl.deleteBrand);
+router.post('/delete', announcementCtrl.deleteAnnoucement);
 
 module.exports = router;

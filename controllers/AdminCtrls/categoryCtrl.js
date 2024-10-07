@@ -134,33 +134,33 @@ exports.getSubcategories = catchAsync(async (req, res, next) => {
 // Get a specific category with its subcategories
 exports.getCategory = catchAsync(async (req, res, next) => {
   const { categoryId } = req.body;
-
-  const query = `
-    SELECT 
-      c.azst_category_id,
-      c.azst_category_name,
-      c.azst_category_img,
-      c.azst_category_description,
-      JSON_ARRAYAGG(
-        JSON_OBJECT(
-          'azst_sub_category_id', s.azst_sub_category_id,
-          'azst_sub_category_name', s.azst_sub_category_name
-        )
-      ) AS azst_subCategories
-    FROM 
-      azst_category_tbl c
-    LEFT JOIN 
-      azst_sub_category_tbl s
-    ON 
-      c.azst_category_id = s.azst_category_id
-    WHERE 
-      c.azst_category_id = ? 
-      AND c.azst_category_status = 1
-      AND (s.azst_sub_category_status = 1 OR s.azst_sub_category_status IS NULL)
-    GROUP BY
-      c.azst_category_id;
-  `;
-
+  const query = `SELECT 
+  c.azst_category_id,
+  c.azst_category_name,
+  c.azst_category_img,
+  c.azst_category_description,
+  CASE 
+    WHEN COUNT(s.azst_sub_category_id) > 0 THEN JSON_ARRAYAGG(
+      JSON_OBJECT(
+        'azst_sub_category_id', s.azst_sub_category_id,
+        'azst_sub_category_name', s.azst_sub_category_name
+      )
+    )
+    ELSE JSON_ARRAY()
+  END AS azst_subCategories
+FROM 
+  azst_category_tbl c
+LEFT JOIN 
+  azst_sub_category_tbl s
+ON 
+  c.azst_category_id = s.azst_category_id
+WHERE 
+  c.azst_category_id = ? 
+  AND c.azst_category_status = 1
+  AND (s.azst_sub_category_status = 1 OR s.azst_sub_category_status IS NULL)
+GROUP BY
+  c.azst_category_id;
+`;
   const [category] = await db(query, [categoryId]);
 
   if (!category) {
