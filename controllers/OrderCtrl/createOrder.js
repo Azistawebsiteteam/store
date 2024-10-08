@@ -70,7 +70,7 @@ exports.placeOrder = catchAsync(async (req, res, next) => {
 
   try {
     await startTransaction(); // Start transaction
-    console.log(req.userDetails);
+
     const { user_id, user_email } = req.userDetails;
 
     if (
@@ -153,7 +153,7 @@ exports.placeOrder = catchAsync(async (req, res, next) => {
     await exports.orderSummary(req, res, next);
     await exports.updateDiscountUsageOfCustomer(req, res, next);
 
-    await new Email(req.userDetails).sendOrderStatus(orderId);
+    //await new Email(req.userDetails).sendOrderStatus(orderId);
     await commitTransaction(); // Commit transaction
 
     res.status(200).json({ orderId, message: 'Order placed successfully' });
