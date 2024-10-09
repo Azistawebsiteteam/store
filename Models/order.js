@@ -52,12 +52,6 @@ const orderSchema = Joi.object({
           then: Joi.number().min(1).required(),
           otherwise: Joi.any().optional().allow(null), // Allows null or any value when 'is_varaints_aval' is 0
         }),
-
-        offer_percentage: Joi.alternatives().conditional('is_varaints_aval', {
-          is: 1,
-          then: Joi.number().required(),
-          otherwise: Joi.any().optional().allow(null), // Allows null or any value when 'is_varaints_aval' is 0
-        }),
       })
     )
     .required(),

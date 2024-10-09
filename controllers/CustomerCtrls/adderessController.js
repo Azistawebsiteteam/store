@@ -79,7 +79,6 @@ exports.createNewAddress = catchAsync(async (req, res, next) => {
     customerMobileNum,
     customerEmail,
     housenumber,
-
     district,
     state,
     country,

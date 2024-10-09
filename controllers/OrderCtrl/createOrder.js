@@ -241,17 +241,19 @@ exports.orderSummary = async (req, res, next) => {
       azst_cart_product_id,
       azst_cart_variant_id,
       azst_cart_quantity,
+      is_varaints_aval,
       price,
       azst_cart_id,
     } = product;
 
+    const amount = parseInt(is_varaints_aval) ? price : offer_price;
     const values = [
       orderId,
       azst_cart_product_id,
       azst_cart_variant_id,
       azst_cart_quantity,
       'POSTAL',
-      price,
+      amount,
     ];
 
     const result = await dbPool.query(insertQuery, values);

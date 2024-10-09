@@ -2,10 +2,10 @@ const Joi = require('joi');
 const AppError = require('../Utils/appError');
 
 const profileSchema = Joi.object({
-  firstName: Joi.string().min(3).max(20).required().messages({
+  firstName: Joi.string().min(2).max(20).required().messages({
     'string.pattern.base': 'Customer FirstName is required',
   }),
-  lastName: Joi.string().min(3).max(20).required().messages({
+  lastName: Joi.string().min(2).max(20).required().messages({
     'string.pattern.base': 'Customer LastName is required',
   }),
   mobileNum: Joi.string()
@@ -29,12 +29,6 @@ const profileSchema = Joi.object({
   gender: Joi.string().required(),
   dob: Joi.string().required(),
 });
-
-// area: Joi.string().trim().required(),
-// city: Joi.string().trim().required(),
-// customerNote: Joi.string().trim().allow(''),
-// taxExempts: Joi.string().valid('Yes', 'No').trim(),
-// tags: Joi.string().trim().allow(''),
 
 const profileValidation = async (req, res, next) => {
   const payload = req.body;
