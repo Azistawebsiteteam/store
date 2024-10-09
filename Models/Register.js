@@ -2,10 +2,10 @@ const Joi = require('joi');
 const AppError = require('../Utils/appError');
 
 const registerSchema = Joi.object({
-  customerFirstName: Joi.string().min(3).max(20).required().messages({
+  customerFirstName: Joi.string().min(1).max(20).required().messages({
     'string.pattern.base': 'Customer FirstName is required',
   }),
-  customerLastName: Joi.string().min(3).max(20).required().messages({
+  customerLastName: Joi.string().min(1).max(20).required().messages({
     'string.pattern.base': 'Customer LastName is required',
   }),
   customerMobileNum: Joi.string()
@@ -19,11 +19,24 @@ const registerSchema = Joi.object({
     .pattern(
       /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,16}$/
     )
-    .required()
+    .optional()
     .messages({
       'string.pattern.base':
         'Password must have at least 8 characters, one uppercase letter, one lowercase letter, one digit, and one special character.',
     }),
+  DOB: Joi.date().iso().optional().messages({
+    'date.format': `Please provide a valid Date of Birth in the format 'YYYY-MM-DD'.`,
+    'date.base': `The Date of Birth you entered is not valid. Please use the format 'YYYY-MM-DD'.`,
+  }),
+  gender: Joi.string().optional().valid('Male', 'Female'),
+  wtsupNum: Joi.string()
+    .pattern(/^[6-9]\d{9}$/)
+    .optional()
+    .messages({
+      'string.pattern.base': 'Invalid whatsApp  Number',
+    }),
+  notes: Joi.string().optional(),
+  tags: Joi.string().optional(),
 });
 
 const userValidation = async (req, res, next) => {

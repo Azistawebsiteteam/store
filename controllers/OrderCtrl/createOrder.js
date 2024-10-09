@@ -242,8 +242,11 @@ exports.orderSummary = async (req, res, next) => {
       azst_cart_variant_id,
       azst_cart_quantity,
       is_varaints_aval,
-      price,
       azst_cart_id,
+      price,
+      product_compare_at_price,
+      compare_at_price,
+      offer_price,
     } = product;
 
     const amount = parseInt(is_varaints_aval) ? price : offer_price;

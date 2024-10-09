@@ -3,7 +3,6 @@ const db = require('../Database/dbconfig');
 const catchAsync = require('../Utils/catchAsync');
 const AppError = require('../Utils/appError');
 
-// callBack Api's Start
 
 exports.createCallBack = catchAsync(async (req, res, next) => {
   const {

@@ -40,38 +40,42 @@ const getCustomerName = (customerName) => {
 };
 
 exports.signup = catchAsync(async (req, res, next) => {
-  const { mailOrMobile, customerName, password } = req.body;
-
-  // Validate inputs
-  if (!mailOrMobile || !customerName || !password) {
-    return res.status(400).json({ message: 'All fields are required.' });
-  }
+  const {
+    customerMobileNum,
+    customerEmail,
+    customerFirstName,
+    customerLastName,
+    customerPassword,
+    DOB,
+    gender,
+    wtsupNum,
+    notes,
+    tags,
+  } = req.body;
 
   // Hash the password
-  const hashedPassword = await bcrypt.hash(password, 10);
-
-  // Determine if input is mobile number or email
-  let mobileNum = '';
-  let email = '';
-  if (/^[6-9]\d{9}$/.test(mailOrMobile)) {
-    mobileNum = mailOrMobile;
-  } else {
-    email = mailOrMobile.toLowerCase();
+  hashedPassword = '';
+  if (customerPassword) {
+    hashedPassword = await bcrypt.hash(customerPassword, 10);
   }
 
-  const { firstName = '', lastName = '' } = getCustomerName(customerName);
+  const registerQuery = `INSERT INTO azst_customers_tbl (azst_customer_fname,azst_customer_lname,
+                          azst_customer_mobile,azst_customer_email,azst_customer_pwd,azst_customer_DOB,
+                          azst_customer_wtsup_num,azst_customer_gender,azst_customer_tags,azst_customer_note)
+                        VALUES (?, ?, ?, ?, ?,?, ?, ?, ?, ?) `;
 
-  const registerQuery = `
-    INSERT INTO azst_customers_tbl (
-      azst_customer_fname,
-      azst_customer_lname,
-      azst_customer_mobile,
-      azst_customer_email,
-      azst_customer_pwd
-    ) VALUES (?, ?, ?, ?, ?)
-  `;
-
-  const values = [firstName, lastName, mobileNum, email, hashedPassword];
+  const values = [
+    customerFirstName,
+    customerLastName,
+    customerMobileNum,
+    customerEmail,
+    hashedPassword,
+    DOB,
+    wtsupNum,
+    gender,
+    tags,
+    notes,
+  ];
 
   // Execute the database query
   const results = await db(registerQuery, values);
@@ -84,9 +88,9 @@ exports.signup = catchAsync(async (req, res, next) => {
     jwtToken: token,
     user_details: {
       azst_customer_id: results.insertId,
-      azst_customer_name: customerName,
-      azst_customer_mobile: mobileNum,
-      azst_customer_email: email,
+      azst_customer_name: customerFirstName + ' ' + customerLastName,
+      azst_customer_mobile: customerMobileNum,
+      azst_customer_email: customerEmail,
     },
     message: 'User registered successfully!',
   });
@@ -213,29 +217,6 @@ exports.updateUserData = catchAsync(async (req, res, next) => {
     message: 'User data updated successfully!',
   });
 });
-
-// exports.mobileSignupInsert = catchAsync(async (req, res, next) => {
-//   const { mailOrMobile, customerName } = req.body;
-
-//   const today = moment().format('YYYY-MM-DD HH:mm:ss');
-
-//   const registerQuery = `INSERT INTO azst_customers_tbl (azst_customer_fname,azst_customer_lname,azst_customer_mobile,azst_customer_email,azst_customer_updatedon)
-//                           VALUES(?,?,?,?,?)`;
-
-//   let values = [];
-//   const isMobileNumber = /^[6-9]\d{9}$/.test(mailOrMobile);
-//   const firstName = customerName ? customerName.split(' ')[0] : '';
-//   const lastName = customerName ? customerName.split(' ')[1] : '';
-//   if (isMobileNumber) {
-//     values = [firstName, lastName, mailOrMobile, '', today];
-//   } else {
-//     values = [firstName, lastName, '', mailOrMobile, today];
-//   }
-
-//   const result = await db(registerQuery, values);
-//   req.userDetails = { azst_customer_id: result.insertId };
-//   next();
-// });
 
 exports.otpSignupDetails = catchAsync(async (req, res, next) => {
   const { firstName, lastName, password, gender } = req.body;

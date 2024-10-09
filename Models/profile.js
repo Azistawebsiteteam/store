@@ -27,7 +27,10 @@ const profileSchema = Joi.object({
   address2: Joi.string().trim().allow(''),
   marketingSmsAccept: Joi.boolean(),
   gender: Joi.string().required(),
-  dob: Joi.string().required(),
+  dob: Joi.date().iso().required().messages({
+    'date.format': `Please provide a valid Date of Birth in the format 'YYYY-MM-DD'.`,
+    'date.base': `The Date of Birth you entered is not valid. Please use the format 'YYYY-MM-DD'.`,
+  }),
 });
 
 const profileValidation = async (req, res, next) => {
