@@ -257,7 +257,7 @@ const confirmSchema = Joi.object({
   inventoryId: Joi.string().when('orderStatus', {
     is: 1, // When orderStatus is 1
     then: Joi.required(), // inventoryId is required
-    otherwise: Joi.optional(), // Otherwise, it's optional
+    otherwise: Joi.optional().allow('', null), // Otherwise, it's optional
   }),
 });
 
