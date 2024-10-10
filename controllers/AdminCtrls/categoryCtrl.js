@@ -134,6 +134,7 @@ exports.getSubcategories = catchAsync(async (req, res, next) => {
 // Get a specific category with its subcategories
 exports.getCategory = catchAsync(async (req, res, next) => {
   const { categoryId } = req.body;
+
   const query = `SELECT 
   c.azst_category_id,
   c.azst_category_name,
@@ -153,14 +154,15 @@ FROM
 LEFT JOIN 
   azst_sub_category_tbl s
 ON 
-  c.azst_category_id = s.azst_category_id
+  c.azst_category_id = s.azst_category_id AND s.azst_sub_category_status = 1 
 WHERE 
   c.azst_category_id = ? 
   AND c.azst_category_status = 1
-  AND (s.azst_sub_category_status = 1 OR s.azst_sub_category_status IS NULL)
+ 
 GROUP BY
   c.azst_category_id;
 `;
+
   const [category] = await db(query, [categoryId]);
 
   if (!category) {

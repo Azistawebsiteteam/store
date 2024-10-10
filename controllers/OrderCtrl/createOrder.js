@@ -1,6 +1,10 @@
+const moment = require('moment');
 const { dbPool } = require('../../Database/dbPool');
+
 const AppError = require('../../Utils/appError');
 const catchAsync = require('../../Utils/catchAsync');
+const getEstimateDates = require('../../Utils/estimateDate');
+
 const Email = require('../../Utils/email');
 const razorpayInstance = require('../../Utils/razorpayInstance');
 
@@ -173,6 +177,27 @@ exports.placeOrder = catchAsync(async (req, res, next) => {
   }
 });
 
+const getExpectedDate = async (req, res, next) => {
+  try {
+    const { addressId } = req.body;
+    const query = `SELECT azst_customer_adressbook_zip FROM azst_customer_adressbook WHERE azst_customer_adressbook_id = ?`;
+    const [address] = await dbPool.query(query, [addressId]);
+
+    if (!address || address.length === 0) {
+      throw new AppError('Address not found', 400);
+    }
+
+    const pincode = address[0].azst_customer_adressbook_zip;
+
+    const dates = await getEstimateDates(pincode);
+
+    // Returning the expected date
+    return dates.expectedDateto;
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Insert order info
 exports.orderInfo = async (req, res, next) => {
   const { paymentData, addressId, isBillingAdsame, shippingCharge } = req.body;
@@ -185,6 +210,8 @@ exports.orderInfo = async (req, res, next) => {
 
   const { notes = '', noteAttributes = '' } = paymentData;
 
+  const expectedDate = await getExpectedDate(req, res, next);
+  const expected = moment(expectedDate).format('YYYY-MM-DD');
   const query = `
     INSERT INTO azst_orderinfo_tbl (
       azst_orders_id,
@@ -194,8 +221,9 @@ exports.orderInfo = async (req, res, next) => {
       azst_orderinfo_note_attributes,
       azst_orderinfo_shippingtype,
       azst_orderinfo_shpping_amount,
-      azst_orderinfo_billing_adrs_issame
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      azst_orderinfo_billing_adrs_issame,
+      azst_order_exptd_delivery_on
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?,?)
   `;
 
   const shippingType = shippingCharge > 0 ? 'paid shipping' : 'free shipping';
@@ -208,6 +236,7 @@ exports.orderInfo = async (req, res, next) => {
     shippingType,
     shippingCharge,
     isBillingAdsame,
+    expected,
   ];
 
   await dbPool.query(query, values);
@@ -249,7 +278,7 @@ exports.orderSummary = async (req, res, next) => {
       offer_price,
     } = product;
 
-    const amount = parseInt(is_varaints_aval) ? price : offer_price;
+    const amount = parseInt(is_varaints_aval) === 0 ? price : offer_price;
     const values = [
       orderId,
       azst_cart_product_id,

@@ -1,9 +1,7 @@
-const axios = require('axios');
 const Joi = require('joi');
-const moment = require('moment');
-
 const db = require('../../Database/dbconfig');
 
+const getEstimateDates = require('../../Utils/estimateDate');
 const catchAsync = require('../../Utils/catchAsync');
 const AppError = require('../../Utils/appError');
 
@@ -21,40 +19,8 @@ exports.getEstimateDate = catchAsync(async (req, res, next) => {
 
   const { error } = pinocdeSchema.validate(req.body);
   if (error) return next(new AppError(error.message, 400));
-
-  const response = await axios.get(
-    `https://api.postalpincode.in/pincode/${pincode}`
-  );
-
-  const { data } = response;
-  const apiData = data[0];
-  const { Status, Message, PostOffice } = apiData;
-
-  if (Status !== 'Success')
-    return next(new AppError(`Invalid Pincode (or) ${Message}`, 400));
-
-  if (!PostOffice)
-    return next(new AppError(`Invalid Pincode (or) ${Message}`, 400));
-
-  const { State } = PostOffice[0];
-
-  const query =
-    'select azst_pin_days_number from  azst_pincode_no_of_days  Where azst_pin_days_state = ?';
-
-  const result = await db(query, [State]);
-
-  if (result.length === 0)
-    return next(new AppError('Please Enter a valid Pincode Number'));
-  const noOfDays = result[0].azst_pin_days_number;
-
-  const expectedDateFrom = moment()
-    .add(noOfDays, 'days')
-    .format('DD MMM, YYYY');
-  const expectedDateto = moment()
-    .add(10 + noOfDays, 'days')
-    .format('DD MMM, YYYY');
-
-  res.status(200).json({ expectedDateFrom, expectedDateto });
+  const dates = await getEstimateDates(pincode);
+  res.status(200).json(dates);
 });
 
 const productDetailsQuery = `JSON_ARRAYAGG(
