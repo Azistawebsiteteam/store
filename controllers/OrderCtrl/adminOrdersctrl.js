@@ -335,6 +335,9 @@ exports.updateInventory = catchAsync(async (req, res, next) => {
     ]);
   }
 
+  const inventoryQuery = `UPDATE azst_orderinfo_tbl SET azst_order_ship_from = ? WHERE azst_orders_id = ?`;
+  await db(inventoryQuery, [inventoryId, orderId]);
+
   // Step 4: Send a response back after inventory update is successful
   res.status(200).json({ message: 'Order status updated' });
 });
