@@ -153,7 +153,8 @@ exports.addProduct = catchAsync(async (req, res, next) => {
   // If there are variants, update the price and compare price
   if (parsedVariants.length > 0) {
     price = getPricess(parsedVariants, 'offer_price');
-    comparePrice = getPricess(parsedVariants, 'comparePrice');
+    const compareAtPrice = getPricess(parsedVariants, 'comparePrice');
+    comparePrice = compareAtPrice === 'Rs. 0' ? price : compareAtPrice;
   }
 
   const urlTitle = productTitle.replace(/ /g, '-');

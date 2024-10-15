@@ -344,8 +344,10 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
   // If there are variants, update the price and compare price
   if (parsedVariants.length > 0) {
     price = getPricess(parsedVariants, 'offer_price');
-    comparePrice = getPricess(parsedVariants, 'comparePrice');
+    const compareAtPrice = getPricess(parsedVariants, 'comparePrice');
+    comparePrice = compareAtPrice === 'Rs. 0' ? price : compareAtPrice;
   }
+
   const urlTitle = productTitle.replace(/ /g, '-');
   const inventory = !variantsThere ? JSON.parse(inventoryInfo) : [];
 
@@ -693,7 +695,6 @@ exports.variantUpdate = catchAsync(async (req, res, next) => {
                  WHERE id = ? `;
 
   await db(query, values);
-  console.log(variantId, 'variant');
 
   updateProductPrices(variantId, offer_price, effectiveComparePrice);
 
