@@ -60,7 +60,7 @@ exports.storeImage = catchAsync(async (req, res, next) => {
 
 exports.updateImage = catchAsync(async (req, res, next) => {
   if (!req.file) {
-    req.body.image = req.popup.popup_image;
+    req.body.popupImage = req.popup.popup_image;
     return next();
   }
   const imagePath = `Uploads/PopupImages/${req.popup.popup_image}`;
