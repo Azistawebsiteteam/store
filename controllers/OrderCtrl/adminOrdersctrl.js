@@ -253,7 +253,7 @@ exports.getOrderDetails = catchAsync(async (req, res, next) => {
 
 const confirmSchema = Joi.object({
   orderId: Joi.string().min(1).max(20).required(),
-  orderStatus: Joi.number().required().valid(0, 1),
+  orderStatus: Joi.number().required().valid(1, 2),
   inventoryId: Joi.string().when('orderStatus', {
     is: 1, // When orderStatus is 1
     then: Joi.required(), // inventoryId is required
@@ -270,22 +270,22 @@ exports.confirmOrder = catchAsync(async (req, res, next) => {
   const time = moment().format('YYYY-MM-DD HH:mm:ss');
 
   // Construct the SQL fields based on the orderStatus
-  const orderstatus = orderStatus
-    ? 'azst_orders_confirm_status = 1'
-    : 'azst_orders_status = 0';
-  const orderUpdateBy = orderStatus
-    ? 'azst_orders_confirm_by = ?'
-    : 'azst_orders_cancelled_by = ?';
-  const orderUpdatetime = orderStatus
-    ? 'azst_orders_confirm_on = ?'
-    : 'azst_orders_cancelled_on = ?';
+
+  const orderUpdateBy =
+    orderStatus === 1
+      ? 'azst_orders_confirm_by = ?'
+      : 'azst_orders_cancelled_by = ?';
+  const orderUpdatetime =
+    orderStatus === 1
+      ? 'azst_orders_confirm_on = ?'
+      : 'azst_orders_cancelled_on = ?';
 
   // Construct the full SQL query
-  const query = `UPDATE azst_orders_tbl SET ${orderstatus}, ${orderUpdateBy}, ${orderUpdatetime}
+  const query = `UPDATE azst_orders_tbl SET azst_orders_confirm_status = ?, ${orderUpdateBy}, ${orderUpdatetime}
                  WHERE azst_orders_id = ?`;
 
   // Construct the values array in the correct order
-  const values = [req.empId, time, orderId];
+  const values = [orderStatus, req.empId, time, orderId];
 
   const result = await db(query, values);
 
@@ -298,7 +298,6 @@ exports.confirmOrder = catchAsync(async (req, res, next) => {
       return res.status(200).json({ message: 'Order status updated' });
     }
   }
-
   return next(new AppError('Something went wrong', 400));
 });
 
