@@ -75,30 +75,6 @@ exports.disableCustomer = catchAsync(async (req, res, next) => {
   }
 });
 
-// exports.deleteCustomer = catchAsync(async (req, res, next) => {
-//   const { userId } = req.body;
-
-//   if (!userId) return next(new AppError('User Id is required'));
-
-//   const deleteQuery = `
-//     DELETE FROM azst_customers_tbl
-//     WHERE azst_customer_id = ? AND azst_customer_totalorders = 0
-//   `;
-
-//   const response = await db(deleteQuery, [userId]);
-
-//   if (response.affectedRows > 0)
-//     return res
-//       .status(200)
-//       .json({ message: 'User Account successfully deleted.' });
-//   next(
-//     new AppError(
-//       `This can't be deleted because they have personal orders.`,
-//       400
-//     )
-//   );
-// });
-
 exports.getUserDetailsAndLastOrder = catchAsync(async (req, res, next) => {
   const { userId } = req.body;
 
@@ -154,3 +130,27 @@ exports.getUserDetailsAndLastOrder = catchAsync(async (req, res, next) => {
 
   res.status(200).json({ customerData, latestOrder });
 });
+
+// exports.deleteCustomer = catchAsync(async (req, res, next) => {
+//   const { userId } = req.body;
+
+//   if (!userId) return next(new AppError('User Id is required'));
+
+//   const deleteQuery = `
+//     DELETE FROM azst_customers_tbl
+//     WHERE azst_customer_id = ? AND azst_customer_totalorders = 0
+//   `;
+
+//   const response = await db(deleteQuery, [userId]);
+
+//   if (response.affectedRows > 0)
+//     return res
+//       .status(200)
+//       .json({ message: 'User Account successfully deleted.' });
+//   next(
+//     new AppError(
+//       `This can't be deleted because they have personal orders.`,
+//       400
+//     )
+//   );
+// });

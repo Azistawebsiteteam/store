@@ -157,7 +157,7 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
 
 // exports.restricTo = (...roles) => {
 //   return (req, res, next) => {
-//     // roles ['admin','lead-guide]. role= 'user
+//     // roles ['admin','lead-guide'] role= 'user'
 //     if (!roles.includes(req.user.role)) {
 //       return next(
 //         new AppError('You not have permission to perform this action', 403)

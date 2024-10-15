@@ -184,29 +184,3 @@ exports.deleteQuery = catchAsync(async (req, res, next) => {
   res.status(200).json({ message: 'Query Deleted' });
 });
 
-// azst_cusm_qr_id,
-//   azst_cusm_qr_name,
-//   azst_cusm_qr_email,
-//   azst_cusm_qr_mobile,
-//   azst_cusm_qr_message,
-//   azst_cusm_id,
-//   azst_cusm_qr_created_on,
-//   azst_cusm_qr_updated_on,
-//   azst_cusm_qr_updated_by,
-//   azst_cusm_qr_resolved,
-//   azst_cusm_qr_status;
-
-// azst_cbr_id,
-//   azst_cbr_name,
-//   azst_cbr_mobile_num,
-//   azst_cbr_email,
-//   azst_cbr_org_name,
-//   azst_cbr_budget,
-//   azst_cbr_qty,
-//   azst_cbr_purpose_of_purchase,
-//   azst_cbr_expt_delivery,
-//   azst_cbr_created_on,
-//   azst_cbr_updated_on,
-//   azst_cbr_updated_by,
-//   azst_cbr_is_resolved,
-//   azst_cbr_status;
