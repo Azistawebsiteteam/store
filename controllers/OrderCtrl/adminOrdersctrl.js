@@ -75,7 +75,10 @@ exports.getOrderStatics = catchAsync(async (req, res, next) => {
 });
 
 exports.getAllOrdrs = catchAsync(async (req, res, next) => {
-  const { customerId } = req.body;
+  const { customerId, pageNum = 1 } = req.body;
+
+  const pageSize = 50;
+  const offset = (pageNum - 1) * pageSize;
 
   let filterQuery = '';
   const values = [];
@@ -102,7 +105,9 @@ exports.getAllOrdrs = catchAsync(async (req, res, next) => {
                         ON azst_customers_tbl.azst_customer_id = azst_orders_tbl.azst_orders_customer_id 
                        ${filterQuery}
                        GROUP BY azst_orders_tbl.azst_orders_id
-                       ORDER BY azst_orders_tbl.azst_orders_created_on DESC `;
+                       ORDER BY azst_orders_tbl.azst_orders_created_on DESC
+                       LIMIT ${pageSize} OFFSET ${offset}`;
+
   const results = await db(ordersQuery, values);
   res.status(200).json(results);
 });
@@ -269,8 +274,7 @@ exports.confirmOrder = catchAsync(async (req, res, next) => {
   // Ensure that orderStatus is either true or false (1 or 0)
   const time = moment().format('YYYY-MM-DD HH:mm:ss');
 
-  // Construct the SQL fields based on the orderStatus
-
+  // Construct the SQL fields based on the orderStatu
   const orderUpdateBy =
     orderStatus === 1
       ? 'azst_orders_confirm_by = ?'
@@ -281,7 +285,9 @@ exports.confirmOrder = catchAsync(async (req, res, next) => {
       : 'azst_orders_cancelled_on = ?';
 
   // Construct the full SQL query
-  const query = `UPDATE azst_orders_tbl SET azst_orders_confirm_status = ?, ${orderUpdateBy}, ${orderUpdatetime}
+  const query = `UPDATE azst_orders_tbl 
+                 SET azst_orders_confirm_status = ?,
+                  ${orderUpdateBy}, ${orderUpdatetime}
                  WHERE azst_orders_id = ?`;
 
   // Construct the values array in the correct order
