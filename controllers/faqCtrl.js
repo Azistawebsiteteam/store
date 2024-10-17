@@ -4,14 +4,49 @@ const AppError = require('../Utils/appError');
 const catchAsync = require('../Utils/catchAsync');
 
 exports.getFaqs = catchAsync(async (req, res, next) => {
-  const query = `SELECT azst_faq_id,azst_faq_question,azst_faq_ans,azst_faq_type
-                  FROM azst_faq_tbl
-                  WHERE azst_faq_status = 1
-                  ORDER BY azst_faq_type ,azst_faq_updated_on DESC , azst_faq_created_on DESC `;
+  const { faqType = '', pageNum = 1 } = req.body;
 
-  const faqs = await db(query);
+  const faqTypes = [
+    'General',
+    'Order',
+    'Tracking',
+    'Payment',
+    'Return',
+    'Product',
+  ];
+  if (!faqTypes.includes(faqType))
+    return next(new AppError('Invalid faq type ', 400));
 
-  res.status(200).json(faqs);
+  // Sanitize and validate input
+  const pageSize = 10;
+  const offset = (pageNum - 1) * pageSize;
+
+  // Construct the filter for faqType only if it's provided
+  let filterQ = faqType ? 'AND azst_faq_type = ?' : '';
+
+  // Query to count total records
+  const countQuery = `
+    SELECT COUNT(*) AS total_rec
+    FROM azst_faq_tbl
+    WHERE azst_faq_status = 1 ${filterQ}`;
+
+  // Query to fetch paginated FAQ data
+  const faqQuery = `
+    SELECT azst_faq_id, azst_faq_question, azst_faq_ans, azst_faq_type
+    FROM azst_faq_tbl
+    WHERE azst_faq_status = 1 ${filterQ}
+    ORDER BY azst_faq_type, azst_faq_updated_on DESC, azst_faq_created_on DESC
+    LIMIT ? OFFSET ?`;
+
+  // Execute the count query
+  const countResult = await db(countQuery, faqType ? [faqType] : []);
+  const total_rec = countResult[0].total_rec;
+
+  // Execute the FAQ data query
+  const values = faqType ? [faqType, pageSize, offset] : [pageSize, offset];
+  const faqs = await db(faqQuery, values);
+
+  res.status(200).json({ total_rec, faqs });
 });
 
 exports.getFaqsCustomer = catchAsync(async (req, res, next) => {
