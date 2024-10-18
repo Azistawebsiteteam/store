@@ -23,7 +23,7 @@ exports.isAddressExisit = catchAsync(async (req, res, next) => {
   next();
 });
 
-const updateDefaultAddress = (customerId) => {
+const updateDefaultAddress = (customerId, defaultStatus) => {
   return new Promise(async (resolve, reject) => {
     try {
       const getDefaultAddress = `SELECT azst_customer_adressbook_id 
@@ -33,8 +33,8 @@ const updateDefaultAddress = (customerId) => {
                                 azst_customer_adressbook_status = 1 `;
       const result = await db(getDefaultAddress, [customerId]);
 
-      if (result.length === 0) {
-        resolve();
+      if (result.length === 0 || defaultStatus === 0) {
+        resolve(result.length);
       }
 
       const addressId = result[0].azst_customer_adressbook_id;
@@ -92,10 +92,12 @@ exports.createNewAddress = catchAsync(async (req, res, next) => {
   } = req.body;
 
   const customerId = req.empId;
-  const defaultStatus = isDefault ? 1 : 0;
+  let defaultStatus = isDefault ? 1 : 0;
 
-  if (isDefault) {
-    await updateDefaultAddress(customerId);
+  const defaultAddress = await updateDefaultAddress(customerId, defaultStatus);
+
+  if (defaultAddress === 0) {
+    defaultStatus = 1;
   }
 
   const insertAddress = `INSERT INTO azst_customer_adressbook (azst_customer_adressbook_customer_id,azst_customer_adressbook_fname,azst_customer_adressbook_lname,
