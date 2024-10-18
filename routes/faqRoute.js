@@ -18,9 +18,9 @@ router.use(authCtrl.protect(key));
 
 // all blogs are under Admin Controller
 router.post('/faq', faqCtrl.isExist, faqCtrl.getFaq);
+router.post('/admin', faqCtrl.getFaqs);
 router
   .route('/')
-  .get(faqCtrl.getFaqs)
   .post(faqValidation, faqCtrl.createFaq)
   .put(faqValidation, faqCtrl.isExist, faqCtrl.updateFaq)
   .patch(faqCtrl.isExist, faqCtrl.deleteFaq);

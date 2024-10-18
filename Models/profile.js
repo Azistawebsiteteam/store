@@ -19,7 +19,11 @@ const profileSchema = Joi.object({
   district: Joi.string().trim().required(),
   state: Joi.string().trim().required(),
   country: Joi.string().trim().required(),
-  zipCode: Joi.number().required(),
+  zipCode: Joi.number().integer().min(100000).max(999999).messages({
+    'number.min': 'Must be a 6-digit number',
+    'number.max': 'Must be a 6-digit number',
+  }),
+  // zipCode: Joi.number().required(),
   landmark: Joi.string().trim().allow(''),
   acceeptEmailMarketing: Joi.boolean(),
   company: Joi.string().trim().allow(''),

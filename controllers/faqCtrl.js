@@ -14,7 +14,8 @@ exports.getFaqs = catchAsync(async (req, res, next) => {
     'Return',
     'Product',
   ];
-  if (!faqTypes.includes(faqType))
+
+  if (faqType && !faqTypes.includes(faqType))
     return next(new AppError('Invalid faq type ', 400));
 
   // Sanitize and validate input
