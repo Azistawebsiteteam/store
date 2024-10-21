@@ -5,7 +5,7 @@ const catchAsync = require('../Utils/catchAsync');
 
 exports.getFaqs = catchAsync(async (req, res, next) => {
   const { faqType = '' } = req.body;
-  console.log(faqType);
+
   const faqTypes = [
     'General',
     'Order',
@@ -21,12 +21,6 @@ exports.getFaqs = catchAsync(async (req, res, next) => {
   // Construct the filter for faqType only if it's provided
   let filterQ = faqType ? 'AND azst_faq_type = ?' : '';
 
-  // Query to count total records
-  const countQuery = `
-    SELECT COUNT(*) AS total_rec
-    FROM azst_faq_tbl
-    WHERE azst_faq_status = 1 ${filterQ}`;
-
   // Query to fetch paginated FAQ data
   const faqQuery = `
     SELECT azst_faq_id, azst_faq_question, azst_faq_ans, azst_faq_type
@@ -36,14 +30,9 @@ exports.getFaqs = catchAsync(async (req, res, next) => {
 
   const values = faqType ? [faqType] : [];
 
-  // Execute the count query
-  const countResult = await db(countQuery, values);
-  const total_rec = countResult[0].total_rec;
-
-  // Execute the FAQ data query
   const faqs = await db(faqQuery, values);
 
-  res.status(200).json({ total_rec, faqs });
+  res.status(200).json(faqs);
 });
 
 exports.getFaqsCustomer = catchAsync(async (req, res, next) => {
