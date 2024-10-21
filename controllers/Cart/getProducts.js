@@ -239,75 +239,8 @@ const getCartSimilarProducts = catchAsync(async (req, res, next) => {
     uniqueCollections.join(','), // Combine unique collections
     productIds,
   ]);
-  // minPrice,
-  // maxPrice,
 
-  const products = [
-    {
-      product_id: 91,
-      variant_id: 230,
-      product_main_title: 'Azilium Hand and Skin Disinfectant-dsj',
-      product_title: 'newTesting',
-      product_url_title: 'Atesf',
-      image_src:
-        'http://192.168.213.153:5018/api/images/product/1727162009406-butterscotch_flavour.png',
-      image_alt_text: 'popup.png',
-      price: '20',
-      product_compare_at_price: '40',
-      min_cart_quantity: 1,
-      max_cart_quantity: 4,
-      is_varaints_aval: 1,
-      compare_at_price: 300,
-      offer_price: 200,
-      option1: 'pack of 4',
-      option2: 'straberry',
-      option3: null,
-      product_review_points: 3,
-    },
-    {
-      product_id: 91,
-      variant_id: 233,
-      product_main_title: 'Azilium Hand and Skin Disinfectant-dsj',
-      product_title: 'newTesting',
-      product_url_title: 'Atesf',
-      image_src:
-        'http://192.168.213.153:5018/api/images/product/1727162009406-butterscotch_flavour.png',
-      image_alt_text: 'popup.png',
-      price: '20',
-      product_compare_at_price: '40',
-      min_cart_quantity: 1,
-      max_cart_quantity: 4,
-      is_varaints_aval: 1,
-      compare_at_price: 350,
-      offer_price: 250,
-      option1: 'pack of 4',
-      option2: 'venila',
-      option3: null,
-      product_review_points: 2.5,
-    },
-    {
-      product_id: 92,
-      variant_id: 238,
-      product_main_title: 'Azilium Hand and Skin Disinfectant-dsj',
-      product_title: 'newTesting',
-      product_url_title: 'Atesf',
-      image_src:
-        'http://192.168.213.153:5018/api/images/product/1727162009406-butterscotch_flavour.png',
-      image_alt_text: 'popup.png',
-      price: '20',
-      product_compare_at_price: '40',
-      min_cart_quantity: 1,
-      max_cart_quantity: 4,
-      is_varaints_aval: 1,
-      compare_at_price: 550,
-      offer_price: 400,
-      option1: 'pack of 4',
-      option2: 'venila',
-      option3: 'medium',
-      product_review_points: 4,
-    },
-  ];
-  req.body.similarProducts = [...similarProducts, ...products];
+  req.body.similarProducts = [...similarProducts];
   next();
 });
 
