@@ -7,18 +7,21 @@ const catchAsync = require('../../../Utils/catchAsync');
 const AppError = require('../../../Utils/appError');
 const createSendToken = require('../../../Utils/jwtToken');
 const Joi = require('joi');
+const Sms = require('../../../Utils/sms');
 
 exports.checkExistingUser = catchAsync(async (req, res, next) => {
   const { customerMobileNum, customerEmail, mailOrMobile } = req.body;
 
   const mobileNum = customerMobileNum || mailOrMobile;
   const email = customerEmail || mailOrMobile;
+
+  console.log(mobileNum, email);
   const checkQuery = `SELECT azst_customer_id 
                       FROM  azst_customers_tbl
                       WHERE (azst_customer_mobile = ? OR azst_customer_email = ?) AND azst_customer_status = 1`;
 
   const result = await db(checkQuery, [mobileNum, email]);
-
+  console.log(result);
   if (result.length > 0)
     return next(new AppError('You have already an account', 400));
 
@@ -82,6 +85,8 @@ exports.signup = catchAsync(async (req, res, next) => {
 
   // Generate JWT token
   const token = createSendToken(results.insertId, process.env.JWT_SECRET);
+
+  await new Sms(results.insertId, customerMobileNum, '').sendWelcome();
 
   // Send response
   res.status(201).json({

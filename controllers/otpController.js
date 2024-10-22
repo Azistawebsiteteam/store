@@ -6,6 +6,7 @@ const catchAsync = require('../Utils/catchAsync');
 const AppError = require('../Utils/appError');
 const createSendToken = require('../Utils/jwtToken');
 const enterLoginLogs = require('./CustomerCtrls/Authentication/logsCtrl');
+const Sms = require('../Utils/sms');
 
 const generateOTP = () => {
   // Generate a random 6-digit number
@@ -20,50 +21,11 @@ const varifyInput = (mailOrMobile) => {
   return !isMobileNumber && !isEmail;
 };
 
-// Helper to check environment variables
-const checkEnvVariables = () => {
-  const requiredEnvVars = [
-    'SMS_API_KEY',
-    'SMS_SENDER_ID',
-    'SMS_API_URL',
-    'SMS_CHANNEL',
-    'SMS_DCS',
-    'SMS_FLASH_KEY',
-  ];
-
-  requiredEnvVars.forEach((variable) => {
-    if (!process.env[variable]) {
-      throw Error(`Missing environment variable: ${variable}`, 500);
-    }
-  });
-};
-
-const sendingOTPMobile = async (mobileNum, otp) => {
-  try {
-    checkEnvVariables(); // Ensure env vars are set
-    const {
-      SMS_API_KEY: apiKey,
-      SMS_SENDER_ID: senderId,
-      SMS_API_URL: apiUrl,
-      SMS_CHANNEL: channel,
-      SMS_DCS: dcs,
-      SMS_FLASH_KEY: flashKey,
-    } = process.env;
-
-    const smsContent = `Hello, We have Successfully Generated OTP ${otp} on login and registration request. Azista`;
-    const url = `${apiUrl}?APIkey=${apiKey}&senderid=${senderId}&channel=${channel}&DCS=${dcs}&flashsms=${flashKey}&number=91${mobileNum}&text=${smsContent}`;
-
-    const response = await axios.post(url);
-
-    if (response.data.ErrorMessage !== 'Success') {
-      return Promise.reject(new Error('unable to send otp'));
-    } else if (response.status === 200) {
-      return Promise.resolve();
-    } else {
-      return Promise.reject(new Error('unable to send otp'));
-    }
-  } catch (error) {
-    return Promise.reject(error);
+const sendingOTPMobile = async (mobileNum, otp, reason) => {
+  if (reason === 'Login') {
+    await new Sms('', mobileNum).loginOTP(otp);
+  } else {
+    await new Sms('', mobileNum).registrationRquest(otp);
   }
 };
 
@@ -86,7 +48,7 @@ exports.sendOtp = catchAsync(async (req, res, next) => {
   try {
     const isMobileNumber = /^[6-9]\d{9}$/.test(mailOrMobile);
     if (isMobileNumber) {
-      await sendingOTPMobile(mailOrMobile, otp);
+      await sendingOTPMobile(mailOrMobile, otp, otpReason);
     } else {
       sendingOTPEmail(mailOrMobile, otp);
     }
@@ -193,6 +155,7 @@ exports.updateOtpDetails = catchAsync(async (req, res, next) => {
     const query = `UPDATE azst_customers_tbl SET azst_customer_status = 1 
                     WHERE azst_customer_id =  ? `;
     await db(query, [azst_customer_id]);
+    new Sms(azst_customer_id, '').sendWelcome(mailOrMobile);
   }
 
   const jwtToken = createSendToken(azst_customer_id, key);

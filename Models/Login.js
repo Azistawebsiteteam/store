@@ -2,7 +2,7 @@ const Joi = require('joi');
 const AppError = require('../Utils/appError');
 
 const loginSchema = Joi.object({
-  password: Joi.string().min(6).max(12).required(),
+  password: Joi.string().min(8).max(32).required(),
   mailOrMobile: Joi.string().min(2).required(),
 });
 

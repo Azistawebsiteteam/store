@@ -37,9 +37,6 @@ router.post(
 
 router.post('/register/details', registerCtrl.updateUserData);
 
-// registerCtrl.checkExistingUser,
-// registerCtrl.signup
-
 router.post('/login', loginSchema, loginCtrl.isUserExisit, loginCtrl.login);
 router.post('/login/google', loginCtrl.isUserExisit, loginCtrl.googleLogin);
 

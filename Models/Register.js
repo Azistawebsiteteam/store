@@ -17,12 +17,12 @@ const registerSchema = Joi.object({
   customerEmail: Joi.string().trim().email().required(),
   customerPassword: Joi.string()
     .pattern(
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,16}$/
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,32}$/
     )
     .optional()
     .messages({
       'string.pattern.base':
-        'Password must have at least 8 characters, one uppercase letter, one lowercase letter, one digit, and one special character.',
+        'Password must have at least 8 characters max 32, one uppercase letter, one lowercase letter, one digit, and one special character.',
     }),
   DOB: Joi.date().iso().optional().messages({
     'date.format': `Please provide a valid Date of Birth in the format 'YYYY-MM-DD'.`,
@@ -41,6 +41,8 @@ const registerSchema = Joi.object({
 
 const userValidation = async (req, res, next) => {
   const payload = req.body;
+
+  console.log(req.body.customerPassword);
 
   const { error } = registerSchema.validate(payload);
   if (error) {

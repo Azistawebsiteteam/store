@@ -4,6 +4,7 @@ const moment = require('moment');
 
 const catchAsync = require('../../Utils/catchAsync');
 const AppError = require('../../Utils/appError');
+const Sms = require('../../Utils/sms');
 
 exports.getOrderStatics = catchAsync(async (req, res, next) => {
   const { formDays } = req.body;
@@ -268,6 +269,7 @@ const confirmSchema = Joi.object({
 
 exports.confirmOrder = catchAsync(async (req, res, next) => {
   const { orderId, orderStatus } = req.body;
+
   const { error } = confirmSchema.validate(req.body);
   if (error) return next(new AppError(error.message, 400));
 
@@ -296,11 +298,18 @@ exports.confirmOrder = catchAsync(async (req, res, next) => {
   const result = await db(query, values);
 
   if (result.affectedRows > 0) {
+    const query = `SELECT azst_orders_customer_id FROM azst_orders_tbl  WHERE azst_orders_id = ?`;
+    const [result] = await db(query, [orderId]);
+    const smsSevices = new Sms(result?.azst_orders_customer_id, null);
     if (orderStatus === 1) {
       // Proceed to updateInventory if order is confirmed
+      await smsSevices.getUserDetails();
+      await smsSevices.orderConfirm(orderId);
       return next();
     } else {
       // Send response immediately if the order is cancelled
+      await smsSevices.getUserDetails();
+      await smsSevices.orderRected(orderId);
       return res.status(200).json({ message: 'Order status updated' });
     }
   }

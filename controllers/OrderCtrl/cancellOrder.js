@@ -2,6 +2,7 @@ const moment = require('moment');
 const db = require('../../Database/dbconfig');
 const catchAsync = require('../../Utils/catchAsync');
 const AppError = require('../../Utils/appError');
+const Sms = require('../../Utils/sms');
 
 exports.cancelOrder = catchAsync(async (req, res, next) => {
   const { orderId, reason } = req.body;
@@ -24,6 +25,10 @@ exports.cancelOrder = catchAsync(async (req, res, next) => {
   const result = await db(query, values);
 
   if (result.affectedRows > 0) {
+    const smsSevices = new Sms(req.empId, null);
+    await smsSevices.getUserDetails();
+    await smsSevices.orderCancel(orderId);
+    smsSevices;
     res.status(200).json({ message: 'orders was cancelled successfully' });
   } else {
     res.status(404).json({ message: 'oops, something went wrong' });
