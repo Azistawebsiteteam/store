@@ -6,7 +6,8 @@ const catchAsync = require('../../Utils/catchAsync');
 const getEstimateDates = require('../../Utils/estimateDate');
 
 const Email = require('../../Utils/email');
-const razorpayInstance = require('../../Utils/razorpayInstance');
+const razorpayInstance = require('../../Utils/razorpay');
+const Sms = require('../../Utils/sms');
 
 // Transaction Management
 async function startTransaction() {
@@ -26,7 +27,7 @@ function generateOrderId() {
   const timestamp = Date.now().toString(36).toUpperCase();
   const randomPart = Math.random().toString(36).toUpperCase().substring(2, 8);
   const orderId = (timestamp + randomPart).substring(0, 12);
-  return 'AZSTA-' + orderId;
+  return 'AZS-' + orderId;
 }
 
 const getCartTotal = (cartProducts) => {
@@ -75,7 +76,7 @@ exports.placeOrder = catchAsync(async (req, res, next) => {
   try {
     await startTransaction(); // Start transaction
 
-    const { user_id, user_email } = req.userDetails;
+    const { user_id, user_email, user_mobile } = req.userDetails;
 
     if (
       paymentMethod === 'RazorPay' &&
@@ -159,7 +160,7 @@ exports.placeOrder = catchAsync(async (req, res, next) => {
 
     //await new Email(req.userDetails).sendOrderStatus(orderId);
     await commitTransaction(); // Commit transaction
-
+    await new Sms(null, user_mobile).cartCheckout(orderId);
     res.status(200).json({ orderId, message: 'Order placed successfully' });
   } catch (error) {
     await rollbackTransaction(); // Rollback transaction on error

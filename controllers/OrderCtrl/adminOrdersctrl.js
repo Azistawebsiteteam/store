@@ -265,13 +265,17 @@ const confirmSchema = Joi.object({
     then: Joi.required(), // inventoryId is required
     otherwise: Joi.optional().allow('', null), // Otherwise, it's optional
   }),
+  reason: Joi.string().when('orderStatus', {
+    is: 0, // When orderStatus is 0
+    then: Joi.required(), // inventoryId is required
+    otherwise: Joi.optional().allow('', null), // Otherwise, it's optional
+  }),
 });
 
 exports.confirmOrder = catchAsync(async (req, res, next) => {
-  const { orderId, orderStatus } = req.body;
-
   const { error } = confirmSchema.validate(req.body);
   if (error) return next(new AppError(error.message, 400));
+  const { orderId, orderStatus, reason = '' } = req.body;
 
   // Ensure that orderStatus is either true or false (1 or 0)
   const time = moment().format('YYYY-MM-DD HH:mm:ss');
@@ -289,11 +293,11 @@ exports.confirmOrder = catchAsync(async (req, res, next) => {
   // Construct the full SQL query
   const query = `UPDATE azst_orders_tbl 
                  SET azst_orders_confirm_status = ?,
-                  ${orderUpdateBy}, ${orderUpdatetime}
+                  ${orderUpdateBy}, ${orderUpdatetime},azst_orders_cancelled_reason = ?
                  WHERE azst_orders_id = ?`;
 
   // Construct the values array in the correct order
-  const values = [orderStatus, req.empId, time, orderId];
+  const values = [orderStatus, req.empId, time, reason, orderId];
 
   const result = await db(query, values);
 
@@ -309,7 +313,7 @@ exports.confirmOrder = catchAsync(async (req, res, next) => {
     } else {
       // Send response immediately if the order is cancelled
       await smsSevices.getUserDetails();
-      await smsSevices.orderRected(orderId);
+      await smsSevices.refoundRequest(orderId);
       return res.status(200).json({ message: 'Order status updated' });
     }
   }

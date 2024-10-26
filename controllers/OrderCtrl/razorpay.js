@@ -1,10 +1,11 @@
 const Joi = require('joi');
 const crypto = require('crypto');
 
-const razorpayInstance = require('../../Utils/razorpayInstance');
+const razorpayInstance = require('../../Utils/razorpay');
 
 const catchAsync = require('../../Utils/catchAsync');
 const AppError = require('../../Utils/appError');
+const Sms = require('../../Utils/sms');
 
 const createOrderSchema = Joi.object({
   amount: Joi.number().min(1).required(),
@@ -43,7 +44,7 @@ const validatePaymentSchema = Joi.object({
 exports.razorPayValidatePayment = catchAsync(async (req, res, next) => {
   const { razorpay_order_id, razorpay_payment_id, razorpay_signature } =
     req.body;
-
+  const { user_mobile } = req.userDetails;
   // Validate the input data
   const { error } = validatePaymentSchema.validate(req.body);
   if (error) return next(new AppError(error.message, 400));
@@ -54,10 +55,17 @@ exports.razorPayValidatePayment = catchAsync(async (req, res, next) => {
     .update(`${razorpay_order_id}|${razorpay_payment_id}`)
     .digest('hex');
 
+  const smsSevices = new Sms(null, user_mobile);
   if (generatedSignature !== razorpay_signature) {
+    await smsSevices.paymentFail(
+      `${razorpay_order_id} And PaymentId ${razorpay_payment_id}`
+    );
     return next(new AppError('Invalid payment signature.', 400));
   }
 
+  await smsSevices.paymentConfirm(
+    `${razorpay_order_id} And PaymentId ${razorpay_payment_id}`
+  );
   res.status(200).json({
     orderId: razorpay_order_id,
     paymentId: razorpay_payment_id,

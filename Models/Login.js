@@ -1,12 +1,13 @@
 const Joi = require('joi');
 const AppError = require('../Utils/appError');
+const catchAsync = require('../Utils/catchAsync');
 
 const loginSchema = Joi.object({
   password: Joi.string().min(8).max(32).required(),
   mailOrMobile: Joi.string().min(2).required(),
 });
 
-const loginValidation = async (req, res, next) => {
+const loginValidation = catchAsync(async (req, res, next) => {
   const payload = req.body;
 
   const { error } = loginSchema.validate(payload);
@@ -15,5 +16,5 @@ const loginValidation = async (req, res, next) => {
   } else {
     next();
   }
-};
+});
 module.exports = loginValidation;

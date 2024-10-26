@@ -88,52 +88,61 @@ module.exports = class Sms {
 
   // Send a welcome SMS
   async registrationRquest(otp) {
+    //implementated
     const smsContent = `Hello, We have Successfully Generated OTP ${otp} on login and registration request. Azista`;
     await this.send(smsContent);
   }
 
   async sendWelcome() {
+    //implementated
     const templateContent =
       'Welcome to Azista Store! Your account has been successfully created. Start Purchasing Products now! Azista';
     await this.send(templateContent);
   }
 
   async loginOTP(otp) {
+    //implementated
     const templateContent = `Your OTP for Azista Store login is ${otp}. Do not share this code with anyone. Azista`;
     await this.send(templateContent);
   }
 
   async cartCheckout() {
+    //need to discuss requirement
     const templateContent = `Hi! Your cart at Azista Store is ready for checkout. Don't miss out. Complete your purchase today! Azista`;
     await this.send(templateContent);
   }
 
   async orderRected(orderId) {
+    //implementated
     const templateContent = `Dear Customer, unfortunately, your recent order ${orderId} at Azista Store has been rejected as the items are currently out of stock. We apologize for the inconvenience. Azista`;
     await this.send(templateContent);
   }
 
-  //   async orderPlaced(orderId) {
-  //     const templateContent = `Thank you for your order! Order ${orderId} with Azista Store has been successfully placed. We will send you updates soon. Azista`;
-  //     await this.send(templateContent);
-  //   }
+  // async orderPlaced(orderId) {
+  //   const templateContent = `Thank you for your order! Order ${orderId} with Azista Store has been successfully placed. We will send you updates soon. Azista`;
+  //   await this.send(templateContent);
+  // }
 
   async orderConfirm(orderId) {
+    //implementated
     const templateContent = `Thank you for your order! Order ${orderId} with Azista Store has been successfully placed. We will send you updates soon. Azista`;
     await this.send(templateContent);
   }
 
   async orderCancel(orderId) {
+    //implementated
     const templateContent = `Dear Customer, your order ${orderId} at Azista Store has been cancelled as per your request. We appreciate your understanding! Azista`;
     await this.send(templateContent);
   }
 
   async paymentConfirm(orderId) {
+    //implementated
     const templateContent = `Your payment for Order ${orderId} at Azista Store has been successfully processed. Thank you for your purchase! Azista`;
     await this.send(templateContent);
   }
 
   async paymentFail(orderId) {
+    //implementated
     const templateContent = `We're sorry! Your payment for Order ${orderId} at Azista Store was unsuccessful. Please try again or use an alternative payment method. For assistance, contact our support team. Azista`;
     await this.send(templateContent);
   }
@@ -147,13 +156,14 @@ module.exports = class Sms {
     const templateContent = `Dear Customer, we regret to inform you that there is a delay with Order ${orderId} at Azista Store. We appreciate your understanding and will keep you updated on the status. Thank you. Azista`;
     await this.send(templateContent);
   }
-  async refoundInitiate(orderId) {
-    const templateContent = `Hello! Your refund for order ${orderId} from Azista Store is officially approved and initiated. You can expect the amount to be processed soon. Thank you for your patience! Azista`;
+
+  async refundRequest(orderId) {
+    const templateContent = `We've received your refund request for Order ${orderId} from Azista Store. We will process your refund shortly. Azista`;
     await this.send(templateContent);
   }
 
-  async refoundRequest(orderId) {
-    const templateContent = `We've received your refund request for Order ${orderId} from Azista Store. We will process your refund shortly. Azista`;
+  async refundInitiate(orderId) {
+    const templateContent = `Hello! Your refund for order ${orderId} from Azista Store is officially approved and initiated. You can expect the amount to be processed soon. Thank you for your patience! Azista`;
     await this.send(templateContent);
   }
 };

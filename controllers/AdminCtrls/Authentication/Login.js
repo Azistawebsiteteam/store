@@ -90,7 +90,7 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
     currentPassword === result[0]?.azst_admin_details_pwd;
 
   if (!isPasswordMatched) {
-    return next(new AppError('Invalid CurrentPassword', 404));
+    return next(new AppError('Invalid Current Password', 400));
   }
   const changePasswordAfterReset = `UPDATE azst_admin_details SET azst_admin_details_pwd = ? WHERE azst_admin_details_admin_id = ?`;
   await db(changePasswordAfterReset, [newPassword, req.empId]);

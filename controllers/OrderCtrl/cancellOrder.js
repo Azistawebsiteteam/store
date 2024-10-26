@@ -10,7 +10,6 @@ exports.cancelOrder = catchAsync(async (req, res, next) => {
   if (!orderId || !reason) {
     next(new AppError('orderId and reason are required', 400));
   }
-
   const cancelledBy = req.empId;
 
   const cancelDate = moment().format('YYYY-MM-DD HH:mm:ss');
@@ -20,15 +19,18 @@ exports.cancelOrder = catchAsync(async (req, res, next) => {
                     azst_orders_cancelled_by = ? , azst_orders_cancelled_reason = ?
                 WHERE azst_orders_id = ?`;
 
+  //const customerQuery = `select azst_orders_customer_id from azst_orders_tbl  WHERE azst_orders_id = ?`;
+
   const values = [cancelDate, cancelledBy, reason, orderId];
 
   const result = await db(query, values);
+  // const [customer] = await db(customerQuery, [orderId]);
 
   if (result.affectedRows > 0) {
-    const smsSevices = new Sms(req.empId, null);
+    const smsSevices = new Sms(cancelledBy, null);
     await smsSevices.getUserDetails();
     await smsSevices.orderCancel(orderId);
-    smsSevices;
+
     res.status(200).json({ message: 'orders was cancelled successfully' });
   } else {
     res.status(404).json({ message: 'oops, something went wrong' });
