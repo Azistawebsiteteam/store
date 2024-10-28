@@ -62,28 +62,29 @@ module.exports = class Sms {
   constructUrl(templateContent) {
     const { apiKey, senderId, apiUrl, channel, dcs, flashKey } = this.env;
     // Encode the text to ensure it's safe to pass in a URL
+    console.log(templateContent);
     const encodedText = encodeURIComponent(templateContent);
     return `${apiUrl}?APIkey=${apiKey}&senderid=${senderId}&channel=${channel}&DCS=${dcs}&flashsms=${flashKey}&number=91${this.mobileNum}&text=${encodedText}`;
   }
 
   // Send SMS using the given template content
   async send(templateContent) {
-    try {
-      const url = this.constructUrl(templateContent);
-      const response = await axios.post(url);
-
-      if (response.status === 200 && response.data.ErrorMessage === 'Success') {
-        return Promise.resolve();
-      } else {
-        throw new AppError(
-          'Failed to send SMS: ' +
-            (response.data.ErrorMessage || 'Unknown error'),
-          400
-        );
-      }
-    } catch (error) {
-      return Promise.reject(error);
-    }
+    // try {
+    const url = this.constructUrl(templateContent);
+    const response = await axios.post(url);
+    return Promise.resolve();
+    //   if (response.status === 200 && response.data.ErrorMessage === 'Success') {
+    //     return Promise.resolve();
+    //   } else {
+    //     throw new AppError(
+    //       'Failed to send SMS: ' +
+    //         (response.data.ErrorMessage || 'Unknown error'),
+    //       400
+    //     );
+    //   }
+    // } catch (error) {
+    //   return Promise.reject(error);
+    // }
   }
 
   // Send a welcome SMS
@@ -158,11 +159,13 @@ module.exports = class Sms {
   }
 
   async refundRequest(orderId) {
+    // implimented
     const templateContent = `We've received your refund request for Order ${orderId} from Azista Store. We will process your refund shortly. Azista`;
     await this.send(templateContent);
   }
 
   async refundInitiate(orderId) {
+    // implimented
     const templateContent = `Hello! Your refund for order ${orderId} from Azista Store is officially approved and initiated. You can expect the amount to be processed soon. Thank you for your patience! Azista`;
     await this.send(templateContent);
   }

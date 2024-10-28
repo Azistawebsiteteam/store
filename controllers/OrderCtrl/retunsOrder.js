@@ -172,7 +172,7 @@ exports.updateRefundStatus = catchAsync(async (req, res, next) => {
     if (returnStatus === 'Approved') {
       sendSmsToCustomer(retunId);
     }
-    res.status(200).json({ message: `Refund ${returnStatus}d successfully` });
+    res.status(200).json({ message: `Refund ${returnStatus} successfully` });
     return;
   }
 

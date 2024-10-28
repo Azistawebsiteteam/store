@@ -305,7 +305,7 @@ exports.confirmOrder = catchAsync(async (req, res, next) => {
     const query = `SELECT azst_orders_customer_id FROM azst_orders_tbl  WHERE azst_orders_id = ?`;
     const [result] = await db(query, [orderId]);
     const smsSevices = new Sms(result?.azst_orders_customer_id, null);
-    if (orderStatus === 1) {
+    if (parseInt(orderStatus) === 1) {
       // Proceed to updateInventory if order is confirmed
       await smsSevices.getUserDetails();
       await smsSevices.orderConfirm(orderId);
@@ -313,7 +313,7 @@ exports.confirmOrder = catchAsync(async (req, res, next) => {
     } else {
       // Send response immediately if the order is cancelled
       await smsSevices.getUserDetails();
-      await smsSevices.refoundRequest(orderId);
+      await smsSevices.orderRected(orderId);
       return res.status(200).json({ message: 'Order status updated' });
     }
   }
