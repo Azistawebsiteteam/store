@@ -50,11 +50,11 @@ const getCartData = catchAsync(async (req, res, next) => {
                     p.min_cart_quantity,
                     p.max_cart_quantity,
                     v.variant_image,
-                    p.compare_at_price AS product_compare_at_price,
-                    p.price,
-                    v.compare_at_price,
-                    v.offer_price,
-                    offer_percentage,
+                    COALESCE(p.compare_at_price, 0) AS product_compare_at_price,
+                    COALESCE(p.price, 0) AS price,
+                    COALESCE(v.compare_at_price, 0) AS compare_at_price,
+                    COALESCE(v.offer_price, 0) AS offer_price,
+                    COALESCE(offer_percentage, 0) AS offer_percentage,
                     p.image_src,
                     p.is_varaints_aval,
                     v.option1,
@@ -128,7 +128,7 @@ const getCartSimilarProducts = catchAsync(async (req, res, next) => {
   const { cartList } = req.body;
 
   if (!cartList || !Array.isArray(cartList) || cartList.length === 0) {
-    return res.status(400).json({ message: 'Cart list is empty or invalid' });
+    return res.status(400).json({ message: 'Cart list is empty ' });
   }
 
   // Extract product IDs from the cart list
@@ -144,7 +144,9 @@ const getCartSimilarProducts = catchAsync(async (req, res, next) => {
   const cartProducts = await db(cartProductsQuery, [productIds]);
 
   if (!cartProducts || cartProducts.length === 0) {
-    return res.status(404).json({ message: 'Cart products not found' });
+    req.body.similarProducts = [];
+    next();
+    return;
   }
 
   // Helper function to parse JSON and return an array
@@ -204,13 +206,13 @@ const getCartSimilarProducts = catchAsync(async (req, res, next) => {
     'host'
   )}/api/images/product/', P.image_src) AS image_src,
     P.image_alt_text,
-    P.price, 
-    P.compare_at_price as product_compare_at_price,
+    COALESCE(P.compare_at_price, 0) AS product_compare_at_price,
+    COALESCE(P.price, 0) AS price,
     P.min_cart_quantity,
     P.max_cart_quantity,
     P.is_varaints_aval,
-    V.compare_at_price,
-    V.offer_price,
+    COALESCE(V.compare_at_price, 0) AS compare_at_price,
+    COALESCE(V.offer_price, 0) AS offer_price,
     V.option1, V.option2, V.option3,
     COALESCE(AVG(prt.review_points), 1) AS product_review_points
   FROM azst_products P
@@ -253,10 +255,9 @@ const removeFromCart = catchAsync(async (req, res, next) => {
   await db(query, [cartId]);
 
   const removeDscProducts = `DELETE FROM azst_cart_tbl 
-                                WHERE azst_cart_dsc_by_ids IS NOT NULL 
-                                AND azst_cart_dsc_by_ids != '' 
-                                AND JSON_CONTAINS(azst_cart_dsc_by_ids, ?, '$');
-                                `;
+                              WHERE azst_cart_dsc_by_ids IS NOT NULL 
+                              AND azst_cart_dsc_by_ids != '' 
+                              AND JSON_CONTAINS(azst_cart_dsc_by_ids, ?, '$');`;
   const id = `${cartId}`;
 
   await db(removeDscProducts, [id]);

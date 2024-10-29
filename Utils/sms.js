@@ -69,22 +69,22 @@ module.exports = class Sms {
 
   // Send SMS using the given template content
   async send(templateContent) {
-    // try {
-    const url = this.constructUrl(templateContent);
-    const response = await axios.post(url);
-    return Promise.resolve();
-    //   if (response.status === 200 && response.data.ErrorMessage === 'Success') {
-    //     return Promise.resolve();
-    //   } else {
-    //     throw new AppError(
-    //       'Failed to send SMS: ' +
-    //         (response.data.ErrorMessage || 'Unknown error'),
-    //       400
-    //     );
-    //   }
-    // } catch (error) {
-    //   return Promise.reject(error);
-    // }
+    try {
+      const url = this.constructUrl(templateContent);
+      const response = await axios.post(url);
+
+      if (response.status === 200 && response.data.ErrorMessage === 'Success') {
+        return Promise.resolve();
+      } else {
+        throw new AppError(
+          'Failed to send SMS: ' +
+            (response.data.ErrorMessage || 'Unknown error'),
+          400
+        );
+      }
+    } catch (error) {
+      return Promise.reject(error);
+    }
   }
 
   // Send a welcome SMS
