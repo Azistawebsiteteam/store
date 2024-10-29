@@ -25,8 +25,14 @@ exports.razorPayCreateOrder = catchAsync(async (req, res, next) => {
     receipt: `${receiptId}`,
     payment_capture: 1,
   };
-
-  const response = await razorpayInstance.orders.create(options);
+  let response;
+  try {
+    response = await razorpayInstance.orders.create(options);
+  } catch (err) {
+    return next(
+      new AppError(`RazorPay ${err.error.description}`, err.statusCode)
+    );
+  }
 
   res.status(200).json({
     order_id: response.id,
