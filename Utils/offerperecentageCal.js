@@ -43,4 +43,20 @@ const getPricess = (variants, priceKey) => {
   }
 };
 
-module.exports = { getofferPercentage, getPricess };
+const calculateCartTotalValue = (cartList) => {
+  // Validate that cartList is not empty or null
+  if (!Array.isArray(cartList) || cartList.length === 0) return 0;
+
+  const cartTotal = cartList.reduce((total, item) => {
+    const itemPrice =
+      item.is_varaints_aval === 1
+        ? parseFloat(item.offer_price)
+        : parseFloat(item.price);
+    const itemQuantity = parseInt(item.azst_cart_quantity);
+    return total + itemPrice * itemQuantity;
+  }, 0);
+
+  return cartTotal;
+};
+
+module.exports = { getofferPercentage, getPricess, calculateCartTotalValue };

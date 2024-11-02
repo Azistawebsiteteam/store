@@ -2,6 +2,7 @@ const db = require('../../Database/dbconfig');
 const moment = require('moment');
 const AppError = require('../../Utils/appError');
 const catchAsync = require('../../Utils/catchAsync');
+const { calculateCartTotalValue } = require('../../Utils/offerperecentageCal');
 
 exports.applyDiscountByCode = catchAsync(async (req, res, next) => {
   const { discountCode } = req.body;
@@ -15,18 +16,21 @@ exports.applyDiscountByCode = catchAsync(async (req, res, next) => {
   next();
 });
 
-const calculateCartTotalValue = (cartList) => {
-  // Validate that cartList is not empty or null
-  if (!Array.isArray(cartList) || cartList.length === 0) return 0;
+// const calculateCartTotalValue = (cartList) => {
+//   // Validate that cartList is not empty or null
+//   if (!Array.isArray(cartList) || cartList.length === 0) return 0;
 
-  const cartTotal = cartList.reduce((total, item) => {
-    const itemPrice = parseFloat(item.offer_price ?? item.price);
-    const itemQuantity = parseInt(item.azst_cart_quantity);
-    return total + itemPrice * itemQuantity;
-  }, 0);
+//   const cartTotal = cartList.reduce((total, item) => {
+//     const itemPrice =
+//       item.is_varaints_aval === 1
+//         ? parseFloat(item.offer_price)
+//         : parseFloat(item.price);
+//     const itemQuantity = parseInt(item.azst_cart_quantity);
+//     return total + itemPrice * itemQuantity;
+//   }, 0);
 
-  return cartTotal;
-};
+//   return cartTotal;
+// };
 
 const percentageCalculator = (total, percent) =>
   (total * parseFloat(percent)) / 100;

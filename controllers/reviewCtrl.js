@@ -13,7 +13,8 @@ exports.isReviewExist = catchAsync(async (req, res, next) => {
   const { empId } = req;
 
   const query =
-    'SELECT review_id FROM product_review_rating_tbl WHERE  customer_id = ? AND review_id =?';
+    'SELECT review_id FROM product_review_rating_tbl WHERE  customer_id = ? AND review_id =? AND review_title = 1';
+
   const values = [empId, reviewId];
 
   const result = await db(query, values);
@@ -84,7 +85,8 @@ exports.createReview = catchAsync(async (req, res, next) => {
 
   // Query to check if the review already exists
   const checkQuery =
-    'SELECT * FROM product_review_rating_tbl WHERE customer_id = ? AND product_id = ?';
+    'SELECT * FROM product_review_rating_tbl WHERE customer_id = ? AND product_id = ? AND review_title = 1';
+
   const checkValues = [empId, productId];
 
   const existingReviews = await db(checkQuery, checkValues);
@@ -190,6 +192,7 @@ exports.updateReview = catchAsync(async (req, res, next) => {
 exports.DeleteMyReview = catchAsync(async (req, res, next) => {
   const { reviewId } = req.body;
   if (!reviewId) return next(new AppError('ReviewId Id Is Required', 400));
+
   const updatedTime = moment().format('YYYY-MM-DD HH:mm:ss');
 
   const values = [0, updatedTime, reviewId];
