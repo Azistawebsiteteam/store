@@ -13,7 +13,7 @@ exports.isReviewExist = catchAsync(async (req, res, next) => {
   const { empId } = req;
 
   const query =
-    'SELECT review_id FROM product_review_rating_tbl WHERE  customer_id = ? AND review_id =? AND review_title = 1';
+    'SELECT review_id FROM product_review_rating_tbl WHERE  customer_id = ? AND review_id =? AND review_status = 1';
 
   const values = [empId, reviewId];
 
@@ -85,7 +85,7 @@ exports.createReview = catchAsync(async (req, res, next) => {
 
   // Query to check if the review already exists
   const checkQuery =
-    'SELECT * FROM product_review_rating_tbl WHERE customer_id = ? AND product_id = ? AND review_title = 1';
+    'SELECT * FROM product_review_rating_tbl WHERE customer_id = ? AND product_id = ? AND review_status = 1';
 
   const checkValues = [empId, productId];
 
