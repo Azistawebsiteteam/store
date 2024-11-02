@@ -26,7 +26,7 @@ const orderSchema = Joi.object({
         azst_cart_id: Joi.number().min(1).required(),
         // These fields should be optional when 'is_varaints_aval' is 0, and required when it's 1
         price: Joi.alternatives().conditional('is_varaints_aval', {
-          is: 1,
+          is: 0,
           then: Joi.number().min(1).required(),
           otherwise: Joi.any().optional().allow(null), // Allows null or any value when 'is_varaints_aval' is 0
         }),
@@ -34,7 +34,7 @@ const orderSchema = Joi.object({
         product_compare_at_price: Joi.alternatives().conditional(
           'is_varaints_aval',
           {
-            is: 1,
+            is: 0,
             then: Joi.number().min(1).required(),
             otherwise: Joi.any().optional().allow(null), // Allows null or any value when 'is_varaints_aval' is 0
           }

@@ -31,13 +31,21 @@ function generateOrderId() {
 }
 
 const getCartTotal = (cartProducts) => {
-  const subTotal = cartProducts.reduce(
-    (acc, p) => (acc += parseInt(p.azst_cart_quantity) * parseInt(p.price)),
-    0
-  );
+  const subTotal = cartProducts.reduce((total, item) => {
+    const itemPrice =
+      item.is_varaints_aval === 1
+        ? parseFloat(item.offer_price)
+        : parseFloat(item.price);
+    const itemQuantity = parseInt(item.azst_cart_quantity);
+    return total + itemPrice * itemQuantity;
+  }, 0);
 
   const taxAmount = cartProducts.reduce((acc, p) => {
-    const productPrice = parseInt(p.azst_cart_quantity) * parseInt(p.price);
+    const itemPrice =
+      p.is_varaints_aval === 1
+        ? parseFloat(p.offer_price)
+        : parseFloat(p.price);
+    const productPrice = parseInt(p.azst_cart_quantity) * itemPrice;
     const taxPercentage = 10;
     const taxAmount = (productPrice / 100) * taxPercentage;
     return (acc += taxAmount);
@@ -163,6 +171,7 @@ exports.placeOrder = catchAsync(async (req, res, next) => {
     await new Sms(null, user_mobile).cartCheckout(orderId);
     res.status(200).json({ orderId, message: 'Order placed successfully' });
   } catch (error) {
+    console.log(error);
     await rollbackTransaction(); // Rollback transaction on error
 
     // Refund if payment was made via RazorPay and transaction fails
