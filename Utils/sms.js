@@ -68,10 +68,10 @@ module.exports = class Sms {
 
   // Send SMS using the given template content
   async send(templateContent) {
-    try {
-      const url = this.constructUrl(templateContent);
-      const response = await axios.post(url);
-       return Promise.resolve();
+    // try {
+    const url = this.constructUrl(templateContent);
+    const response = await axios.post(url);
+    return Promise.resolve();
 
     //   if (response.status === 200 && response.data.ErrorMessage === 'Success') {
     //     return Promise.resolve();
