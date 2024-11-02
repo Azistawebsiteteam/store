@@ -169,17 +169,55 @@ exports.getCollectionProducts = catchAsync(async (req, res, next) => {
 
 exports.shop99Products = catchAsync(async (req, res, next) => {
   const { customerId } = req.body;
-  const getProducts = `SELECT id as product_id, product_main_title, product_title, image_src,
-                        image_alt_text, price, compare_at_price, product_url_title,min_cart_quantity,
-                        max_cart_quantity,
-                        CASE 
-                          WHEN wl.azst_product_id IS NOT NULL THEN true
-                          ELSE false
-                        END AS in_wishlist
-                       FROM azst_products
-                       LEFT JOIN azst_wishlist_tbl as wl ON azst_products.id = wl.azst_product_id  AND wl.status = 1 AND wl.azst_customer_id = '${customerId}'
-                       WHERE azst_products.status = 1 
-                       AND JSON_CONTAINS(collections, JSON_QUOTE('25'), '$')`;
+
+  const getProducts = ` SELECT
+                      azst_products.id AS product_id,
+                      product_main_title,
+                      min_cart_quantity,
+                      max_cart_quantity,
+                      product_title,
+                      image_src,
+                      image_alt_text,
+                      price,
+                      compare_at_price,
+                      product_url_title,
+                      is_varaints_aval,
+                      CASE
+                        WHEN wl.azst_product_id IS NOT NULL THEN true
+                        ELSE false
+                      END AS in_wishlist,
+                      COALESCE(SUM(pi.azst_ipm_onhand_quantity), 0) AS product_qty
+                     FROM azst_products
+                   
+                    LEFT JOIN azst_wishlist_tbl AS wl
+                        ON azst_products.id = wl.azst_product_id
+                        AND wl.status = 1
+                        AND wl.azst_customer_id = '${customerId}'
+                    LEFT JOIN azst_inventory_product_mapping pi
+                        ON azst_products.id = pi.azst_ipm_product_id
+                         WHERE azst_products.status = 1 
+                       AND JSON_CONTAINS(collections, JSON_QUOTE('25'), '$')
+                    GROUP BY
+                        azst_products.id,
+                        product_main_title,
+                        product_title,
+                        image_src,
+                        image_alt_text,
+                        price,
+                        compare_at_price,
+                        product_url_title`;
+
+  // const getProducts = `SELECT id as product_id, product_main_title, product_title, image_src,
+  //                       image_alt_text, price, compare_at_price, product_url_title,min_cart_quantity,
+  //                       max_cart_quantity,
+  //                       CASE
+  //                         WHEN wl.azst_product_id IS NOT NULL THEN true
+  //                         ELSE false
+  //                       END AS in_wishlist
+  //                      FROM azst_products
+  //                      LEFT JOIN azst_wishlist_tbl as wl ON azst_products.id = wl.azst_product_id  AND wl.status = 1 AND wl.azst_customer_id = '${customerId}'
+  //                      WHERE azst_products.status = 1
+  //                      AND JSON_CONTAINS(collections, JSON_QUOTE('25'), '$')`;
 
   const results = await db(getProducts);
   const products = results.map((product) => getProductImageLink(req, product));
@@ -189,21 +227,56 @@ exports.shop99Products = catchAsync(async (req, res, next) => {
 
 exports.getBestSeller = catchAsync(async (req, res, next) => {
   const { customerId } = req.body;
-  const query = `SELECT id as product_id, product_title,product_main_title, image_src,
-                    image_alt_text, price, compare_at_price, product_url_title,min_cart_quantity,
-                    max_cart_quantity,COUNT(azst_ordersummary_tbl.azst_order_product_id) AS no_of_orders,
-                    CASE 
-                      WHEN wl.azst_product_id IS NOT NULL THEN true
-                      ELSE false
-                    END AS in_wishlist
-                 FROM azst_ordersummary_tbl
-                 LEFT JOIN azst_products ON azst_products.id = azst_ordersummary_tbl.azst_order_product_id
-                 LEFT JOIN azst_wishlist_tbl AS wl ON azst_products.id = wl.azst_product_id AND wl.status = 1 AND wl.azst_customer_id = '${customerId}'
-                 WHERE  azst_products.status = 1
-                 GROUP BY azst_ordersummary_tbl.azst_order_product_id
-                 ORDER BY  no_of_orders DESC
-                 Limit 8
-                 `;
+
+  const query = ` SELECT
+                      azst_products.id AS product_id,
+                      product_main_title,
+                      min_cart_quantity,
+                      max_cart_quantity,
+                      product_title,
+                      image_src,
+                      image_alt_text,
+                      price,
+                      compare_at_price,
+                      product_url_title,
+                      is_varaints_aval,
+                      CASE
+                        WHEN wl.azst_product_id IS NOT NULL THEN true
+                        ELSE false
+                      END AS in_wishlist,
+                      COALESCE(SUM(pi.azst_ipm_onhand_quantity), 0) AS product_qty
+                      FROM azst_ordersummary_tbl
+                     LEFT JOIN azst_products ON azst_products.id = azst_ordersummary_tbl.azst_order_product_id
+                    LEFT JOIN azst_wishlist_tbl AS wl
+                        ON azst_products.id = wl.azst_product_id
+                        AND wl.status = 1
+                        AND wl.azst_customer_id = '${customerId}'
+                    LEFT JOIN azst_inventory_product_mapping pi
+                        ON azst_products.id = pi.azst_ipm_product_id
+                    GROUP BY
+                        azst_products.id,
+                        product_main_title,
+                        product_title,
+                        image_src,
+                        image_alt_text,
+                        price,
+                        compare_at_price,
+                        product_url_title`;
+  // const query = `SELECT id as product_id, product_title,product_main_title, image_src,
+  //                   image_alt_text, price, compare_at_price, product_url_title,min_cart_quantity,is_varaints_aval
+  //                   max_cart_quantity,COUNT(azst_ordersummary_tbl.azst_order_product_id) AS no_of_orders,
+  //                   CASE
+  //                     WHEN wl.azst_product_id IS NOT NULL THEN true
+  //                     ELSE false
+  //                   END AS in_wishlist
+  //                FROM azst_ordersummary_tbl
+  //                LEFT JOIN azst_products ON azst_products.id = azst_ordersummary_tbl.azst_order_product_id
+  //                LEFT JOIN azst_wishlist_tbl AS wl ON azst_products.id = wl.azst_product_id AND wl.status = 1 AND wl.azst_customer_id = '${customerId}'
+  //                WHERE  azst_products.status = 1
+  //                GROUP BY azst_ordersummary_tbl.azst_order_product_id
+  //                ORDER BY  no_of_orders DESC
+  //                Limit 8
+  //                `;
 
   const results = await db(query);
   const products = results.map((product) => getProductImageLink(req, product));
