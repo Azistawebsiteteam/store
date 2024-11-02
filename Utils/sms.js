@@ -61,8 +61,7 @@ module.exports = class Sms {
   // Construct the SMS API URL
   constructUrl(templateContent) {
     const { apiKey, senderId, apiUrl, channel, dcs, flashKey } = this.env;
-    // Encode the text to ensure it's safe to pass in a URL
-    console.log(templateContent);
+
     const encodedText = encodeURIComponent(templateContent);
     return `${apiUrl}?APIkey=${apiKey}&senderid=${senderId}&channel=${channel}&DCS=${dcs}&flashsms=${flashKey}&number=91${this.mobileNum}&text=${encodedText}`;
   }
@@ -72,19 +71,20 @@ module.exports = class Sms {
     try {
       const url = this.constructUrl(templateContent);
       const response = await axios.post(url);
+       return Promise.resolve();
 
-      if (response.status === 200 && response.data.ErrorMessage === 'Success') {
-        return Promise.resolve();
-      } else {
-        throw new AppError(
-          'Failed to send SMS: ' +
-            (response.data.ErrorMessage || 'Unknown error'),
-          400
-        );
-      }
-    } catch (error) {
-      return Promise.reject(error);
-    }
+    //   if (response.status === 200 && response.data.ErrorMessage === 'Success') {
+    //     return Promise.resolve();
+    //   } else {
+    //     throw new AppError(
+    //       'Failed to send SMS: ' +
+    //         (response.data.ErrorMessage || 'Unknown error'),
+    //       400
+    //     );
+    //   }
+    // } catch (error) {
+    //   return Promise.reject(error);
+    // }
   }
 
   // Send a welcome SMS
