@@ -263,21 +263,6 @@ exports.getBestSeller = catchAsync(async (req, res, next) => {
                         price,
                         compare_at_price,
                         product_url_title`;
-  // const query = `SELECT id as product_id, product_title,product_main_title, image_src,
-  //                   image_alt_text, price, compare_at_price, product_url_title,min_cart_quantity,is_varaints_aval
-  //                   max_cart_quantity,COUNT(azst_ordersummary_tbl.azst_order_product_id) AS no_of_orders,
-  //                   CASE
-  //                     WHEN wl.azst_product_id IS NOT NULL THEN true
-  //                     ELSE false
-  //                   END AS in_wishlist
-  //                FROM azst_ordersummary_tbl
-  //                LEFT JOIN azst_products ON azst_products.id = azst_ordersummary_tbl.azst_order_product_id
-  //                LEFT JOIN azst_wishlist_tbl AS wl ON azst_products.id = wl.azst_product_id AND wl.status = 1 AND wl.azst_customer_id = '${customerId}'
-  //                WHERE  azst_products.status = 1
-  //                GROUP BY azst_ordersummary_tbl.azst_order_product_id
-  //                ORDER BY  no_of_orders DESC
-  //                Limit 8
-  //                `;
 
   const results = await db(query);
   const products = results.map((product) => getProductImageLink(req, product));
