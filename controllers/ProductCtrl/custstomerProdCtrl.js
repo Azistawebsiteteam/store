@@ -394,8 +394,13 @@ exports.getProductDetalis = catchAsync(async (req, res, next) => {
     variant.values = variant.values.filter((value) => value !== null);
   });
 
+  const qtyQuery = `SELECT   COALESCE(SUM(azst_ipm_onhand_quantity), 0) AS product_qty 
+  FROM azst_inventory_product_mapping
+  WHERE azst_ipm_product_id = ? `;
+
+  const [productQty] = await db(qtyQuery, [productDetails.id]);
   res.status(200).json({
-    productDetails,
+    productDetails: { ...productDetails, product_qty: productQty.product_qty },
     variants: variantsData,
     avalaibleVariants: result,
     message: 'Data retrieved successfully.',
@@ -407,7 +412,12 @@ exports.getProductVariant = catchAsync(async (req, res, next) => {
 
   if (!variantId) return next(new AppError('Variant Id not provided.', 400));
 
-  const query = `SELECT * FROM azst_sku_variant_info WHERE id = ? AND status = 1`;
+  const query = `SELECT vi.*, COALESCE(SUM(pi.azst_ipm_onhand_quantity), 0) AS product_qty 
+  FROM azst_sku_variant_info vi
+  LEFT JOIN azst_inventory_product_mapping pi
+    ON vi.id = pi.azst_ipm_variant_id
+  WHERE vi.id = ? AND vi.status = 1
+  GROUP BY vi.id`;
 
   const variantData = await db(query, [variantId]);
 
