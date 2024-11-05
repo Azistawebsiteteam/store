@@ -228,7 +228,7 @@ exports.getProductReviews = catchAsync(async (req, res, next) => {
                         FROM product_review_rating_tbl
                         LEFT JOIN azst_customers_tbl ON product_review_rating_tbl.customer_id = azst_customers_tbl.azst_customer_id
                         WHERE review_status = 1   AND  review_approval_status = 1 AND product_id = ?
-                        ORDER BY created_on ${orderby};
+                        ORDER BY review_created_on ${orderby};
                       `;
 
   const result = await db(reviewQuery, values);
@@ -281,7 +281,7 @@ exports.getAllReviews = catchAsync(async (req, res, next) => {
                     FROM product_review_rating_tbl
                     LEFT JOIN azst_customers_tbl ON product_review_rating_tbl.customer_id = azst_customers_tbl.azst_customer_id
                     LEFT JOIN azst_products ON product_review_rating_tbl.product_id = azst_products.id
-                    WHERE review_status = 1 ${filtersQuery} ORDER BY created_on DESC`;
+                    WHERE review_status = 1 ${filtersQuery} ORDER BY review_created_on DESC`;
 
   const results = await db(getQuery, values);
   const modifiedReview = results.map((review) => ({

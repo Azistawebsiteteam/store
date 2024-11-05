@@ -48,13 +48,19 @@ const removeFromWl = catchAsync(async (req, res, next) => {
   res.status(200).json({ message: 'Product removed successfully' });
 });
 
-const getImageLink = (req, imges, pImg) => {
-  if (imges === '' || imges === null) {
-    return `${req.protocol}://${req.get('host')}/api/images/product/${pImg}`;
+const getImageLink = (req, images, fallbackImage) => {
+  if (!images || JSON.parse(images).every((img) => !img.trim())) {
+    return `${req.protocol}://${req.get(
+      'host'
+    )}/api/images/product/${fallbackImage}`;
   }
+
+  const [img1, img2] = images.split(',');
+  const selectedImage = img1 || img2;
+
   return `${req.protocol}://${req.get(
     'host'
-  )}/api/images/product/variantimage/${JSON.parse(imges)[1]}`;
+  )}/api/images/product/variantimage/${selectedImage}`;
 };
 
 const getWhishlist = catchAsync(async (req, res, next) => {

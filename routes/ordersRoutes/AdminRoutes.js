@@ -24,6 +24,8 @@ router.post(
   returnAndReplaceCrl.updateRefundStatus
 );
 
+router.post('/refund-payment', returnAndReplaceCrl.initiateRefundAdmin);
+
 //router.post('/cancel-order', cancelCtrl.cancelOrder);
 
 module.exports = router;

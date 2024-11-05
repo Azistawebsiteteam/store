@@ -1,9 +1,12 @@
-const Joi = require('joi');
+const moment = require('moment');
 const db = require('../../Database/dbconfig');
+const sharp = require('sharp');
 const catchAsync = require('../../Utils/catchAsync');
 const AppError = require('../../Utils/appError');
 const Sms = require('../../Utils/sms');
 const razorpayInstance = require('../../Utils/razorpay');
+
+const multerInstance = require('../../Utils/multer');
 
 // Middleware to check if the order has been delivered
 exports.isOrderDelivered = catchAsync(async (req, res, next) => {
@@ -30,7 +33,7 @@ exports.isOrderDelivered = catchAsync(async (req, res, next) => {
 });
 
 // Helper function to initiate refund using Razorpay
-const initiateRefund = async (paymentId, amount) => {
+exports.initiateRefund = async (paymentId, amount) => {
   try {
     const refundData = await razorpayInstance.payments.refund(paymentId, {
       amount: amount * 100, // Convert amount to paise (1 INR = 100 paise)
@@ -41,43 +44,32 @@ const initiateRefund = async (paymentId, amount) => {
   }
 };
 
-// Joi validation schema for the refund request
-const refundSchema = Joi.object({
-  orderId: Joi.string().min(10).max(18).required(),
-  reason: Joi.string().min(5).max(500).required(),
-  refundMethod: Joi.string()
-    .valid('Same Payment Method', 'Bank Transfer')
-    .required(),
-  bankAc: Joi.number().when('refundMethod', {
-    is: 'Bank Transfer',
-    then: Joi.required(),
-    otherwise: Joi.optional().allow('', null),
-  }),
-  ifscCode: Joi.string().when('refundMethod', {
-    is: 'Bank Transfer',
-    then: Joi.string()
-      .required()
-      .regex(/^[A-Za-z]{4}[a-zA-Z0-9]{7}$/)
-      .messages({
-        'string.pattern.base': 'Invalid IFSC Code',
-      }),
-    otherwise: Joi.optional().allow('', null),
-  }),
-});
+exports.getRefundStatus = async (refundId) => {
+  try {
+    const refundStatus = await razorpayInstance.refunds.fetch(refundId);
+    return refundStatus;
+  } catch (err) {
+    throw new Error(err?.error?.description || 'Failed to fetch refund status');
+  }
+};
+
+exports.uploadImage = multerInstance.single('bankFile');
 
 // Main controller function to handle order return and refund
 exports.returnOrder = catchAsync(async (req, res, next) => {
-  // Validate the request body using Joi schema
-  const { error } = refundSchema.validate(req.body);
-  if (error) return next(new AppError(error.message, 400));
-
-  // Check if the order is delivered
-
-  // await exports.isOrderDelivered(req, res, next);
-
-  const { orderId, reason, refundMethod, bankAc, ifscCode } = req.body;
+  const { orderId, reason, refundMethod, bankTransferDetails = {} } = req.body;
+  const {
+    bankAcNo = '',
+    ifscCode = '',
+    branch = '',
+    bankName = '',
+    acName = '',
+  } = bankTransferDetails;
   const returnBy = req.empId; // Employee ID initiating the return
   const { user_mobile } = req.userDetails; // Mobile number of the user (customer)
+  const imageName = req.file
+    ? `${Date.now()}-${req.file.originalname.replace(/ /g, '-')}`
+    : null;
 
   const {
     azst_orders_total,
@@ -85,7 +77,15 @@ exports.returnOrder = catchAsync(async (req, res, next) => {
     azst_orders_payment_id,
   } = req.orderDetails;
 
-  // If the payment method is COD and refund method is "Same Payment Method"
+  // Check if a return has already been initiated for this order
+  const existingReturnQuery = `SELECT return_id FROM azst_order_returns WHERE order_id = ?`;
+  const [existingReturn] = await db(existingReturnQuery, [orderId]);
+
+  if (existingReturn) {
+    return next(new AppError('Return Initiate Already', 400));
+  }
+
+  // Validate payment method compatibility with refund method
   if (
     azst_orders_payment_method === 'COD' &&
     refundMethod === 'Same Payment Method'
@@ -95,33 +95,45 @@ exports.returnOrder = catchAsync(async (req, res, next) => {
     );
   }
 
-  // Insert return details into the database
-  const query = `
+  // Prepare the insertion query and values
+  const insertReturnQuery = `
     INSERT INTO azst_order_returns 
-    (order_id, customer_id, return_reason, refund_method,bank_account, ifsc_code, refund_amount)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    (order_id, customer_id, return_reason, refund_method, bank_account_num, ifsc_code, 
+    bank_branch, bank_name, ac_holder_name, bank_file, payment_id, refund_amount)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
-
-  const values = [
+  const returnValues = [
     orderId,
     returnBy,
     reason,
     refundMethod,
-    bankAc,
+    bankAcNo,
     ifscCode,
+    branch,
+    bankName,
+    acName,
+    imageName,
+    azst_orders_payment_id,
     azst_orders_total,
   ];
 
-  // Insert the return details into the database
-  const result = await db(query, values);
+  // Execute the insertion query
+  const insertResult = await db(insertReturnQuery, returnValues);
 
-  // Send response based on whether the return insertion was successful
-  if (result.affectedRows > 0) {
+  if (insertResult.affectedRows > 0) {
+    // Save the uploaded file if present
+    if (imageName) {
+      await sharp(req.file.buffer).toFile(`Uploads/AccountFiles/${imageName}`);
+    }
+
+    // Send SMS notification to the customer
+
     const smsService = new Sms(returnBy, user_mobile);
-    await smsService.refundRequest(orderId); // Send SMS notification to the customer
-    res.status(200).json({ message: 'Refund initiated successfully' });
+    await smsService.refundRequest(orderId);
+
+    return res.status(200).json({ message: 'Refund initiated successfully' });
   } else {
-    res.status(500).json({ message: 'Oops, something went wrong' });
+    return res.status(400).json({ message: 'Failed to Return try again' });
   }
 });
 
@@ -137,47 +149,177 @@ exports.getRefunRequestList = catchAsync(async (req, res, next) => {
   res.status(200).json(result);
 });
 
-const sendSmsToCustomer = async (returnId) => {
+const sendSmsToCustomer = async (returnId, returnStatus) => {
   const query = `SELECT order_id, customer_id FROM azst_order_returns  WHERE return_id = ? `;
   const [customer] = await db(query, [returnId]);
 
   if (customer) {
     const smsService = new Sms(customer.customer_id, null);
     await smsService.getUserDetails();
-    await smsService.refundInitiate(customer.order_id);
+    if (returnStatus === 'Approved') {
+      await smsService.refundInitiate(customer.order_id);
+    } else if (returnStatus === 'Refunded') {
+      await smsService.paymentRefunded(customer.order_id);
+    } else {
+      await smsService.refundRejected(customer.order_id);
+    }
   }
 };
 
 exports.updateRefundStatus = catchAsync(async (req, res, next) => {
-  const { retunId, returnStatus, comments } = req.body;
+  const { returnId, returnStatus, comments } = req.body;
+  const today = moment().format('YYYY-MM-DD HH:mm:ss');
 
-  let processing_query = '';
+  // Prepare base query and values
+  let query = `
+    UPDATE azst_order_returns 
+    SET admin_approval = ?, admin_comments = ?, admin_id = ?, approval_action_on = ?
+  `;
+  const values = [returnStatus, comments, req.empId, today];
 
-  const values = [returnStatus, comments, req.empId];
-
+  // Append processing status if approved
   if (returnStatus === 'Approved') {
-    processing_query = ', processing_status = ?';
+    query += ', processing_status = ?';
     values.push('Processing');
   }
 
-  values.push(retunId);
+  // Add condition and finalize query
+  query += ' WHERE return_id = ?';
+  values.push(returnId);
 
-  const query = `UPDATE azst_order_returns SET admin_approval = ? , 
-                        admin_comments = ? ,admin_id = ? ${processing_query}
-                  WHERE return_id = ?`;
-
+  // Execute the update query
   const result = await db(query, values);
 
   if (result.affectedRows > 0) {
-    if (returnStatus === 'Approved') {
-      sendSmsToCustomer(retunId);
-    }
-    res.status(200).json({ message: `Refund ${returnStatus} successfully` });
-    return;
+    await sendSmsToCustomer(returnId, returnStatus); // Send SMS notification to the customer
+    return res
+      .status(200)
+      .json({ message: `Refund ${returnStatus} successfully` });
   }
 
-  res.status(400).json({ message: 'opps! something went wrong' });
+  res.status(400).json({ message: 'Oops! Something went wrong' });
 });
+
+exports.initiateRefundAdmin = catchAsync(async (req, res, next) => {
+  const { returnId } = req.body;
+
+  if (!returnId) return next(new AppError('Refund ID is required', 400));
+
+  // Retrieve refund data from the database
+  const getRefundQuery = `
+    SELECT payment_id, refund_amount
+    FROM azst_order_returns
+    WHERE return_id = ? AND admin_approval = 'Approved' AND Status = 1
+  `;
+  const [refundData] = await db(getRefundQuery, [returnId]);
+
+  if (!refundData) return next(new AppError('No refund request found', 404));
+
+  const { payment_id, refund_amount } = refundData;
+  let trackId = null;
+
+  // Attempt to initiate the refund through an external function
+  try {
+    const refundDetails = await exports.initiateRefund(
+      payment_id,
+      refund_amount
+    );
+    trackId = refundDetails.id;
+  } catch (error) {
+    return next(new AppError(error.message, 400));
+  }
+
+  // Prepare update query and values
+  const updateQuery = `
+    UPDATE azst_order_returns
+    SET refund_initiate_by = ?, refund_initiate_on = ?, refund_track_id = ?, processing_status = ?
+    WHERE return_id = ?
+  `;
+  const today = moment().format('YYYY-MM-DD HH:mm:ss');
+  const values = [req.empId, today, trackId, 'Refunded', returnId];
+
+  // Execute the update query
+  const result = await db(updateQuery, values);
+
+  if (result.affectedRows > 0) {
+    await sendSmsToCustomer(returnId, 'Refunded'); // Send SMS notification to the customer
+    return res.status(200).json({ message: 'Payment refunded successfully' });
+  }
+
+  res.status(400).json({ message: 'Oops! Something went wrong' });
+});
+
+// exports.updateRefundStatus = catchAsync(async (req, res, next) => {
+//   const { retunId, returnStatus, comments } = req.body;
+
+//   let processing_query = '';
+//   const today = moment().format('YYYY-MM-DD HH:mm:ss');
+
+//   const values = [returnStatus, comments, req.empId, today];
+
+//   if (returnStatus === 'Approved') {
+//     processing_query = ', processing_status = ?';
+//     values.push('Processing');
+//   }
+
+//   values.push(retunId);
+
+//   const query = `UPDATE azst_order_returns SET admin_approval = ? ,
+//                         admin_comments = ? ,admin_id = ? ,approval_action_on = ?  ${processing_query}
+//                   WHERE return_id = ?`;
+
+//   const result = await db(query, values);
+
+//   if (result.affectedRows > 0) {
+//     sendSmsToCustomer(retunId, returnStatus);
+//     res.status(200).json({ message: `Refund ${returnStatus} successfully` });
+//     return;
+//   }
+
+//   res.status(400).json({ message: 'opps! something went wrong' });
+// });
+
+// exports.initiateRefundAdmin = catchAsync(async (req, res, next) => {
+//   const { retunId } = req.body;
+//   if (!retunId) return next(new AppError('Refund Id  is required', 400));
+
+//   const getRefundQuery = ` SELECT payment_id, refund_amount
+//                             FROM azst_order_returns
+//                             WHERE return_id = ? AND admin_approval = 'Approved' AND Status = 1 `;
+
+//   const [refundData] = await db(getRefundQuery, [retunId]);
+
+//   if (!refundData) return next(new AppError('no Refund request found', 404));
+
+//   const { payment_id, refund_amount } = refundData;
+//   let trackId = null;
+//   try {
+//     const refundDetails = await exports.initiateRefund(
+//       payment_id,
+//       refund_amount
+//     );
+//     trackId = refundDetails.id;
+//   } catch (error) {
+//     return next(new AppError(error.message, 400));
+//   }
+
+//   const query = `UPDATE azst_order_returns
+//                   SET refund_initiate_by = ? ,refund_initiate_on = ? refund_track_id = ? ,processing_status = ?
+//                   WHERE return_id = ?`;
+
+//   const today = moment().format('YYYY-MM-DD HH:mm:ss');
+//   const values = [req.empId, today, trackId, 'Refunded', retunId];
+
+//   const result = await db(query, values);
+
+//   if (result.affectedRows > 0) {
+//     sendSmsToCustomer(retunId, 'Refunded');
+//     res.status(200).json({ message: `Payment Refunded  successfully` });
+//     return;
+//   }
+
+//   res.status(400).json({ message: 'opps! something went wrong' });
+// });
 
 //'Approved', 'Rejected''Pending', 'Processing', 'Refunded'
 
@@ -192,19 +334,26 @@ exports.updateRefundStatus = catchAsync(async (req, res, next) => {
 //     return next(new AppError('Refund initiation failed', 400));
 //   }
 // }
-
 // return_id,
-//   order_id,
-//     customer_id,
-//     return_reason,
-//     return_date,
-//     admin_approval,
-//     admin_id,
-//     refund_method,
-//     bank_account,
-//     ifsc_code,
-//     refund_amount,
-//     refun_track_id,
-//     processing_status,
-//     admin_comments,
-//     last_updated;
+// order_id,
+// customer_id,
+// return_reason,
+// return_date,
+// refund_method,
+// bank_account_num,
+// ifsc_code,
+// bank_branch,
+// bank_name,
+// ac__holder_name,
+// bank_file,
+// payment_id,
+// refund_amount,
+//   refund_track_id,
+//   admin_approval,
+//   admin_id,
+//   approval_action_on,
+// refund_initiate_by,
+// refund_initiate_on,
+// processing_status,
+// admin_comments,
+//   last_updated;

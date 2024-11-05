@@ -169,4 +169,9 @@ module.exports = class Sms {
     const templateContent = `Hello! Your refund for order ${orderId} from Azista Store is officially approved and initiated. You can expect the amount to be processed soon. Thank you for your patience! Azista`;
     await this.send(templateContent);
   }
+  async refundRejected(orderId) {
+    // implimented
+    const templateContent = `Hello! Your refund for order ${orderId} from Azista Store is officially approved and initiated. You can expect the amount to be processed soon. Thank you for your patience! Azista`;
+    await this.send(templateContent);
+  }
 };

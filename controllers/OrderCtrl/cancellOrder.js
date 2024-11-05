@@ -1,38 +1,141 @@
 const moment = require('moment');
 const db = require('../../Database/dbconfig');
+const { dbPool } = require('../../Database/dbPool');
 const catchAsync = require('../../Utils/catchAsync');
 const AppError = require('../../Utils/appError');
 const Sms = require('../../Utils/sms');
+const { initiateRefund } = require('./retunsOrder');
 
 exports.cancelOrder = catchAsync(async (req, res, next) => {
   const { orderId, reason } = req.body;
-
   if (!orderId || !reason) {
-    next(new AppError('orderId and reason are required', 400));
+    return next(new AppError('orderId and reason are required', 400));
   }
-  const cancelledBy = req.empId;
 
+  const cancelledBy = req.empId;
   const cancelDate = moment().format('YYYY-MM-DD HH:mm:ss');
 
-  const query = `UPDATE  azst_orders_tbl 
-                SET azst_orders_status = 0 , azst_orders_cancelled_on = ? ,
-                    azst_orders_cancelled_by = ? , azst_orders_cancelled_reason = ?
-                WHERE azst_orders_id = ?`;
+  const getOrderDetailsQuery = `
+    SELECT azst_orders_total, azst_orders_payment_method, azst_orders_checkout_id
+    FROM azst_orders_tbl
+    WHERE azst_orders_id = ?
+      AND azst_orders_status = 1
+      AND azst_orders_confirm_status <> 2
+      AND azst_orders_delivery_status = 0`;
 
-  //const customerQuery = `select azst_orders_customer_id from azst_orders_tbl  WHERE azst_orders_id = ?`;
+  try {
+    const [orderDetails] = await dbPool.query(getOrderDetailsQuery, [orderId]);
 
-  const values = [cancelDate, cancelledBy, reason, orderId];
+    if (!orderDetails.length) {
+      return next(new AppError("Order can't be cancelled at this stage", 400));
+    }
 
-  const result = await db(query, values);
-  // const [customer] = await db(customerQuery, [orderId]);
+    const {
+      azst_orders_total,
+      azst_orders_payment_method,
+      azst_orders_checkout_id,
+    } = orderDetails[0];
 
-  if (result.affectedRows > 0) {
-    const smsSevices = new Sms(cancelledBy, null);
-    await smsSevices.getUserDetails();
-    await smsSevices.orderCancel(orderId);
+    let refundTrackId = null;
 
-    res.status(200).json({ message: 'orders was cancelled successfully' });
-  } else {
-    res.status(404).json({ message: 'oops, something went wrong' });
+    // Start transaction
+    await dbPool.query('START TRANSACTION');
+
+    try {
+      // Step 1: Update the order status to cancelled
+      const cancelOrderQuery = `
+        UPDATE azst_orders_tbl
+        SET azst_orders_status = 0,
+            azst_orders_cancelled_on = ?,
+            azst_orders_cancelled_by = ?,
+            azst_orders_cancelled_reason = ?
+        WHERE azst_orders_id = ?`;
+
+      const cancelOrderValues = [cancelDate, cancelledBy, reason, orderId];
+      const [cancelResult] = await dbPool.query(
+        cancelOrderQuery,
+        cancelOrderValues
+      );
+
+      if (cancelResult.affectedRows === 0) {
+        throw new Error('Failed to update order status');
+      }
+
+      // Step 2: If payment is not COD, initiate a refund
+      if (azst_orders_payment_method !== 'COD') {
+        const refundData = await initiateRefund(
+          azst_orders_checkout_id,
+          azst_orders_total
+        );
+        refundTrackId = refundData.id;
+
+        // Step 3: Update the refund_track in the order record
+        const updateRefundTrackQuery = `
+          UPDATE azst_orders_tbl
+          SET azst_orders_refund_track = ?
+          WHERE azst_orders_id = ?`;
+        const updateRefundTrackValues = [refundTrackId, orderId];
+        await dbPool.query(updateRefundTrackQuery, updateRefundTrackValues);
+      }
+
+      // Step 4: Commit transaction if everything is successful
+      await dbPool.query('COMMIT');
+
+      // Send SMS notification
+      const smsService = new Sms(cancelledBy, null);
+      await smsService.getUserDetails();
+      await smsService.orderCancel(orderId);
+
+      res.status(200).json({
+        message: 'Order was cancelled successfully',
+        trackId: refundTrackId,
+      });
+    } catch (error) {
+      // Roll back transaction in case of any error
+      await dbPool.query('ROLLBACK');
+      return next(
+        new AppError(error.message || 'Order cancellation failed', 400)
+      );
+    }
+  } catch (error) {
+    return next(new AppError('Database operation failed', 500));
   }
 });
+
+// azst_orders_tbl_id,
+//   azst_orders_id,
+//   azst_orders_email,
+//   azst_orders_financial_status,
+//   azst_orders_paid_on,
+//   azst_orders_fulfillment_status,
+//   azst_orders_fulfilled_on,
+//   azst_orders_currency,
+//   azst_orders_subtotal,
+//   azst_orders_shipping,
+//   azst_orders_taxes,
+//   azst_orders_total,
+//   azst_orders_discount_code,
+//   azst_orders_discount_amount,
+//   azst_orders_shipping_method,
+//   azst_orders_status,
+//   azst_orders_created_on,
+//   azst_orders_confirm_by,
+//   azst_orders_confirm_on,
+//   azst_orders_confirm_status,
+//   azst_orders_customer_id,
+//   azst_orders_checkout_id,
+//   azst_orders_cancelled_on,
+//   azst_orders_payment_method,
+//   azst_orders_payment_reference,
+//   azst_orders_vendor,
+//   azst_orders_vendor_code,
+//   azst_orders_tags,
+//   azst_orders_source,
+//   azst_orders_billing_province_name,
+//   azst_orders_shipping_province_name,
+//   azst_orders_payment_id,
+//   azst_orders_cancelled_by,
+//   azst_orders_delivery_status,
+//   azst_orders_delivery_on,
+//   azst_orders_cancelled_reason,
+//   azst_orders_refund_id;

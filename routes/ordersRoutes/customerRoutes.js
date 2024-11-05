@@ -13,12 +13,24 @@ const orderDetails = require('../../controllers/OrderCtrl/OrdersDetails');
 const createOrderCtrl = require('../../controllers/OrderCtrl/createOrder');
 const razorpayCtrl = require('../../controllers/OrderCtrl/razorpay');
 
-router.use(multer().any());
 const key = process.env.JWT_SECRET;
 
-router.post('/estimate/date', orderDetails.getEstimateDate);
+router.post('/estimate/date', multer().any(), orderDetails.getEstimateDate);
 
 router.use(authCtrl.protect(key));
+
+router.post(
+  '/return-order',
+  returnAndReplaceCrl.uploadImage,
+  returnAndReplaceCrl.isOrderDelivered,
+  returnValidation,
+
+  returnAndReplaceCrl.returnOrder
+);
+
+//  returnAndReplaceCrl.storeImage,
+
+router.use(multer().any());
 
 router.post('/creat-payment', razorpayCtrl.razorPayCreateOrder);
 router.post('/validate-payment', razorpayCtrl.razorPayValidatePayment);
@@ -29,12 +41,6 @@ router.post('/order-summary', orderDetails.getOrderSummary);
 router.get('/payment/:paymentId', razorpayCtrl.rezorpayPayment);
 
 router.post('/cancel-order', cancelCtrl.cancelOrder);
-router.post(
-  '/return-order',
-  returnAndReplaceCrl.isOrderDelivered,
-  returnValidation,
-  returnAndReplaceCrl.returnOrder
-);
 router.get('/refund-requests', returnAndReplaceCrl.getMyRefunRequestList);
 router.get('/all', ordersCtrl.getCustomerOrders);
 router.post('/order/details', ordersCtrl.getOrderDetails);
