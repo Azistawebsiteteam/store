@@ -30,8 +30,8 @@ router.put(
 router.use(multer().any());
 router.patch('/status', popupCtrl.changeActiveStatus);
 
+router.patch('/', popupCtrl.deletePopup);
 router.use(popupCtrl.isPopupExist);
-
-router.route('/').post(popupCtrl.getPopup).patch(popupCtrl.deletePopup);
+router.post('/', popupCtrl.getPopup);
 
 module.exports = router;

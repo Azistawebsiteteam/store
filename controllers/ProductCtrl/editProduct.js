@@ -1,9 +1,8 @@
-const multer = require('multer');
 const sharp = require('sharp');
 const fs = require('fs');
 
 const db = require('../../Database/dbconfig');
-
+const multerInstance = require('../../Utils/multer');
 const catchAsync = require('../../Utils/catchAsync');
 const AppError = require('../../Utils/appError');
 const {
@@ -11,22 +10,7 @@ const {
   getPricess,
 } = require('../../Utils/offerperecentageCal');
 
-const multerStorage = multer.memoryStorage();
-
-const multerFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image')) {
-    cb(null, true);
-  } else {
-    cb(new Error('File is not an image! Please upload only images.'), false);
-  }
-};
-
-const upload = multer({
-  storage: multerStorage,
-  fileFilter: multerFilter,
-});
-
-exports.updateVariantImage = upload.single('variantImage');
+exports.updateVariantImage = multerInstance.single('variantImage');
 
 exports.isVariantExist = catchAsync(async (req, res, next) => {
   const { variantId } = req.body;
@@ -330,6 +314,8 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
     brand,
     minCartQty,
     maxCartQty,
+    returnAccept,
+    returnDays,
   } = req.body;
 
   const newProductImages = productImages.map((url) =>
@@ -359,7 +345,7 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
         image_src = ?, product_images = ?, variant_store_order = ?, image_alt_text = ?, seo_title = ?, seo_description = ?, 
         cost_per_item = ?, price = ?, compare_at_price = ?, sku_code = ?, sku_bar_code = ?, is_taxable = ?, product_weight = ?, 
         out_of_stock_sale = ?, url_handle = ?, status = ?, azst_updatedby = ?, product_url_title = ?, brand_id = ?, 
-        is_varaints_aval = ?,min_cart_quantity = ?,max_cart_quantity = ?
+        is_varaints_aval = ?,min_cart_quantity = ?,max_cart_quantity = ?, product_return_accept = ?,product_return_days = ?
     WHERE id = ?;
   `;
 
@@ -396,6 +382,8 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
     variantsThere,
     minCartQty,
     maxCartQty,
+    returnAccept,
+    returnDays,
     productId,
   ];
 

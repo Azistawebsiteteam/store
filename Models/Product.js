@@ -46,6 +46,12 @@ const baseProductSchema = Joi.object({
   }),
   minCartQty: Joi.number().optional(),
   maxCartQty: Joi.number().optional(),
+  returnAccept: Joi.string().required().valid('No', 'Yes'),
+  returnDays: Joi.when('returnAccept', {
+    is: 'Yes',
+    then: Joi.number().min(1).required(),
+    otherwise: Joi.optional().allow(0, null),
+  }),
 });
 
 const productSchemaWithoutVariants = baseProductSchema.keys({

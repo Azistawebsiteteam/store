@@ -108,7 +108,7 @@ module.exports = class Sms {
   }
 
   async cartCheckout() {
-    //need to discuss requirement
+    //need to discuss requirement very day 12 pm night
     const templateContent = `Hi! Your cart at Azista Store is ready for checkout. Don't miss out. Complete your purchase today! Azista`;
     await this.send(templateContent);
   }
@@ -119,10 +119,11 @@ module.exports = class Sms {
     await this.send(templateContent);
   }
 
-  // async orderPlaced(orderId) {
-  //   const templateContent = `Thank you for your order! Order ${orderId} with Azista Store has been successfully placed. We will send you updates soon. Azista`;
-  //   await this.send(templateContent);
-  // }
+  async orderPlaced(orderId) {
+    //implementated
+    const templateContent = `Thank you for shopping with Azista Store! Your order ${orderId} has been placed and is being processed. Azista`;
+    await this.send(templateContent);
+  }
 
   async orderConfirm(orderId) {
     //implementated
@@ -164,14 +165,15 @@ module.exports = class Sms {
     await this.send(templateContent);
   }
 
-  async refundInitiate(orderId) {
-    // implimented
-    const templateContent = `Hello! Your refund for order ${orderId} from Azista Store is officially approved and initiated. You can expect the amount to be processed soon. Thank you for your patience! Azista`;
-    await this.send(templateContent);
-  }
   async refundRejected(orderId) {
     // implimented
-    const templateContent = `Hello! Your refund for order ${orderId} from Azista Store is officially approved and initiated. You can expect the amount to be processed soon. Thank you for your patience! Azista`;
+    const templateContent = `Dear Customer, your product return request for Order ${orderId} has been rejected. For assistance, please contact 18001020576. Azista`;
+    await this.send(templateContent);
+  }
+
+  async refundInitiate(orderId) {
+    // implimented
+    const templateContent = `Dear Customer, the refund for your product return request for Order ${orderId} has been initiated and will be credited shortly. For any queries, please contact 18001020576. Azista`;
     await this.send(templateContent);
   }
 };

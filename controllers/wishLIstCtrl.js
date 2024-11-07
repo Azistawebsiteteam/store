@@ -1,8 +1,7 @@
 const moment = require('moment');
-const util = require('util');
 const Joi = require('joi');
-const db = require('../Database/dbconfig');
 
+const db = require('../Database/dbconfig');
 const catchAsync = require('../Utils/catchAsync');
 const AppError = require('../Utils/appError');
 

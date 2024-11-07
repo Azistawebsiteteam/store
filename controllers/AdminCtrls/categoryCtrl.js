@@ -1,32 +1,12 @@
-const multer = require('multer');
 const sharp = require('sharp');
 const fs = require('fs');
 const db = require('../../Database/dbconfig');
-
+const multerInstance = require('../../Utils/multer');
 const AppError = require('../../Utils/appError');
 const catchAsync = require('../../Utils/catchAsync');
 
-// Multer configuration
-const multerStorage = multer.memoryStorage();
-
-const multerFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image')) {
-    cb(null, true);
-  } else {
-    cb(
-      new AppError('File is not an image! Please upload only images.', 400),
-      false
-    );
-  }
-};
-
-const upload = multer({
-  storage: multerStorage,
-  fileFilter: multerFilter,
-});
-
 // Middleware for uploading an image
-exports.uploadImage = upload.single('categoryImg');
+exports.uploadImage = multerInstance.single('categoryImg');
 
 // Middleware for storing a new image
 exports.storeImage = catchAsync(async (req, res, next) => {

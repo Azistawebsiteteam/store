@@ -1,4 +1,3 @@
-const { optional } = require('joi');
 const db = require('../../../Database/dbconfig');
 
 const AppError = require('../../../Utils/appError');
@@ -108,17 +107,3 @@ exports.updateInventory = catchAsync(async (req, res, next) => {
 
   res.status(200).json({ message: 'Quantity Updated successfully' });
 });
-
-// azst_ipm_id,
-//   azst_ipm_inventory_id,
-//   azst_ipm_product_id,
-//   azst_ipm_variant_id,
-//   azst_ipm_onhand_quantity,
-//   azst_ipm_avbl_quantity,
-//   azst_ipm_commit_quantity,
-//   azst_ipm_unavbl_quantity,
-//   azst_ipm_created_by,
-//   azst_ipm_updated_by,
-//   azst_ipm_status,
-//   azst_ipm_createdon,
-//   azst_ipm_updateon;

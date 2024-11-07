@@ -1,32 +1,13 @@
 const moment = require('moment');
-const multer = require('multer');
 const sharp = require('sharp');
 const Joi = require('joi');
 const fs = require('fs').promises; // Import the promises-based version of the fs module
-
 const db = require('../../../Database/dbconfig');
 const catchAsync = require('../../../Utils/catchAsync');
 const AppError = require('../../../Utils/appError');
+const multerInstance = require('../../../Utils/multer');
 
-const multerStorage = multer.memoryStorage();
-
-const multerFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image')) {
-    cb(null, true);
-  } else {
-    cb(
-      new AppError('file is Not an Image! please upload only image', 400),
-      false
-    );
-  }
-};
-
-const upload = multer({
-  storage: multerStorage,
-  fileFilter: multerFilter,
-});
-
-exports.uploadbanner = upload.fields([
+exports.uploadbanner = multerInstance.fields([
   { name: 'webBanner', maxCount: 1 },
   { name: 'mobileBanner', maxCount: 1 },
 ]);

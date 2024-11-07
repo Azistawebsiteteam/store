@@ -1,5 +1,5 @@
 const Joi = require('joi');
-const multer = require('multer');
+const multerInstance = require('../../Utils/multer');
 const sharp = require('sharp');
 const fs = require('fs');
 
@@ -24,25 +24,7 @@ exports.isCollectionExist = catchAsync(async (req, res, next) => {
   next();
 });
 
-const multerStorage = multer.memoryStorage();
-
-const multerFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image')) {
-    cb(null, true);
-  } else {
-    cb(
-      new AppError('file is Not an Image! please upload only image', 400),
-      false
-    );
-  }
-};
-
-const upload = multer({
-  storage: multerStorage,
-  fileFilter: multerFilter,
-});
-
-exports.uploadImage = upload.single('collectionImg');
+exports.uploadImage = multerInstance.single('collectionImg');
 
 exports.storeImage = catchAsync(async (req, res, next) => {
   if (!req.file) {

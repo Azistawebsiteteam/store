@@ -1,6 +1,6 @@
-const multer = require('multer');
 const sharp = require('sharp');
 const db = require('../../Database/dbconfig');
+const multerInstance = require('../../Utils/multer');
 const AppError = require('../../Utils/appError');
 const catchAsync = require('../../Utils/catchAsync');
 const {
@@ -8,25 +8,7 @@ const {
   getPricess,
 } = require('../../Utils/offerperecentageCal');
 
-const multerStorage = multer.memoryStorage();
-
-const multerFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image')) {
-    cb(null, true);
-  } else {
-    cb(
-      new AppError('File is not an image! Please upload only images.', 400),
-      false
-    );
-  }
-};
-
-const upload = multer({
-  storage: multerStorage,
-  fileFilter: multerFilter,
-});
-
-exports.uploadImage = upload.fields([
+exports.uploadImage = multerInstance.fields([
   { name: 'productImages', maxCount: 20 },
   { name: 'variantImage', maxCount: 100 },
 ]);
@@ -143,6 +125,8 @@ exports.addProduct = catchAsync(async (req, res, next) => {
     brand,
     minCartQty = 1,
     maxCartQty = 10,
+    returnAccept,
+    returnDays,
   } = req.body;
 
   // Parse variants if available
@@ -165,8 +149,8 @@ exports.addProduct = catchAsync(async (req, res, next) => {
                             product_images, variant_store_order, image_alt_text, seo_title, seo_description, cost_per_item,
                             price, compare_at_price, sku_code, sku_bar_code, is_taxable, product_weight, out_of_stock_sale,
                             url_handle, status, azst_updatedby, origin_country, product_url_title, is_varaints_aval,brand_id,
-                            min_cart_quantity ,max_cart_quantity )
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ,?, ?, ?, ?)`;
+                            min_cart_quantity ,max_cart_quantity,   product_return_accept,product_return_days )
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ,?, ?, ?, ?,?,?)`;
 
   const collectionsArry = collections.map((id) => parseInt(id, 10));
 
@@ -202,6 +186,8 @@ exports.addProduct = catchAsync(async (req, res, next) => {
     brand,
     minCartQty ?? 1,
     maxCartQty ?? 10,
+    returnAccept,
+    returnDays,
   ];
 
   const product = await db(productQuery, values);
@@ -374,7 +360,7 @@ exports.skuVariantsProduct = catchAsync(async (req, res, next) => {
   res.status(200).json({ message: 'Product & variants inserted successfully' });
 });
 
-exports.uploadInfoImgs = upload.fields([
+exports.uploadInfoImgs = multerInstance.fields([
   { name: 'ingImages', maxCount: 10 },
   { name: 'feaImages', maxCount: 10 },
 ]);

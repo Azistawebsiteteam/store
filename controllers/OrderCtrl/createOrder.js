@@ -168,12 +168,10 @@ exports.placeOrder = catchAsync(async (req, res, next) => {
 
     //await new Email(req.userDetails).sendOrderStatus(orderId);
     await commitTransaction(); // Commit transaction
-    await new Sms(null, user_mobile).cartCheckout(orderId);
+    await new Sms(null, user_mobile).orderPlaced(orderId);
     res.status(200).json({ orderId, message: 'Order placed successfully' });
   } catch (error) {
-    console.log(error);
     await rollbackTransaction(); // Rollback transaction on error
-
     // Refund if payment was made via RazorPay and transaction fails
     if (paymentMethod === 'RazorPay' && razorpay_payment_id) {
       try {
@@ -289,6 +287,7 @@ exports.orderSummary = async (req, res, next) => {
     } = product;
 
     const amount = parseInt(is_varaints_aval) === 0 ? price : offer_price;
+    
     const values = [
       orderId,
       azst_cart_product_id,

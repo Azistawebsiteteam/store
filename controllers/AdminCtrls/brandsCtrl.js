@@ -1,10 +1,8 @@
-const moment = require('moment');
-const multer = require('multer');
 const sharp = require('sharp');
 const fs = require('fs');
 
 const db = require('../../Database/dbconfig');
-
+const multerInstance = require('../../Utils/multer');
 const AppError = require('../../Utils/appError');
 const catchAsync = require('../../Utils/catchAsync');
 
@@ -20,25 +18,7 @@ exports.isBrandExit = catchAsync(async (req, res, next) => {
   next();
 });
 
-const multerStorage = multer.memoryStorage();
-
-const multerFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image')) {
-    cb(null, true);
-  } else {
-    cb(
-      new AppError('file is Not an Image! please upload only image', 400),
-      false
-    );
-  }
-};
-
-const upload = multer({
-  storage: multerStorage,
-  fileFilter: multerFilter,
-});
-
-exports.uploadImage = upload.single('brandLogo');
+exports.uploadImage = multerInstance.single('brandLogo');
 
 exports.storeImage = catchAsync(async (req, res, next) => {
   if (!req.file) {

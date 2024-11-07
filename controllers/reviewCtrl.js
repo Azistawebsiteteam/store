@@ -1,11 +1,10 @@
-const db = require('../Database/dbconfig');
-const multer = require('multer');
 const sharp = require('sharp');
-const jwt = require('jsonwebtoken');
+const moment = require('moment');
 
+const db = require('../Database/dbconfig');
 const catchAsync = require('../Utils/catchAsync');
 const AppError = require('../Utils/appError');
-const moment = require('moment/moment');
+const multerInstance = require('../Utils/multer');
 
 exports.isReviewExist = catchAsync(async (req, res, next) => {
   const { reviewId } = req.body;
@@ -24,25 +23,9 @@ exports.isReviewExist = catchAsync(async (req, res, next) => {
   next();
 });
 
-const multerStorage = multer.memoryStorage();
-
-const multerFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image')) {
-    cb(null, true);
-  } else {
-    cb(
-      new AppError('file is Not an Image! please upload only image', 400),
-      false
-    );
-  }
-};
-
-const upload = multer({
-  storage: multerStorage,
-  fileFilter: multerFilter,
-});
-
-exports.uploadImage = upload.fields([{ name: 'reviewImages', maxCount: 5 }]);
+exports.uploadImage = multerInstance.fields([
+  { name: 'reviewImages', maxCount: 5 },
+]);
 
 exports.storeImage = catchAsync(async (req, res, next) => {
   if (Object.keys(req.files).length > 0) {

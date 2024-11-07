@@ -1,9 +1,8 @@
-const multer = require('multer');
 const sharp = require('sharp');
 const fs = require('fs');
 
 const db = require('../../Database/dbconfig');
-
+const multerInstance = require('../../Utils/multer');
 const AppError = require('../../Utils/appError');
 const catchAsync = require('../../Utils/catchAsync');
 const Joi = require('joi');
@@ -19,33 +18,15 @@ exports.isPopupExist = catchAsync(async (req, res, next) => {
   const { popupId } = req.body;
   if (!popupId) return next(new AppError('PopupId Id is Required', 400));
 
-  const getPopup = `SELECT * FROM azst_popups_table WHERE  id = ${popupId} AND status = 1`;
-  const popup = await db(getPopup);
-  if (popup.length === 0) return next(new AppError('No popup found', 404));
+  const getPopup = `SELECT * FROM azst_popups_table WHERE  id = ? AND status = 1`;
+  const [popup] = await db(getPopup, [popupId]);
+  if (!popup) return next(new AppError('No popup found', 404));
 
-  req.popup = popup[0];
+  req.popup = popup;
   next();
 });
 
-const multerStorage = multer.memoryStorage();
-
-const multerFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image')) {
-    cb(null, true);
-  } else {
-    cb(
-      new AppError('file is Not an Image! please upload only image', 400),
-      false
-    );
-  }
-};
-
-const upload = multer({
-  storage: multerStorage,
-  fileFilter: multerFilter,
-});
-
-exports.uploadImage = upload.single('popupImage');
+exports.uploadImage = multerInstance.single('popupImage');
 
 exports.storeImage = catchAsync(async (req, res, next) => {
   if (!req.file) {
@@ -143,6 +124,8 @@ exports.updatePopup = catchAsync(async (req, res, next) => {
 
 exports.deletePopup = catchAsync(async (req, res, next) => {
   const { popupId } = req.body;
+  if (!popupId) return next(new AppError('Popup Id is required', 400));
+
   const deletepopup =
     'UPDATE azst_popups_table SET status = 0, updated_by=? where id = ? ';
 
@@ -163,5 +146,3 @@ exports.changeActiveStatus = catchAsync(async (req, res, next) => {
   await db(changeQuery, values);
   res.status(200).json({ message: 'popup status updated Successfully ' });
 });
-
-// new popup status

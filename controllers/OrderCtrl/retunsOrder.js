@@ -4,8 +4,8 @@ const sharp = require('sharp');
 const catchAsync = require('../../Utils/catchAsync');
 const AppError = require('../../Utils/appError');
 const Sms = require('../../Utils/sms');
-const razorpayInstance = require('../../Utils/razorpay');
 
+const razorpayInstance = require('../../Utils/razorpay');
 const multerInstance = require('../../Utils/multer');
 
 // Middleware to check if the order has been delivered
@@ -36,7 +36,7 @@ exports.isOrderDelivered = catchAsync(async (req, res, next) => {
 exports.initiateRefund = async (paymentId, amount) => {
   try {
     const refundData = await razorpayInstance.payments.refund(paymentId, {
-      amount: amount * 100, // Convert amount to paise (1 INR = 100 paise)
+      amount: parseInt(amount) * 100, // Convert amount to paise (1 INR = 100 paise)
     });
     return refundData;
   } catch (err) {
@@ -201,13 +201,13 @@ exports.updateRefundStatus = catchAsync(async (req, res, next) => {
 });
 
 exports.initiateRefundAdmin = catchAsync(async (req, res, next) => {
-  const { returnId } = req.body;
+  let { returnId, trackId = null } = req.body;
 
   if (!returnId) return next(new AppError('Refund ID is required', 400));
 
   // Retrieve refund data from the database
   const getRefundQuery = `
-    SELECT payment_id, refund_amount
+    SELECT payment_id, refund_amount,refund_method,bank_account_num,ifsc_code,bank_branch,bank_name,ac_holder_name
     FROM azst_order_returns
     WHERE return_id = ? AND admin_approval = 'Approved' AND Status = 1
   `;
@@ -216,17 +216,18 @@ exports.initiateRefundAdmin = catchAsync(async (req, res, next) => {
   if (!refundData) return next(new AppError('No refund request found', 404));
 
   const { payment_id, refund_amount } = refundData;
-  let trackId = null;
 
   // Attempt to initiate the refund through an external function
-  try {
-    const refundDetails = await exports.initiateRefund(
-      payment_id,
-      refund_amount
-    );
-    trackId = refundDetails.id;
-  } catch (error) {
-    return next(new AppError(error.message, 400));
+  if (refundMethod === 'Same Payment Method') {
+    try {
+      const refundDetails = await exports.initiateRefund(
+        payment_id,
+        refund_amount
+      );
+      trackId = refundDetails.id;
+    } catch (error) {
+      return next(new AppError(error.message, 400));
+    }
   }
 
   // Prepare update query and values
@@ -344,7 +345,7 @@ exports.initiateRefundAdmin = catchAsync(async (req, res, next) => {
 // ifsc_code,
 // bank_branch,
 // bank_name,
-// ac__holder_name,
+// ac_holder_name,
 // bank_file,
 // payment_id,
 // refund_amount,
