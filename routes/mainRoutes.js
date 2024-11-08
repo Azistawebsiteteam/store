@@ -43,7 +43,7 @@ router.use('/popups', popupRoute);
 router.use('/inventory', inventroyRoute);
 
 router.use('/product', productsRoute);
-router.use('/whish-list', whishListRoute);
+router.use('/wish-list', whishListRoute);
 router.use('/cart', cartRoute);
 router.use('/reviews', reviewsRoute);
 router.use('/admin/reviews', reviewsRouteAdmin);
