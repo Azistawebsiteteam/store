@@ -62,71 +62,53 @@ const getImageLink = (req, images, fallbackImage) => {
   )}/api/images/product/variantimage/${selectedImage}`;
 };
 
-const getWhishlist = catchAsync(async (req, res, next) => {
+const getWishlist = catchAsync(async (req, res, next) => {
   const query = `
-    SELECT 
-      azst_wishlist_tbl.azst_wishlist_id,
-      azst_wishlist_tbl.azst_product_id,
-      azst_wishlist_tbl.azst_variant_id,
-      azst_products.product_title,
-      azst_products.product_url_title,
-      COALESCE(azst_products.price, 0) AS price,
-      azst_products.min_cart_quantity,
-      azst_products.max_cart_quantity,
-      COALESCE(azst_sku_variant_info.compare_at_price, 0) AS compare_at_price,
-      COALESCE(azst_products.compare_at_price,0) AS product_compare_at_price,
-      azst_sku_variant_info.variant_image,
-      azst_products.image_src,
-      COALESCE(azst_sku_variant_info.offer_price, 0) AS offer_price,
-      azst_sku_variant_info.offer_percentage,
-      azst_products.is_varaints_aval,
-      COALESCE(SUM(azst_inventory_product_mapping.azst_ipm_onhand_quantity), 0) AS product_qty
-    FROM 
-      azst_wishlist_tbl
-    LEFT JOIN 
-      azst_sku_variant_info 
-      ON azst_wishlist_tbl.azst_variant_id = azst_sku_variant_info.id
-    LEFT JOIN 
-      azst_products 
-      ON azst_wishlist_tbl.azst_product_id = azst_products.id
-    LEFT JOIN 
-      azst_inventory_product_mapping 
-      ON azst_products.id = azst_inventory_product_mapping.azst_ipm_product_id
-    WHERE 
-      azst_wishlist_tbl.azst_customer_id = ? 
-      AND azst_wishlist_tbl.status = 1
-    GROUP BY 
-      azst_products.id,
-      azst_wishlist_tbl.azst_wishlist_id,
-      azst_wishlist_tbl.azst_product_id,
-      azst_wishlist_tbl.azst_variant_id,
-      azst_products.product_title,
-      azst_products.product_url_title,
-      azst_products.price,
-      azst_products.min_cart_quantity,
-      azst_products.max_cart_quantity,
-      azst_sku_variant_info.compare_at_price,
-      azst_products.compare_at_price,
-      azst_sku_variant_info.variant_image,
-      azst_products.image_src,
-      azst_sku_variant_info.offer_price,
-      azst_sku_variant_info.offer_percentage,
-      azst_products.is_varaints_aval`;
+      SELECT 
+        w.azst_wishlist_id,
+        w.azst_product_id,
+        w.azst_variant_id,
+        p.product_title,
+        p.product_url_title,
+        COALESCE(p.price, 0) AS price,
+        p.min_cart_quantity,
+        p.max_cart_quantity,
+        COALESCE(s.compare_at_price, 0) AS compare_at_price,
+        COALESCE(p.compare_at_price, 0) AS product_compare_at_price,
+        s.variant_image,
+        p.image_src,
+        COALESCE(s.offer_price, 0) AS offer_price,
+        s.offer_percentage,
+        p.is_varaints_aval,
+        COALESCE(i.azst_ipm_total_quantity, 0) AS product_qty
+      FROM 
+        azst_wishlist_tbl AS w
+      LEFT JOIN 
+        azst_sku_variant_info AS s 
+        ON w.azst_variant_id = s.id
+      LEFT JOIN 
+        azst_products AS p
+        ON w.azst_product_id = p.id
+      LEFT JOIN 
+        azst_central_inventory_tbl AS i
+        ON p.id = i.azst_ipm_product_id
+        AND w.azst_variant_id = i.azst_ipm_variant_id
+      WHERE 
+        w.azst_customer_id = ? 
+        AND w.status = 1
+    `;
 
-  // Set SQL mode to empty for the session
-  await db(`SET SESSION sql_mode = ''`);
+  // Execute the query using the provided customer ID
+  const result = await db(query, [req.empId]);
 
-  // Execute the main query
-  const result = await db(query, req.empId);
-
-  // Map results to include the product image link
-  const whish_list = result.map((product) => ({
+  // Map results to include the product image link, ensuring both variant and product images are handled
+  const wishlist = result.map((product) => ({
     ...product,
     variant_image: getImageLink(req, product.variant_image, product.image_src),
   }));
 
-  // Return the response
-  res.status(200).json({ whish_list, message: 'Data Retrieved successfully' });
+  // Send the response with retrieved data
+  res.status(200).json({ wishlist, message: 'Data Retrieved successfully' });
 });
 
-module.exports = { addToWl, isExistInWl, removeFromWl, getWhishlist };
+module.exports = { addToWl, isExistInWl, removeFromWl, getWishlist };

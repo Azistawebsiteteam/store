@@ -9,13 +9,6 @@ const editCtrl = require('../../controllers/ProductCtrl/editProduct');
 
 const productModel = require('../../Models/Product');
 
-const {
-  isExistInWl,
-  addToWl,
-  removeFromWl,
-  getWhishlist,
-} = require('../../controllers/wishLIstCtrl');
-
 router.post(
   '/collection-products',
   multer().any(),
@@ -90,9 +83,5 @@ router.post(
   editCtrl.getProductDetails,
   editCtrl.getVariantsDetails
 );
-
-router.post('/whish-list', getWhishlist);
-router.post('/add-wl', isExistInWl, addToWl);
-router.post('/remove-wl', removeFromWl);
 
 module.exports = router;
