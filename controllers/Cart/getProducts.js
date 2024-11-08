@@ -4,6 +4,7 @@ const db = require('../../Database/dbconfig');
 
 const catchAsync = require('../../Utils/catchAsync');
 const AppError = require('../../Utils/appError');
+const Sms = require('../../Utils/sms');
 
 const getImageName = (images) => {
   const parsedImages = JSON.parse(images);
@@ -307,9 +308,36 @@ const abandonmentCart = catchAsync(async (req, res, next) => {
   res.status(200).json(result);
 });
 
+const abandonmentCartUsers = async () => {
+  try {
+    const query = `SELECT DISTINCT c.azst_customer_id, cu.azst_customer_mobile,
+                   cu.azst_customer_email
+                   FROM azst_cart_tbl c
+                   LEFT JOIN azst_customers_tbl cu ON c.azst_customer_id = cu.azst_customer_id
+                   WHERE 
+                   c.azst_customer_id <> 0 AND
+                   c.azst_cart_status = 1 AND
+                   DATE(c.azst_cart_created_on) = CURRENT_DATE`;
+
+    const result = await db(query);
+
+    for (const cu of result) {
+      const { azst_customer_id, azst_customer_mobile, azst_customer_email } =
+        cu;
+
+      // Send SMS for each customer, waiting for each one to complete before the next
+      await new Sms(azst_customer_id, azst_customer_mobile).cartCheckout();
+      console.log(`SMS sent to: ${azst_customer_mobile}`);
+    }
+  } catch (e) {
+    console.error('Error sending SMS:', e);
+  }
+};
+
 module.exports = {
   getCartData,
   removeFromCart,
   abandonmentCart,
   getCartSimilarProducts,
+  abandonmentCartUsers,
 };

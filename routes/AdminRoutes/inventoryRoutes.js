@@ -16,6 +16,7 @@ router.use(authCtrl.protect(key));
 
 router.get('/locations', incLcCtrl.getinventories);
 router.post('/add-location', validationCtrl, incLcCtrl.addInvetroyLoation);
+router.post('/add-product', invtQtyCtrl.addInventory);
 
 router.post('/get/product-qty', invtQtyCtrl.getInventoryQty);
 router.post('/update/product-qty', invtQtyCtrl.updateInventory);

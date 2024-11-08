@@ -106,7 +106,7 @@ exports.getCollectionProducts = catchAsync(async (req, res, next) => {
                         ELSE false
                       END AS in_wishlist,
                       COALESCE(AVG(prt.review_points), 0) AS product_review_points,
-                      COALESCE(SUM(pi.azst_ipm_onhand_quantity), 0) AS product_qty
+                      COALESCE(SUM(pi.azst_ipm_total_quantity), 0) AS product_qty
                     FROM azst_products
                     LEFT JOIN azst_wishlist_tbl AS wl
                         ON azst_products.id = wl.azst_product_id
@@ -114,7 +114,7 @@ exports.getCollectionProducts = catchAsync(async (req, res, next) => {
                         AND wl.azst_customer_id = '${customerId}'
                     LEFT JOIN product_review_rating_tbl prt
                         ON azst_products.id = prt.product_id
-                    LEFT JOIN azst_inventory_product_mapping pi
+                    LEFT JOIN azst_central_inventory_tbl pi
                         ON azst_products.id = pi.azst_ipm_product_id
                        ${filterQuery}
                     GROUP BY
@@ -200,13 +200,13 @@ exports.shop99Products = catchAsync(async (req, res, next) => {
                   WHEN wl.azst_product_id IS NOT NULL THEN true
                   ELSE false
                 END AS in_wishlist,
-                COALESCE(SUM(pi.azst_ipm_onhand_quantity), 0) AS product_qty
+                COALESCE(SUM(pi.azst_ipm_total_quantity), 0) AS product_qty
               FROM azst_products
               LEFT JOIN azst_wishlist_tbl AS wl
                   ON azst_products.id = wl.azst_product_id
                   AND wl.status = 1
                   AND wl.azst_customer_id = '${customerId}'
-              LEFT JOIN azst_inventory_product_mapping pi
+              LEFT JOIN azst_central_inventory_tbl pi
                   ON azst_products.id = pi.azst_ipm_product_id
               WHERE azst_products.status = 1 
               AND JSON_CONTAINS(collections, ?, '$')
@@ -245,14 +245,14 @@ exports.getBestSeller = catchAsync(async (req, res, next) => {
                         WHEN wl.azst_product_id IS NOT NULL THEN true
                         ELSE false
                       END AS in_wishlist,
-                      COALESCE(SUM(pi.azst_ipm_onhand_quantity), 0) AS product_qty
+                      COALESCE(SUM(pi.azst_ipm_total_quantity), 0) AS product_qty
                       FROM azst_ordersummary_tbl
                      LEFT JOIN azst_products ON azst_products.id = azst_ordersummary_tbl.azst_order_product_id
                     LEFT JOIN azst_wishlist_tbl AS wl
                         ON azst_products.id = wl.azst_product_id
                         AND wl.status = 1
                         AND wl.azst_customer_id = '${customerId}'
-                    LEFT JOIN azst_inventory_product_mapping pi
+                    LEFT JOIN azst_central_inventory_tbl pi
                         ON azst_products.id = pi.azst_ipm_product_id
                     GROUP BY
                         azst_products.id,
@@ -394,8 +394,8 @@ exports.getProductDetalis = catchAsync(async (req, res, next) => {
     variant.values = variant.values.filter((value) => value !== null);
   });
 
-  const qtyQuery = `SELECT   COALESCE(SUM(azst_ipm_onhand_quantity), 0) AS product_qty 
-  FROM azst_inventory_product_mapping
+  const qtyQuery = `SELECT   COALESCE(SUM(azst_ipm_total_quantity), 0) AS product_qty 
+  FROM azst_central_inventory_tbl
   WHERE azst_ipm_product_id = ? `;
 
   const [productQty] = await db(qtyQuery, [productDetails.id]);
@@ -412,12 +412,11 @@ exports.getProductVariant = catchAsync(async (req, res, next) => {
 
   if (!variantId) return next(new AppError('Variant Id not provided.', 400));
 
-  const query = `SELECT vi.*, COALESCE(SUM(pi.azst_ipm_onhand_quantity), 0) AS product_qty 
+  const query = `SELECT vi.*, IFNULL(pi.azst_ipm_total_quantity, 0) AS product_qty 
   FROM azst_sku_variant_info vi
-  LEFT JOIN azst_inventory_product_mapping pi
+  LEFT JOIN azst_central_inventory_tbl pi
     ON vi.id = pi.azst_ipm_variant_id
-  WHERE vi.id = ? AND vi.status = 1
-  GROUP BY vi.id`;
+  WHERE vi.id = ? AND vi.status = 1`;
 
   const variantData = await db(query, [variantId]);
 
@@ -460,14 +459,13 @@ exports.getAllProducts = catchAsync(async (req, res, next) => {
     LEFT JOIN (
       SELECT 
         azst_ipm_product_id,
-        SUM(azst_ipm_onhand_quantity) AS total_variant_quantity
-      FROM azst_inventory_product_mapping
+        SUM(azst_ipm_total_quantity) AS total_variant_quantity
+      FROM azst_central_inventory_tbl
       GROUP BY azst_ipm_product_id
     ) i ON p.id = i.azst_ipm_product_id
     LEFT JOIN azst_sku_variant_info s ON p.id = s.product_id
     LEFT JOIN azst_category_tbl c ON p.product_category = c.azst_category_id
     LEFT JOIN azst_vendor_details v ON p.vendor_id = v.azst_vendor_id
-    
     GROUP BY 
       p.id,
       p.product_title,

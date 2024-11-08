@@ -359,6 +359,7 @@ exports.updateInventory = catchAsync(async (req, res, next) => {
 
       return db(updateInventoryQuery, [
         azst_order_qty,
+        azst_order_qty,
         inventoryId,
         azst_order_product_id,
         azst_order_variant_id,

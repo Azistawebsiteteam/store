@@ -8,6 +8,7 @@ require('dotenv').config();
 require('./Database/dbPool');
 require('./Database/dbconfig');
 require('./Database/dbtransctions');
+require('./crown-jobs/abandonedtcart');
 
 const globalErrorHandler = require('./controllers/errorController');
 const AppError = require('./Utils/appError');
