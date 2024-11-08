@@ -259,152 +259,189 @@ exports.getOrderDetails = catchAsync(async (req, res, next) => {
 
 const confirmSchema = Joi.object({
   orderId: Joi.string().min(1).max(20).required(),
-  orderStatus: Joi.number().required().valid(1, 2),
+  orderStatus: Joi.number().required().valid(1, 2), // 1 means confirm , 2 means Recject
   inventoryId: Joi.string().when('orderStatus', {
     is: 1, // When orderStatus is 1
     then: Joi.required(), // inventoryId is required
     otherwise: Joi.optional().allow('', null), // Otherwise, it's optional
   }),
   reason: Joi.string().when('orderStatus', {
-    is: 0, // When orderStatus is 0
+    is: 2, // When orderStatus is 2
     then: Joi.required(), // inventoryId is required
     otherwise: Joi.optional().allow('', null), // Otherwise, it's optional
   }),
 });
 
 exports.confirmOrder = catchAsync(async (req, res, next) => {
+  // Validate request body
   const { error } = confirmSchema.validate(req.body);
   if (error) return next(new AppError(error.message, 400));
-  const { orderId, orderStatus, reason = '' } = req.body;
 
-  // Ensure that orderStatus is either true or false (1 or 0)
+  const { orderId, orderStatus, reason, inventoryId } = req.body;
   const time = moment().format('YYYY-MM-DD HH:mm:ss');
+  const isOrderConfirmed = orderStatus === 1;
 
-  // Construct the SQL fields based on the orderStatu
-  const orderUpdateBy =
-    orderStatus === 1
-      ? 'azst_orders_confirm_by = ?'
-      : 'azst_orders_cancelled_by = ?';
-  const orderUpdatetime =
-    orderStatus === 1
-      ? 'azst_orders_confirm_on = ?'
-      : 'azst_orders_cancelled_on = ?';
+  // Define SQL fields and values based on order status
+  const orderFields = isOrderConfirmed
+    ? 'azst_orders_confirm_status = ?, azst_orders_confirm_by = ?, azst_orders_confirm_on = ?'
+    : 'azst_orders_confirm_status = ?, azst_orders_cancelled_by = ?, azst_orders_cancelled_on = ?, azst_orders_cancelled_reason = ?';
 
-  // Construct the full SQL query
-  const query = `UPDATE azst_orders_tbl 
-                 SET azst_orders_confirm_status = ?,
-                  ${orderUpdateBy}, ${orderUpdatetime},azst_orders_cancelled_reason = ?
-                 WHERE azst_orders_id = ?`;
+  const values = isOrderConfirmed
+    ? [orderStatus, req.empId, time, orderId]
+    : [orderStatus, req.empId, time, reason, orderId];
 
-  // Construct the values array in the correct order
-  const values = [orderStatus, req.empId, time, reason, orderId];
+  // Construct and execute the update query
+  const updateQuery = `UPDATE azst_orders_tbl SET ${orderFields} WHERE azst_orders_id = ?`;
+  const updateResult = await db(updateQuery, values);
 
-  const result = await db(query, values);
-
-  if (result.affectedRows > 0) {
-    const query = `SELECT azst_orders_customer_id FROM azst_orders_tbl  WHERE azst_orders_id = ?`;
-    const [result] = await db(query, [orderId]);
-    const smsSevices = new Sms(result?.azst_orders_customer_id, null);
-    if (parseInt(orderStatus) === 1) {
-      // Proceed to updateInventory if order is confirmed
-      await smsSevices.getUserDetails();
-      await smsSevices.orderConfirm(orderId);
-      return next();
-    } else {
-      // Send response immediately if the order is cancelled
-      await smsSevices.getUserDetails();
-      await smsSevices.orderRected(orderId);
-      return res.status(200).json({ message: 'Order status updated' });
-    }
+  if (updateResult.affectedRows === 0) {
+    return next(new AppError('Order update failed', 400));
   }
-  return next(new AppError('Something went wrong', 400));
+
+  // Fetch customer ID after successful order update
+  const [customerResult] = await db(
+    `SELECT azst_orders_customer_id FROM azst_orders_tbl WHERE azst_orders_id = ?`,
+    [orderId]
+  );
+  const customerId = customerResult?.azst_orders_customer_id;
+  if (!customerId) return next(new AppError('Customer not found', 404));
+
+  // Initialize SMS service
+  const smsService = new Sms(customerId, null);
+  await smsService.getUserDetails();
+
+  // Send SMS based on order status and proceed accordingly
+  if (isOrderConfirmed) {
+    await smsService.orderConfirm(orderId);
+    // Step 3: Update the shipping inventory in the order info table
+    const updateOrderInfoQuery = `
+    UPDATE azst_orderinfo_tbl 
+    SET azst_order_ship_from = ? 
+    WHERE azst_orders_id = ?`;
+
+    await db(updateOrderInfoQuery, [inventoryId, orderId]);
+    req.body.orderAction = 'Confirm';
+    return next();
+  } else {
+    await smsService.orderRected(orderId);
+    return res.status(200).json({ message: 'Order status updated' });
+  }
 });
 
 exports.updateInventory = catchAsync(async (req, res, next) => {
-  const { orderId, inventoryId } = req.body;
+  const { orderId, inventoryId, orderAction } = req.body;
 
   // Step 1: Get the products related to the order
-  const getQtyQuery = `SELECT azst_order_product_id,
-                        azst_order_variant_id, azst_order_qty
-                       FROM azst_ordersummary_tbl
-                       WHERE azst_orders_id = ?`;
+  const getQtyQuery = `
+    SELECT azst_order_product_id, azst_order_variant_id, azst_order_qty
+    FROM azst_ordersummary_tbl
+    WHERE azst_orders_id = ?`;
 
   const products = await db(getQtyQuery, [orderId]);
+  if (products.length === 0)
+    return next(new AppError('No products found for this order', 404));
 
-  // Step 2: Iterate through each product and update the inventory quantities directly
-  const updateInventoryQuery = `UPDATE azst_inventory_product_mapping 
-                                SET azst_ipm_onhand_quantity = azst_ipm_onhand_quantity - ?, 
-                                    azst_ipm_avbl_quantity = azst_ipm_avbl_quantity - ? 
-                                WHERE azst_ipm_inventory_id = ? 
-                                  AND azst_ipm_product_id = ? 
-                                  AND azst_ipm_variant_id = ?`;
+  // Determine the column to update based on order action
+  const updateColumn =
+    orderAction === 'Confirm'
+      ? 'azst_ipm_onhand_quantity = azst_ipm_onhand_quantity - ?, azst_ipm_commit_quantity = azst_ipm_commit_quantity + ?'
+      : 'azst_ipm_avbl_quantity = azst_ipm_avbl_quantity - ?, azst_ipm_commit_quantity = azst_ipm_commit_quantity - ?';
 
-  for (let product of products) {
-    const { azst_order_product_id, azst_order_variant_id, azst_order_qty } =
-      product;
+  // Step 2: Construct and execute inventory update queries for each product
+  const updateInventoryPromises = products.map(
+    ({ azst_order_product_id, azst_order_variant_id, azst_order_qty }) => {
+      const updateInventoryQuery = `
+      UPDATE azst_inventory_product_mapping 
+      SET ${updateColumn}
+      WHERE azst_ipm_inventory_id = ? 
+        AND azst_ipm_product_id = ? 
+        AND azst_ipm_variant_id = ?`;
 
-    // Step 3: Update the inventory with the calculated quantities
-    await db(updateInventoryQuery, [
-      azst_order_qty,
-      azst_order_qty,
-      inventoryId,
-      azst_order_product_id,
-      azst_order_variant_id,
-    ]);
-  }
+      return db(updateInventoryQuery, [
+        azst_order_qty,
+        inventoryId,
+        azst_order_product_id,
+        azst_order_variant_id,
+      ]);
+    }
+  );
 
-  const inventoryQuery = `UPDATE azst_orderinfo_tbl SET azst_order_ship_from = ? WHERE azst_orders_id = ?`;
-  await db(inventoryQuery, [inventoryId, orderId]);
-
-  // Step 4: Send a response back after inventory update is successful
-  res.status(200).json({ message: 'Order status updated' });
+  // Await all inventory update promises
+  await Promise.all(updateInventoryPromises);
+  const message =
+    orderAction === 'Confirm'
+      ? 'Order Confirm and Inventory updated successfully'
+      : 'Order delivered and inventory updated successfully';
+  // Step 3: Send a response back after successful inventory update
+  res.status(200).json({ message });
 });
 
 exports.deliveryOrder = catchAsync(async (req, res, next) => {
-  const { orderId } = req.body;
+  const { orderId, deliveryStatus } = req.body;
   const deliveryId = req.empId;
 
-  if (!orderId) return next(new AppError('orderId is required', 400));
+  if (!orderId) return next(new AppError('Order ID is required', 400));
 
   // Step 1: Fetch the order details
-  const orderQuery = `SELECT azst_orders_customer_id, azst_orders_total ,azst_orders_delivery_status 
-                      FROM azst_orders_tbl 
-                      WHERE azst_orders_id = ?`;
-  const [order] = await db(orderQuery, [orderId]);
+  const orderQuery = `
+    SELECT ot.azst_orders_customer_id, azst_orders_total, azst_orders_delivery_status, azst_order_ship_from 
+    FROM azst_orders_tbl AS ot
+    LEFT JOIN azst_orderinfo_tbl AS oi ON ot.azst_orders_id = oi.azst_orders_id 
+    WHERE ot.azst_orders_id = ? AND ot.azst_orders_status = 1 
+      AND ot.azst_orders_confirm_status = 1`;
 
-  if (!order) {
-    return next(new AppError('No order found for delivery', 400));
-  }
+  const [order] = await db(orderQuery, [orderId]);
+  if (!order) return next(new AppError('No order found for delivery', 404));
 
   const {
     azst_orders_customer_id,
     azst_orders_total,
     azst_orders_delivery_status,
+    azst_order_ship_from,
   } = order;
 
-  if (azst_orders_delivery_status === 1)
-    return next(new AppError('order already delivered', 400));
+  if (azst_orders_delivery_status === 2) {
+    return next(new AppError('Order already delivered', 400));
+  }
 
   // Step 2: Update the order delivery status and date
-  const updateOrderQuery = `UPDATE azst_orders_tbl 
-                            SET azst_orders_delivery_status = 1, 
-                                azst_orders_delivery_on = ? 
-                            WHERE azst_orders_id = ?`;
-
   const today = moment().format('YYYY-MM-DD HH:mm:ss');
-  const delivery = await db(updateOrderQuery, [today, orderId]);
+  const updateOrderQuery = `
+    UPDATE azst_orders_tbl 
+    SET azst_orders_delivery_status = ?, 
+        azst_orders_delivery_on = ? 
+    WHERE azst_orders_id = ? 
+      AND azst_orders_status = 1 
+      AND azst_orders_confirm_status = 1`;
 
-  if (delivery.affectedRows === 0) {
+  const deliveryUpdateResult = await db(updateOrderQuery, [
+    deliveryStatus,
+    today,
+    orderId,
+  ]);
+
+  if (deliveryUpdateResult.affectedRows === 0) {
     return next(new AppError('Failed to update order delivery status', 400));
   }
 
+  // If deliveryStatus is 1, respond immediately and skip further updates
+  if (parseInt(deliveryStatus) === 1) {
+    return res
+      .status(200)
+      .json({ message: 'Order delivery status updated successfully' });
+  }
+
   // Step 3: Update the customer record with the total spent and total orders
-  const updateCustomerQuery = `UPDATE azst_customers_tbl 
-                               SET azst_customer_totalspent = azst_customer_totalspent + ?, 
-                                   azst_customer_totalorders = azst_customer_totalorders + 1 
-                               WHERE azst_customer_id = ?`;
+  const updateCustomerQuery = `
+    UPDATE azst_customers_tbl 
+    SET azst_customer_totalspent = azst_customer_totalspent + ?, 
+        azst_customer_totalorders = azst_customer_totalorders + 1 
+    WHERE azst_customer_id = ?`;
 
   await db(updateCustomerQuery, [azst_orders_total, azst_orders_customer_id]);
 
-  res.status(200).json({ message: 'Order delivery completed successfully' });
+  // Step 4: Update inventory for delivered order and send final response
+  req.body.orderAction = 'Delivered';
+  req.body.inventoryId = azst_order_ship_from;
+  exports.updateInventory(req, res, next);
 });

@@ -2,7 +2,6 @@ const Joi = require('joi');
 const catchAsync = require('../Utils/catchAsync');
 const AppError = require('../Utils/appError');
 
-// Define a reusable function to validate JSON array format
 // Define a custom validation function to check for non-empty array
 
 const validateJSONArray = (value, message) => {
