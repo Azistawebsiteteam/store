@@ -3,7 +3,6 @@ const Joi = require('joi');
 const AppError = require('../../Utils/appError');
 
 const catchAsync = require('../../Utils/catchAsync');
-const { query } = require('express');
 
 const getProductImageLink = (req, product) => ({
   ...product,
@@ -101,10 +100,7 @@ exports.getCollectionProducts = catchAsync(async (req, res, next) => {
                       compare_at_price,
                       product_url_title,
                       is_varaints_aval,
-                      CASE
-                        WHEN wl.azst_product_id IS NOT NULL THEN true
-                        ELSE false
-                      END AS in_wishlist,
+                      COALESCE(wl.azst_wishlist_id, 0) AS in_wishlist, 
                       COALESCE(AVG(prt.review_points), 0) AS product_review_points,
                       COALESCE(SUM(pi.azst_ipm_total_quantity), 0) AS product_qty
                     FROM azst_products
@@ -125,7 +121,7 @@ exports.getCollectionProducts = catchAsync(async (req, res, next) => {
                         image_alt_text,
                         price,
                         compare_at_price,
-                        product_url_title
+                        product_url_title,azst_wishlist_id
                         ${havingQuery}
                         ${sortByQuery}`;
 
@@ -196,10 +192,7 @@ exports.shop99Products = catchAsync(async (req, res, next) => {
                 compare_at_price,
                 product_url_title,
                 is_varaints_aval,
-                CASE
-                  WHEN wl.azst_product_id IS NOT NULL THEN true
-                  ELSE false
-                END AS in_wishlist,
+                COALESCE(wl.azst_wishlist_id, 0) AS in_wishlist, 
                 COALESCE(SUM(pi.azst_ipm_total_quantity), 0) AS product_qty
               FROM azst_products
               LEFT JOIN azst_wishlist_tbl AS wl
@@ -218,7 +211,7 @@ exports.shop99Products = catchAsync(async (req, res, next) => {
                   image_alt_text,
                   price,
                   compare_at_price,
-                  product_url_title`;
+                  product_url_title,azst_wishlist_id`;
 
   const results = await db(getProducts, [collectionId.toString()]);
   const products = results.map((product) => getProductImageLink(req, product));
@@ -241,10 +234,7 @@ exports.getBestSeller = catchAsync(async (req, res, next) => {
                       compare_at_price,
                       product_url_title,
                       is_varaints_aval,
-                      CASE
-                        WHEN wl.azst_product_id IS NOT NULL THEN true
-                        ELSE false
-                      END AS in_wishlist,
+                      COALESCE(wl.azst_wishlist_id, 0) AS in_wishlist,                    
                       COALESCE(SUM(pi.azst_ipm_total_quantity), 0) AS product_qty
                       FROM azst_ordersummary_tbl
                      LEFT JOIN azst_products ON azst_products.id = azst_ordersummary_tbl.azst_order_product_id
@@ -262,7 +252,8 @@ exports.getBestSeller = catchAsync(async (req, res, next) => {
                         image_alt_text,
                         price,
                         compare_at_price,
-                        product_url_title`;
+                        product_url_title,
+                        azst_wishlist_id`;
 
   const results = await db(query);
   const products = results.map((product) => getProductImageLink(req, product));
@@ -332,10 +323,7 @@ exports.getProductDetalis = catchAsync(async (req, res, next) => {
                                 WHERE azst_product_features.product_id = azst_products.id
                                   AND azst_product_features.status = 1
                               ) AS product_features,
-                               CASE 
-                      WHEN wl.azst_product_id IS NOT NULL THEN true
-                      ELSE false
-                    END AS in_wishlist
+                               COALESCE(wl.azst_wishlist_id, 0) AS in_wishlist
                             FROM 
                               azst_products
                               LEFT JOIN azst_wishlist_tbl AS wl ON azst_products.id = wl.azst_product_id
@@ -408,15 +396,17 @@ exports.getProductDetalis = catchAsync(async (req, res, next) => {
 });
 
 exports.getProductVariant = catchAsync(async (req, res, next) => {
-  const { variantId } = req.body;
+  const { variantId, customerId } = req.body;
 
   if (!variantId) return next(new AppError('Variant Id not provided.', 400));
 
-  const query = `SELECT vi.*, IFNULL(pi.azst_ipm_total_quantity, 0) AS product_qty 
-  FROM azst_sku_variant_info vi
-  LEFT JOIN azst_central_inventory_tbl pi
-    ON vi.id = pi.azst_ipm_variant_id
-  WHERE vi.id = ? AND vi.status = 1`;
+  const query = `SELECT vi.*, IFNULL(pi.azst_ipm_total_quantity, 0) AS product_qty, COALESCE(wl.azst_wishlist_id, 0) AS in_wishlist
+                FROM azst_sku_variant_info vi
+                 LEFT JOIN azst_wishlist_tbl AS wl ON vi.product_id = wl.azst_product_id AND vi.id = wl.azst_variant_id
+                              AND wl.status = 1 AND wl.azst_customer_id = '${customerId}'
+                LEFT JOIN azst_central_inventory_tbl pi
+                  ON vi.id = pi.azst_ipm_variant_id
+                WHERE vi.id = ? AND vi.status = 1`;
 
   const variantData = await db(query, [variantId]);
 

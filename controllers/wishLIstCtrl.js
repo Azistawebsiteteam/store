@@ -68,6 +68,7 @@ const getWishlist = catchAsync(async (req, res, next) => {
         w.azst_wishlist_id,
         w.azst_product_id,
         w.azst_variant_id,
+        p.product_main_title,
         p.product_title,
         p.product_url_title,
         COALESCE(p.price, 0) AS price,
