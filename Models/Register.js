@@ -40,10 +40,6 @@ const registerSchema = Joi.object({
 });
 
 const userValidation = async (req, res, next) => {
-  const payload = req.body;
-
-  console.log(req.body.customerPassword);
-
   const { error } = registerSchema.validate(payload);
   if (error) {
     return next(new AppError(error.message, 400));

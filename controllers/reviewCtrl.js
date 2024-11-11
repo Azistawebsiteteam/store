@@ -28,37 +28,39 @@ exports.uploadImage = multerInstance.fields([
 ]);
 
 exports.storeImage = catchAsync(async (req, res, next) => {
-  if (Object.keys(req.files).length > 0) {
-    let reviewImages = [];
-    if (req.body.reviewImages) {
-      reviewImages = req.body.reviewImages;
-      if (!Array.isArray(reviewImages)) {
-        // Ensure reviewImages is an array
-        next(new AppError('reviewImages is not an array', 400));
-      }
-    }
+  // Ensure reviewImages is always an array
+  if (req.body.reviewImages) {
+    req.body.reviewImages = Array.isArray(req.body.reviewImages)
+      ? req.body.reviewImages
+      : [req.body.reviewImages];
+  } else {
+    req.body.reviewImages = [];
+  }
 
-    // Initialize reviewImages as an array if it's falsy
-    req.body.reviewImages = reviewImages;
-
+  // Process uploaded files if they exist
+  if (
+    req.files &&
+    req.files.reviewImages &&
+    req.files.reviewImages.length > 0
+  ) {
     await Promise.all(
-      req.files.reviewImages.map(async (file, i) => {
+      req.files.reviewImages.map(async (file) => {
         const imageName = `${Date.now()}-${file.originalname.replace(
           / /g,
           '-'
         )}`;
 
+        // Resize and save image
         await sharp(file.buffer)
           .resize(500, 500)
           .toFile(`Uploads/reviewImages/${imageName}`);
+
+        // Add image name to reviewImages array
         req.body.reviewImages.push(imageName);
       })
     );
-    next();
-  } else {
-    req.body.reviewImages = req.body.reviewImages ?? [];
-    next();
   }
+  next();
 });
 
 exports.createReview = catchAsync(async (req, res, next) => {
@@ -141,8 +143,16 @@ exports.getReviewDetails = catchAsync(async (req, res, next) => {
 exports.updateReview = catchAsync(async (req, res, next) => {
   const { reviewId, reviewTitle, reviewContent, reviewPoints, reviewImages } =
     req.body;
-
   const updatedTime = moment().format('YYYY-MM-DD HH:mm:ss');
+
+  let images = '[]';
+
+  if (reviewImages.length > 0) {
+    const updatedImages = reviewImages.map((img) =>
+      img.substring(img.lastIndexOf('/') + 1)
+    );
+    images = JSON.stringify(updatedImages);
+  }
 
   const values = [
     reviewTitle,
@@ -150,19 +160,14 @@ exports.updateReview = catchAsync(async (req, res, next) => {
     reviewPoints,
     updatedTime,
     1,
+    images,
     reviewId,
   ];
 
-  let imagesquery = '';
-  if (reviewImages.length > 0) {
-    imagesquery = 'review_images = ?,';
-    const updatedImages = reviewImages.map((img) =>
-      img.substring(img.lastIndexOf('/') + 1)
-    );
-    values.unshift(JSON.stringify(updatedImages));
-  }
-
-  const updatedReview = `UPDATE product_review_rating_tbl SET ${imagesquery} review_title=?, review_content = ?, review_points=?,review_updated_on = ?,is_modified =? WHERE review_id = ?`;
+  const updatedReview = `UPDATE product_review_rating_tbl 
+                          SET  review_title=?, review_content = ?, review_points=?,
+                              review_updated_on = ?,is_modified =? ,review_images = ?,review_approval_status = 0
+                          WHERE review_id = ?`;
 
   const result = await db(updatedReview, values);
 

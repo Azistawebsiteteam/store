@@ -127,7 +127,22 @@ const productDetailsQuery = `JSON_ARRAYAGG(
     )
   ) AS products_details`;
 
-const shippingAddressquery = `JSON_OBJECT(
+const billingAddressQuery = `JSON_OBJECT( 
+        'billing_name', CONCAT(customer.azst_customer_fname, " " , customer.azst_customer_lname),
+        'billing_hno', customer.azst_customer_hno,
+        'billing_mobile', customer.azst_customer_mobile,
+        'billing_area', customer.azst_customer_area,
+        'billing_city',customer.azst_customer_city ,
+        'billing_district', customer.azst_customer_district,
+        'billing_state', customer.azst_customer_state,
+        'billing_country', customer.azst_customer_country,
+        'billing_zip', customer.azst_customer_zip ,
+        'billing_landmark',customer.azst_customer_landmark ,
+        'billing_company',customer.azst_customer_company ,
+        'billing_address1',customer.azst_customer_address1 ,
+        'billing_address2',customer.azst_customer_address2 ) AS billing_address`;
+
+const shippingAddressQuery = `JSON_OBJECT(
     'address_id', azst_customer_adressbook.azst_customer_adressbook_id,
     'address_fname', azst_customer_adressbook.azst_customer_adressbook_fname,
     'address_lname', azst_customer_adressbook.azst_customer_adressbook_lname,
@@ -148,18 +163,79 @@ const shippingAddressquery = `JSON_OBJECT(
     'address_available_time', azst_customer_adressbook.azst_customer_adressbook_available_time
   ) AS shipping_address`;
 
-const billingAddressQuery = `JSON_OBJECT( 
-        'azst_customer_hno', azst_customers_tbl.azst_customer_hno,
-        'azst_customer_area', azst_customers_tbl.azst_customer_area,
-        'azst_customer_city',azst_customers_tbl.azst_customer_city ,
-        'azst_customer_district', azst_customers_tbl.azst_customer_district,
-        'azst_customer_state', azst_customers_tbl.azst_customer_state,
-        'azst_customer_country', azst_customers_tbl.azst_customer_country,
-        'azst_customer_zip', azst_customers_tbl.azst_customer_zip ,
-        'azst_customer_landmark',azst_customers_tbl.azst_customer_landmark ,
-        'azst_customer_company',azst_customers_tbl.azst_customer_company ,
-        'azst_customer_address1',azst_customers_tbl.azst_customer_address1 ,
-        'azst_customer_address2',azst_customers_tbl.azst_customer_address2 ) AS billing_address`;
+const shippingFromAddressQuery = `JSON_OBJECT(
+    'inventory_id', ilt.inventory_id,
+    'inventory_name', ilt.inventory_name,
+    'inventory_location', ilt.inventory_location,
+    'inventory_address', ilt.inventory_address,
+    'inventory_mail', ilt.inventory_mail,
+    'inventory_phone', ilt.inventory_phone
+  ) AS order_shipping_from`;
+
+exports.getOrderDetails = catchAsync(async (req, res, next) => {
+  const { orderId } = req.body;
+
+  const schema = Joi.object({
+    orderId: Joi.string().min(1).required(),
+  });
+
+  const { error } = schema.validate({ orderId });
+  if (error) return next(new AppError(error.message, 400));
+  //      azst_orderinfo_tbl.*,
+  const orderQuery = `
+    SELECT
+      azst_orders_tbl.*,
+      azst_orderinfo_tbl.*,
+      azst_orders_tbl.azst_orders_id as azst_order_id,
+      ${productDetailsQuery},
+      ${shippingAddressQuery},
+      ${shippingFromAddressQuery},
+      ${billingAddressQuery}
+    FROM azst_orders_tbl
+    LEFT JOIN azst_ordersummary_tbl 
+      ON azst_orders_tbl.azst_orders_id = azst_ordersummary_tbl.azst_orders_id
+    LEFT JOIN azst_orderinfo_tbl
+      ON azst_orders_tbl.azst_orders_id = azst_orderinfo_tbl.azst_orders_id
+    LEFT JOIN azst_customer_adressbook 
+      ON azst_orderinfo_tbl.azst_addressbook_id = azst_customer_adressbook.azst_customer_adressbook_id
+    LEFT JOIN azst_products
+      ON azst_ordersummary_tbl.azst_order_product_id = azst_products.id
+    LEFT JOIN azst_sku_variant_info
+      ON azst_ordersummary_tbl.azst_order_variant_id = azst_sku_variant_info.id
+    LEFT JOIN azst_inventory_locations_tbl AS ilt
+      ON azst_orderinfo_tbl.azst_order_ship_from = ilt.inventory_id
+    LEFT JOIN azst_customers_tbl AS customer 
+      ON  azst_orderinfo_tbl.azst_orders_customer_id = customer.azst_customer_id
+    WHERE azst_orders_tbl.azst_orders_id = ?
+    GROUP BY azst_orders_tbl.azst_orders_id;
+  `;
+
+  // Set SQL mode for session (if needed)
+  await db("SET SESSION sql_mode = ''");
+
+  // Execute the query with the provided orderId
+  const result = await db(orderQuery, [orderId]);
+
+  // If no result, return empty response
+  if (result.length === 0) return res.status(200).json({});
+
+  let orderDetails = result[0];
+
+  // Ensure products_details is not null before mapping
+  const Order = {
+    ...orderDetails,
+    products_details: orderDetails.products_details
+      ? orderDetails.products_details.map((order) => ({
+          ...order,
+          product_image: `${req.protocol}://${req.get(
+            'host'
+          )}/api/images/product/${order.product_image}`,
+        }))
+      : [],
+  };
+
+  res.status(200).json(Order);
+});
 
 exports.getCustomerOrders = catchAsync(async (req, res, next) => {
   const customerId = req.empId;
@@ -206,55 +282,6 @@ exports.getCustomerOrders = catchAsync(async (req, res, next) => {
   }));
 
   res.status(200).json(ordersData);
-});
-
-exports.getOrderDetails = catchAsync(async (req, res, next) => {
-  const { orderId } = req.body;
-
-  const schema = Joi.object({
-    orderId: Joi.string().min(1).required(),
-  });
-
-  const { error } = schema.validate({ orderId });
-  if (error) return next(new AppError(error.message, 400));
-
-  const orderQuery = `SELECT
-                      azst_orders_tbl.*,azst_orderinfo_tbl.*,
-                      azst_orders_tbl.azst_orders_id as azst_order_id,
-                      ${productDetailsQuery},
-                      ${shippingAddressquery}
-                    FROM azst_orders_tbl
-                    LEFT JOIN azst_ordersummary_tbl 
-                      ON azst_orders_tbl.azst_orders_id = azst_ordersummary_tbl.azst_orders_id
-                    LEFT JOIN azst_orderinfo_tbl 
-                      ON azst_orders_tbl.azst_orders_id = azst_orderinfo_tbl.azst_orders_id
-                    LEFT JOIN azst_customer_adressbook 
-                      ON azst_orderinfo_tbl.azst_addressbook_id = azst_customer_adressbook.azst_customer_adressbook_id
-                    LEFT JOIN azst_products
-                      ON azst_ordersummary_tbl.azst_order_product_id = azst_products.id
-                    LEFT JOIN azst_sku_variant_info
-                      ON azst_ordersummary_tbl.azst_order_variant_id = azst_sku_variant_info.id
-                    WHERE azst_orders_tbl.azst_orders_id = ?
-                    GROUP BY azst_orders_tbl.azst_orders_id;
-                    `;
-
-  await db("SET SESSION sql_mode = ''");
-  const result = await db(orderQuery, [orderId]);
-
-  if (result.length === 0) return res.status(200).json({});
-
-  let orderDetails = result[0];
-
-  const Order = {
-    ...orderDetails,
-    products_details: orderDetails.products_details.map((order) => ({
-      ...order,
-      product_image: `${req.protocol}://${req.get('host')}/api/images/product/${
-        order.product_image
-      }`,
-    })),
-  };
-  res.status(200).json(Order);
 });
 
 const confirmSchema = Joi.object({

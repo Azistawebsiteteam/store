@@ -33,7 +33,9 @@ const organizCustomerData = (customer) => {
     azst_customer_createdon: moment(customer.azst_customer_createdon).format(
       'DD-MM-YYYY HH:mm:ss'
     ),
-    azst_customer_dob: moment(customer.azst_customer_DOB).format('DD-MM-YYYY'),
+    azst_customer_dob: customer.azst_customer_DOB
+      ? moment(customer.azst_customer_DOB).format('DD-MM-YYYY')
+      : '',
   };
 };
 
