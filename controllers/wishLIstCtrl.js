@@ -18,8 +18,11 @@ const isExistInWl = catchAsync(async (req, res, next) => {
   if (error) return next(new AppError(error.message, 400));
   const query = `SELECT azst_variant_id FROM azst_wishlist_tbl 
                  WHERE azst_customer_id= ?  AND azst_product_id =?  AND azst_variant_id = ? AND status = 1`;
+
   const values = [empId, productId, variantId];
+
   const result = await db(query, values);
+
   if (result.length > 0)
     return next(new AppError('Product already in wishlist', 400));
   next();
@@ -33,13 +36,16 @@ const addToWl = catchAsync(async (req, res, next) => {
                   VALUES (?,?,?)`;
   const values = [productId, variantId, empId];
 
-  await db(query, values);
-  res.status(200).json({ message: 'Product added successfully' });
+  const result = await db(query, values);
+
+  res.status(200).json({
+    message: 'Product added successfully',
+    wishlist_id: result.insertId,
+  });
 });
 
 const removeFromWl = catchAsync(async (req, res, next) => {
   const { whishlistId } = req.body;
-
   if (!whishlistId) return next(new AppError('wishlistId is required', 400));
   const query = `UPDATE azst_wishlist_tbl SET status = 0 , updateon = ? WHERE azst_wishlist_id = ?`;
   const today = moment().format('YYYY-MM-DD HH:mm:ss');
