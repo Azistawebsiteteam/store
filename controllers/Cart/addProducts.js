@@ -37,15 +37,105 @@ const getProductFromCart = async (
   };
 };
 
-const updateProductQuantity = async (values) => {
+// Disable a cart entry by setting `azst_cart_status` to 0
+const disableUnwantedQuantity = async (cartId) => {
+  const query =
+    'UPDATE azst_cart_tbl SET azst_cart_status = 0 WHERE azst_cart_id = ?';
+  await db(query, [cartId]);
+};
+
+// Delete a duplicate cart entry based on cart ID
+const deleteDuplicateCartEntry = async (cartId) => {
+  const query = 'DELETE FROM azst_cart_tbl WHERE azst_cart_id = ?';
+  await db(query, [cartId]);
+};
+
+// Update the quantity of a product in the cart and manage duplicates
+const updateProductQuantity = async (quantity, customerId, cartId) => {
   try {
-    const query =
-      'UPDATE azst_cart_tbl SET azst_cart_quantity=? ,azst_customer_id = ? WHERE  azst_cart_id = ?';
-    await db(query, values);
+    // Update quantity and customer ID in the specified cart entry
+    const updateQuery = `
+      UPDATE azst_cart_tbl 
+      SET azst_cart_quantity = ?, azst_customer_id = ? 
+      WHERE azst_cart_id = ?
+    `;
+    const result = await db(updateQuery, [quantity, customerId, cartId]);
+    if (result.affectedRows > 0) {
+      // Retrieve product and variant information for the updated cart entry
+      const cartInfoQuery = `
+        SELECT azst_cart_product_id, azst_cart_variant_id, azst_customer_id,azst_session_id 
+        FROM azst_cart_tbl 
+        WHERE azst_cart_id = ?
+      `;
+      const [cartData] = await db(cartInfoQuery, [cartId]);
+
+      const {
+        azst_cart_product_id,
+        azst_cart_variant_id,
+        azst_customer_id,
+        azst_session_id,
+      } = cartData;
+
+      let varifyId = azst_customer_id;
+      let subQ = '';
+      if (customerId !== 0) {
+        varifyId = azst_customer_id;
+        subQ = `AND azst_customer_id = ? `;
+      } else {
+        varifyId = azst_session_id;
+        subQ = `AND azst_session_id = ?`;
+      }
+      // Find other cart entries for the same product-variant-customer combination
+      const duplicateCartIdsQuery = `
+        SELECT azst_cart_id 
+        FROM azst_cart_tbl 
+        WHERE azst_cart_product_id = ? 
+          AND azst_cart_variant_id = ? 
+           ${subQ}
+          AND azst_cart_id != ?
+      `;
+
+      const duplicateCartEntries = await db(duplicateCartIdsQuery, [
+        azst_cart_product_id,
+        azst_cart_variant_id,
+        varifyId,
+        cartId,
+      ]);
+
+      // Disable or delete duplicate cart entries
+      for (let { azst_cart_id } of duplicateCartEntries) {
+        await deleteDuplicateCartEntry(azst_cart_id);
+      }
+    }
   } catch (error) {
     throw error;
   }
 };
+
+// Controller function to handle product quantity updates in the cart
+exports.handleProductQuantityUpdate = catchAsync(async (req, res, next) => {
+  try {
+    const { error } = updateQuantitySchema.validate(req.body);
+    if (error) return next(new AppError(error.message, 400));
+
+    const { cartId, quantity, customerId } = req.body;
+
+    // Disable unwanted quantities if quantity is zero
+    if (parseInt(quantity) === 0) {
+      await disableUnwantedQuantity(cartId);
+    } else {
+      // Update product quantity if not zero
+      await updateProductQuantity(quantity, customerId, cartId);
+    }
+
+    req.body = { customerId };
+    next();
+  } catch (err) {
+    return next(
+      new AppError(err.sqlMessage || 'Oops, something went wrong', 400)
+    );
+  }
+});
 
 const addProductToCart = async (values) => {
   const query = `INSERT INTO azst_cart_tbl (   azst_cart_product_id,
@@ -94,7 +184,7 @@ exports.addProductToCart = catchAsync(async (req, res, next) => {
       if (isExist) {
         const updateQty = quantity + product.quantity;
         const values = [updateQty, customerId, cartId];
-        await updateProductQuantity(values);
+        await updateProductQuantity(values, cartId);
       } else {
         const values = [
           product.productId,
@@ -133,33 +223,6 @@ const updateQuantitySchema = Joi.object({
   cartId: Joi.number().required(),
   quantity: Joi.number().required(),
   customerId: Joi.number().optional(),
-});
-
-exports.handleProductQuantityUpdate = catchAsync(async (req, res, next) => {
-  try {
-    const { error } = updateQuantitySchema.validate(req.body);
-    if (error) return next(new AppError(error.message, 400));
-    const { cartId, quantity, customerId } = req.body;
-
-    if (parseInt(quantity) === 0) {
-      const query =
-        'Update azst_cart_tbl set azst_cart_status = 0 where azst_cart_id = ?';
-      await db(query, [cartId]);
-    }
-
-    const values = [quantity, customerId, cartId];
-    await updateProductQuantity(values);
-    req.body = { customerId };
-    next();
-    // res.status(200).json({ message: 'quantity updated' });
-  } catch (err) {
-    return next(
-      new AppError(
-        err.sqlMessage ? err.sqlMessage : 'oops something went wrong',
-        400
-      )
-    );
-  }
 });
 
 //   azst_cart_id,

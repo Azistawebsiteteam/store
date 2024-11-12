@@ -323,7 +323,7 @@ exports.getProductDetalis = catchAsync(async (req, res, next) => {
                                 WHERE azst_product_features.product_id = azst_products.id
                                   AND azst_product_features.status = 1
                               ) AS product_features,
-                               COALESCE(wl.azst_wishlist_id, 0) AS in_wishlist
+                              COALESCE(wl.azst_wishlist_id, 0) AS in_wishlist
                             FROM 
                               azst_products
                               LEFT JOIN azst_wishlist_tbl AS wl ON azst_products.id = wl.azst_product_id
