@@ -69,43 +69,88 @@ const getImageLink = (req, images, fallbackImage) => {
 };
 
 const getWishlist = catchAsync(async (req, res, next) => {
-  const query = `
-      SELECT
-      w.createdon,
+  // const query = `
+  //     SELECT
+  //     w.createdon,
+  //       w.azst_wishlist_id,
+  //       w.azst_product_id,
+  //       i.azst_ipm_variant_id,
+  //       p.product_main_title,
+  //       p.product_title,
+  //       p.product_url_title,
+  //       COALESCE(p.price, 0) AS price,
+  //       p.min_cart_quantity,
+  //       p.max_cart_quantity,
+  //       COALESCE(s.compare_at_price, 0) AS compare_at_price,
+  //       COALESCE(p.compare_at_price, 0) AS product_compare_at_price,
+  //       s.variant_image,
+  //       p.image_src,
+  //       COALESCE(s.offer_price, 0) AS offer_price,
+  //       s.offer_percentage,
+  //       p.is_varaints_aval,
+  //       COALESCE(SUM(i.azst_ipm_total_quantity), 0) AS product_qty
+  //     FROM
+  //       azst_wishlist_tbl AS w
+  //     LEFT JOIN
+  //       azst_products AS p
+  //       ON w.azst_product_id = p.id
+  //    LEFT JOIN azst_central_inventory_tbl AS i
+  //       ON w.azst_variant_id = i.azst_ipm_variant_id
+  //        AND w.azst_product_id = i.azst_ipm_product_id
+  //     LEFT JOIN
+  //       azst_sku_variant_info AS s
+  //       ON  w.azst_variant_id  = s.id
+  //     WHERE
+  //       w.azst_customer_id = ?
+  //       AND w.status = 1
+  //     Group by w.azst_product_id, w.azst_variant_id
+  //     order by createdon DESC
+  //   `;
+
+  const query = `SELECT
+      w.azst_wishlist_id,
+      w.azst_product_id,
+      w.azst_customer_id,
+      w.status,
         w.azst_wishlist_id,
-        w.azst_product_id,
-        i.azst_ipm_variant_id,
-        p.product_main_title,
-        p.product_title,
-        p.product_url_title,
-        COALESCE(p.price, 0) AS price,
-        p.min_cart_quantity,
-        p.max_cart_quantity,
-        COALESCE(s.compare_at_price, 0) AS compare_at_price,
-        COALESCE(p.compare_at_price, 0) AS product_compare_at_price,
-        s.variant_image,
-        p.image_src,
-        COALESCE(s.offer_price, 0) AS offer_price,
-        s.offer_percentage,
-        p.is_varaints_aval,
-        COALESCE(SUM(i.azst_ipm_total_quantity), 0) AS product_qty
-      FROM 
-        azst_wishlist_tbl AS w
-      LEFT JOIN 
-        azst_products AS p
-        ON w.azst_product_id = p.id
-     LEFT JOIN azst_central_inventory_tbl AS i
-        ON w.azst_variant_id = i.azst_ipm_variant_id 
-         AND w.azst_product_id = i.azst_ipm_product_id
-      LEFT JOIN 
-        azst_sku_variant_info AS s 
-        ON  w.azst_variant_id  = s.id
-      WHERE 
-        w.azst_customer_id = ? 
-        AND w.status = 1
-      Group by w.azst_product_id, w.azst_variant_id
-      order by createdon DESC
-    `;
+          w.azst_product_id,
+          p.product_main_title,
+          p.product_title,
+          p.product_url_title,
+          COALESCE(p.price, 0) AS price,
+          p.min_cart_quantity,
+          p.max_cart_quantity,
+          COALESCE(s.compare_at_price, 0) AS compare_at_price,
+          COALESCE(p.compare_at_price, 0) AS product_compare_at_price,
+          s.variant_image,
+          p.image_src,
+          COALESCE(s.offer_price, 0) AS offer_price,
+          s.offer_percentage,
+          p.is_varaints_aval,
+         COALESCE(CASE
+              -- When there's no variant in the wishlist (azst_variant_id = 0), sum all quantities for the product
+              WHEN w.azst_variant_id = 0 THEN (
+                  SELECT COALESCE(SUM(i.azst_ipm_total_quantity) , 0) AS product_quantity
+                  FROM azst_central_inventory_tbl AS i
+                  WHERE i.azst_ipm_product_id = w.azst_product_id
+              )
+              -- When there's a variant in the wishlist, get the exact quantity for the matching product and variant
+              ELSE (
+                  SELECT COALESCE(i.azst_ipm_total_quantity, 0) AS product_quantity
+                  FROM azst_central_inventory_tbl AS i
+                  WHERE i.azst_ipm_product_id = w.azst_product_id
+                    AND i.azst_ipm_variant_id = w.azst_variant_id
+              )
+          END,0) AS product_quantity
+       FROM azst_wishlist_tbl AS w
+       LEFT JOIN
+          azst_products AS p
+          ON w.azst_product_id = p.id
+       LEFT JOIN
+          azst_sku_variant_info AS s
+          ON w.azst_variant_id  = s.id
+       WHERE w.azst_customer_id = ? AND w.status = 1;
+  `;
 
   await db("SET SESSION sql_mode = ''");
 
