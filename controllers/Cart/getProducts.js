@@ -1,5 +1,4 @@
 const Joi = require('joi');
-const moment = require('moment');
 const db = require('../../Database/dbconfig');
 
 const catchAsync = require('../../Utils/catchAsync');
@@ -309,8 +308,7 @@ const abandonmentCart = catchAsync(async (req, res, next) => {
 });
 
 const abandonmentCartUsers = async () => {
-  try {
-    const query = `SELECT DISTINCT c.azst_customer_id, cu.azst_customer_mobile,
+  const query = `SELECT DISTINCT c.azst_customer_id, cu.azst_customer_mobile,
                    cu.azst_customer_email
                    FROM azst_cart_tbl c
                    LEFT JOIN azst_customers_tbl cu ON c.azst_customer_id = cu.azst_customer_id
@@ -319,18 +317,13 @@ const abandonmentCartUsers = async () => {
                    c.azst_cart_status = 1 AND
                    DATE(c.azst_cart_created_on) = CURRENT_DATE`;
 
-    const result = await db(query);
+  const result = await db(query);
 
-    for (const cu of result) {
-      const { azst_customer_id, azst_customer_mobile, azst_customer_email } =
-        cu;
+  for (const cu of result) {
+    const { azst_customer_id, azst_customer_mobile, azst_customer_email } = cu;
 
-      // Send SMS for each customer, waiting for each one to complete before the next
-      await new Sms(azst_customer_id, azst_customer_mobile).cartCheckout();
-      console.log(`SMS sent to: ${azst_customer_mobile}`);
-    }
-  } catch (e) {
-    console.error('Error sending SMS:', e);
+    // Send SMS for each customer, waiting for each one to complete before the next
+    await new Sms(azst_customer_id, azst_customer_mobile).cartCheckout();
   }
 };
 

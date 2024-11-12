@@ -282,6 +282,32 @@ exports.getAllReviews = catchAsync(async (req, res, next) => {
   res.status(200).json(modifiedReview);
 });
 
+exports.getReviewData = catchAsync(async (req, res, next) => {
+  const { reviewId } = req.body;
+
+  if (!reviewId) return next(new AppError('ReviewId  is Required '));
+
+  const getQuery = `SELECT review_id,customer_id,product_id,review_title,review_content,review_points,review_status,
+                      review_images,review_approval_status,approve_by, DATE_FORMAT(review_created_on, '%d-%m-%Y %H:%i:%s') AS created_on,
+                      DATE_FORMAT(review_updated_on, '%d-%m-%Y %H:%i:%s') AS updated_on,DATE_FORMAT(approved_on, '%d-%m-%Y %H:%i:%s') AS approve_on,
+                      azst_customer_fname,azst_customer_lname,product_title,image_src as product_image,url_handle
+                    FROM product_review_rating_tbl
+                    LEFT JOIN azst_customers_tbl ON product_review_rating_tbl.customer_id = azst_customers_tbl.azst_customer_id
+                    LEFT JOIN azst_products ON product_review_rating_tbl.product_id = azst_products.id
+                    WHERE review_id = ? AND  review_status = 1 `;
+
+  const [review] = await db(getQuery, [reviewId]);
+
+  const modifiedReview = {
+    ...review,
+    review_images: getReviewImageLink(req, review.review_images),
+    product_image: `${req.protocol}://${req.get('host')}/api/images/product/${
+      review.product_image
+    }`,
+  };
+  res.status(200).json(modifiedReview);
+});
+
 exports.hanldeReviewApproval = catchAsync(async (req, res, next) => {
   const { isApproved, reviewId } = req.body;
   const { empId } = req;
