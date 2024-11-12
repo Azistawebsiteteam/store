@@ -183,8 +183,7 @@ exports.addProductToCart = catchAsync(async (req, res, next) => {
 
       if (isExist) {
         const updateQty = quantity + product.quantity;
-        const values = [updateQty, customerId, cartId];
-        await updateProductQuantity(values, cartId);
+        await updateProductQuantity(updateQty, customerId, cartId);
       } else {
         const values = [
           product.productId,
@@ -224,14 +223,3 @@ const updateQuantitySchema = Joi.object({
   quantity: Joi.number().required(),
   customerId: Joi.number().optional(),
 });
-
-//   azst_cart_id,
-//   azst_cart_product_id,
-//   azst_cart_variant_id,
-//   azst_cart_quantity,
-//   azst_customer_id,
-//   azst_session_id,
-//   azst_cart_status,
-//   azst_cart_created_on,
-//   azst_cart_updated_on,
-//   azst_cart_collection_id;
