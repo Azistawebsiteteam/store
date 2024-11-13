@@ -69,50 +69,13 @@ const getImageLink = (req, images, fallbackImage) => {
 };
 
 const getWishlist = catchAsync(async (req, res, next) => {
-  // const query = `
-  //     SELECT
-  //     w.createdon,
-  //       w.azst_wishlist_id,
-  //       w.azst_product_id,
-  //       i.azst_ipm_variant_id,
-  //       p.product_main_title,
-  //       p.product_title,
-  //       p.product_url_title,
-  //       COALESCE(p.price, 0) AS price,
-  //       p.min_cart_quantity,
-  //       p.max_cart_quantity,
-  //       COALESCE(s.compare_at_price, 0) AS compare_at_price,
-  //       COALESCE(p.compare_at_price, 0) AS product_compare_at_price,
-  //       s.variant_image,
-  //       p.image_src,
-  //       COALESCE(s.offer_price, 0) AS offer_price,
-  //       s.offer_percentage,
-  //       p.is_varaints_aval,
-  //       COALESCE(SUM(i.azst_ipm_total_quantity), 0) AS product_qty
-  //     FROM
-  //       azst_wishlist_tbl AS w
-  //     LEFT JOIN
-  //       azst_products AS p
-  //       ON w.azst_product_id = p.id
-  //    LEFT JOIN azst_central_inventory_tbl AS i
-  //       ON w.azst_variant_id = i.azst_ipm_variant_id
-  //        AND w.azst_product_id = i.azst_ipm_product_id
-  //     LEFT JOIN
-  //       azst_sku_variant_info AS s
-  //       ON  w.azst_variant_id  = s.id
-  //     WHERE
-  //       w.azst_customer_id = ?
-  //       AND w.status = 1
-  //     Group by w.azst_product_id, w.azst_variant_id
-  //     order by createdon DESC
-  //   `;
-
   const query = `SELECT
-      w.azst_wishlist_id,
-      w.azst_product_id,
-      w.azst_customer_id,
-      w.status,
-        w.azst_wishlist_id,
+          w.azst_wishlist_id,
+          w.azst_product_id,
+          w.azst_variant_id,
+          w.azst_customer_id,
+          w.status,
+          w.azst_wishlist_id,
           w.azst_product_id,
           p.product_main_title,
           p.product_title,
@@ -146,22 +109,42 @@ const getWishlist = catchAsync(async (req, res, next) => {
        LEFT JOIN
           azst_products AS p
           ON w.azst_product_id = p.id
-       LEFT JOIN
-          azst_sku_variant_info AS s
-          ON w.azst_variant_id  = s.id
-       WHERE w.azst_customer_id = ? AND w.status = 1;
+   LEFT JOIN
+      azst_sku_variant_info AS s
+      ON w.azst_variant_id  = s.id
+       WHERE w.azst_customer_id = ? AND w.status = 1
+       ORDER BY createdon DESC
   `;
 
   await db("SET SESSION sql_mode = ''");
 
   // Execute the query using the provided customer ID
-  const result = await db(query, [req.empId]);
+  const products = await db(query, [req.empId]);
 
-  // Map results to include the product image link, ensuring both variant and product images are handled
-  const wishlist = result.map((product) => ({
-    ...product,
-    variant_image: getImageLink(req, product.variant_image, product.image_src),
-  }));
+  const wishlist = [];
+  const getUpadteP = (product, variant) => {
+    const updateP = {
+      ...product,
+      ...variant,
+      variant_image: getImageLink(
+        req,
+        product.variant_image,
+        product.image_src
+      ),
+    };
+    wishlist.push(updateP);
+  };
+
+  for (let product of products) {
+    if (product.azst_variant_id === 0) {
+      const getPrices = `SELECT COALESCE(compare_at_price, 0) AS compare_at_price,COALESCE(offer_price, 0) AS offer_price
+                          FROM azst_sku_variant_info WHERE product_id = ? LIMIT 1`;
+      const [variant] = await db(getPrices, [product.azst_product_id]);
+      getUpadteP(product, variant);
+    } else {
+      getUpadteP(product, {});
+    }
+  }
 
   // Send the response with retrieved data
   res.status(200).json({ wishlist, message: 'Data Retrieved successfully' });
