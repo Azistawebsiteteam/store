@@ -6,7 +6,8 @@ const discountSchema = Joi.object({
   title: Joi.string().required(),
   code: Joi.string().allow(null),
   method: Joi.string().valid('Automatic', 'Manual').required(),
-  type: Joi.string().valid('percentage', 'flat').required(),
+  type: Joi.string().valid('percentage', 'flat', 'product').required(),
+  productDscType: Joi.string().valid('percentage', 'flat', '').optional(),
   value: Joi.number().positive().required(),
   customers: Joi.string().required(),
   usageCount: Joi.number().integer().default(0),
@@ -25,6 +26,7 @@ const validateProductIds = (products, schema) => {
   const parsedProducts = Array.isArray(products)
     ? products
     : JSON.parse(products);
+  console.log(parsedProducts);
   const validationResults = parsedProducts.map((subCat) =>
     schema.validate(subCat)
   );

@@ -16,22 +16,6 @@ exports.applyDiscountByCode = catchAsync(async (req, res, next) => {
   next();
 });
 
-// const calculateCartTotalValue = (cartList) => {
-//   // Validate that cartList is not empty or null
-//   if (!Array.isArray(cartList) || cartList.length === 0) return 0;
-
-//   const cartTotal = cartList.reduce((total, item) => {
-//     const itemPrice =
-//       item.is_varaints_aval === 1
-//         ? parseFloat(item.offer_price)
-//         : parseFloat(item.price);
-//     const itemQuantity = parseInt(item.azst_cart_quantity);
-//     return total + itemPrice * itemQuantity;
-//   }, 0);
-
-//   return cartTotal;
-// };
-
 const percentageCalculator = (total, percent) =>
   (total * parseFloat(percent)) / 100;
 
@@ -240,42 +224,335 @@ const addProductsToCart = async (products, maxQty, customerId, sessionId) => {
   return addedProducts;
 };
 
-const calculateCartAmountDiscount = (discount, cart) => {
-  const { min_cart_value, type, value } = discount;
-  const cartTotal = calculateCartTotalValue(cart);
+// const calculateCartAmountDiscount = async (
+//   discount,
+//   cart,
+//   customerId,
+//   sessionId
+// ) => {
+//   console.log(discount, 'discount Details');
+//   const {
+//     min_cart_value,
+//     type,
+//     code,
+//     method,
+//     value,
+//     max_get_y_qty,
+//     product_dsc_type,
+//   } = discount;
 
-  let discountAmount = 0;
-  let message = '';
+//   const mainCart = cart.filter((p) => p.azst_cart_dsc_code !== code);
+//   const cartTotal = calculateCartTotalValue(mainCart);
 
-  // Apply discount only if cart total exceeds the minimum value
-  if (cartTotal >= parseInt(min_cart_value) || min_cart_value === null) {
-    if (type === 'percentage') {
-      discountAmount = percentageCalculator(cartTotal, value);
+//   let discountAmount = 0;
+//   let message = '';
+//   let newCart = cart;
+
+//   // Apply discount only if cart total exceeds the minimum value
+//   if (cartTotal >= parseInt(min_cart_value) || min_cart_value === null) {
+//     if (type === 'percentage') {
+//       discountAmount = percentageCalculator(cartTotal, value);
+//     } else if (type === 'flat') {
+//       discountAmount = flatCalculator(cartTotal, value); // Ensure discount doesn't exceed cart total
+//     } else {
+//       const buyProdutIds = cart.map((p) => p.azst_cart_id);
+
+//       // calculate the discount on y products
+//       const cProducts = await getYDiscountProducts(discount, cart);
+
+//       const YdiscountProducts = cProducts.inCartProducts;
+//       const toAddCart = cProducts.remainProducts;
+
+//       let newCartProducts = [];
+//       if (toAddCart.length > 0) {
+//         newCartProducts = await addProductsToCart(
+//           toAddCart,
+//           max_get_y_qty,
+//           customerId,
+//           sessionId
+//         );
+//       }
+
+//       const allYproducts = [...YdiscountProducts, ...newCartProducts];
+
+//       const updatedNewCartProducts = [];
+
+//       if (product_dsc_type === 'percentage') {
+//         for (let p of allYproducts) {
+//           const total = calculateCartTotalValue([
+//             {
+//               ...p,
+//               azst_cart_quantity: Math.min(
+//                 parseInt(max_get_y_qty),
+//                 parseInt(p.azst_cart_quantity)
+//               ),
+//             },
+//           ]);
+
+//           const amount = percentageCalculator(total, value);
+
+//           if (newCartProducts.length > 0) {
+//             newCartProducts.forEach((product) => {
+//               if (p.azst_cart_id === product.azst_cart_id) {
+//                 updatedNewCartProducts.push({
+//                   ...product,
+//                   azst_cart_product_type: 'dsc',
+//                   azst_cart_dsc_code: code,
+//                   azst_cart_dsc_amount: amount,
+//                 });
+//               }
+//             });
+//             await updateProductDaiscountIncart(
+//               p.azst_cart_id,
+//               amount,
+//               code,
+//               JSON.stringify(buyProdutIds)
+//             );
+//           }
+//           discountAmount += amount;
+//         }
+//       } else {
+//         for (let p of allYproducts) {
+//           const total = calculateCartTotalValue([p]);
+//           const amount = flatCalculator(total, value);
+//           if (newCartProducts.length > 0) {
+//             newCartProducts.forEach((product) => {
+//               if (p.azst_cart_id === product.azst_cart_id) {
+//                 updatedNewCartProducts.push({
+//                   ...product,
+//                   azst_cart_product_type: 'dsc',
+//                   azst_cart_dsc_amount: amount,
+//                 });
+//               }
+//             });
+//             await updateProductDaiscountIncart(
+//               p.azst_cart_id,
+//               amount,
+//               code,
+//               JSON.stringify(buyProdutIds)
+//             );
+//           }
+
+//           discountAmount += amount;
+//         }
+//       }
+//       const dscProduct = [...YdiscountProducts, ...updatedNewCartProducts];
+//       newCart = [...mainCart, ...dscProduct];
+//     }
+//   } else {
+//     if (method === 'Automatic') {
+//       const query = `Delete from azst_cart_tbl where azst_cart_dsc_code = ? `;
+//       await db(query, [code]);
+//     } else {
+//       const amountNeeded = parseInt(min_cart_value) - cartTotal;
+//       message = `Add ${amountNeeded.toFixed(2)}  more to get the discount.`;
+//     }
+//   }
+
+//   return { discountAmount, message, newCart };
+// };
+
+const calculateCartAmountDiscount = async (
+  discount,
+  cart,
+  customerId,
+  sessionId
+) => {
+  const {
+    min_cart_value,
+    type,
+    code,
+    method,
+    value,
+    max_get_y_qty,
+    product_dsc_type,
+  } = discount;
+
+  // Parse min cart value once
+  const minCartValue = min_cart_value ? parseInt(min_cart_value) : null;
+  const mainCart = cart.filter((p) => p.azst_cart_dsc_code !== code);
+  const cartTotal = calculateCartTotalValue(mainCart);
+
+  // Return early if discount conditions are not met
+  if (minCartValue !== null && cartTotal < minCartValue) {
+    // Filter out items that have the current discount code
+    const removeCart = cart.filter((p) => p.azst_cart_dsc_code === code);
+
+    let message = '';
+
+    if (method === 'Automatic') {
+      // Use Promise.all to delete items concurrently
+      await Promise.all(
+        removeCart.map((p) =>
+          db(
+            `DELETE FROM azst_cart_tbl WHERE azst_cart_id = ? AND azst_cart_dsc_code = ?`,
+            [p.azst_cart_id, p.azst_cart_dsc_code]
+          )
+        )
+      );
     } else {
-      discountAmount = flatCalculator(cartTotal, value); // Ensure discount doesn't exceed cart total
+      // Construct message if manual method is used
+      message = `Add ${(minCartValue - cartTotal).toFixed(
+        2
+      )} more to get the discount.`;
     }
-  } else {
-    const amountNeeded = parseInt(min_cart_value) - cartTotal;
-    message = `Add ${amountNeeded.toFixed(2)}  more to get the discount.`;
+
+    return { discountAmount: 0, message, newCart: cart };
   }
 
-  return { discountAmount, message, newCart: cart };
+  let discountAmount = 0;
+  let newCart = cart;
+
+  // Helper function for calculating discounts
+  const applyDiscount = (total, type, value) => {
+    return type === 'percentage'
+      ? percentageCalculator(total, value)
+      : flatCalculator(total, value);
+  };
+
+  // Apply the discount based on its type
+  if (type === 'percentage' || type === 'flat') {
+    discountAmount = applyDiscount(cartTotal, type, value);
+  } else {
+    const buyProductIds = cart.map((p) => p.azst_cart_id);
+    const { inCartProducts: YdiscountProducts, remainProducts: toAddCart } =
+      await getYDiscountProducts(discount, cart);
+
+    // Fetch and prepare new Y products to add to the cart
+    const newCartProducts =
+      toAddCart.length > 0
+        ? await addProductsToCart(
+            toAddCart,
+            max_get_y_qty,
+            customerId,
+            sessionId
+          )
+        : [];
+
+    const allYproducts = [...YdiscountProducts, ...newCartProducts];
+
+    // Calculate the discount for Y products based on product discount type
+    const updatedNewCartProducts = allYproducts
+      .map((p) => {
+        const adjustedQty = Math.min(
+          parseInt(max_get_y_qty),
+          parseInt(p.azst_cart_quantity)
+        );
+        const total = calculateCartTotalValue([
+          { ...p, azst_cart_quantity: adjustedQty },
+        ]);
+        const amount = applyDiscount(total, product_dsc_type, value);
+
+        if (
+          newCartProducts.some(
+            (product) => product.azst_cart_id === p.azst_cart_id
+          )
+        ) {
+          updateProductDaiscountIncart(
+            p.azst_cart_id,
+            amount,
+            code,
+            JSON.stringify(buyProductIds)
+          );
+          discountAmount += amount;
+          return {
+            ...p,
+            azst_cart_product_type: 'dsc',
+            azst_cart_dsc_code: code,
+            azst_cart_dsc_amount: amount,
+          };
+        }
+        return null;
+      })
+      .filter(Boolean);
+
+    // Merge mainCart with all discount products to create newCart
+    const dscProduct = [...YdiscountProducts, ...updatedNewCartProducts];
+    newCart = [...mainCart, ...dscProduct];
+  }
+
+  return { discountAmount, message: '', newCart };
 };
+
+// const calculateProductAmountDiscount = async (discount, cart) => {
+//   const { code, type, value, max_get_y_qty } = discount;
+
+//   const { inCartProducts } = await getXDiscountProducts(discount, cart);
+
+//   let discountAmount = 0;
+//   let message = '';
+
+//   if (inCartProducts.length === 0) {
+//     return { discountAmount, message: 'No discount products' };
+//   }
+
+//   const updatedNewCartProducts = [];
+
+//   const remainProducts = cart.filter(
+//     (cp) =>
+//       !inCartProducts.some(
+//         (product) => product.azst_cart_id === cp.azst_cart_id
+//       )
+//   );
+
+//   if (type === 'percentage') {
+//     for (let p of inCartProducts) {
+//       const total = calculateCartTotalValue([
+//         {
+//           ...p,
+//           azst_cart_quantity: Math.min(
+//             max_get_y_qty,
+//             parseInt(p.azst_cart_quantity)
+//           ),
+//         },
+//       ]);
+
+//       const amount = percentageCalculator(total, value);
+
+//       updatedNewCartProducts.push({
+//         ...p,
+//         azst_cart_product_type: 'dsc',
+//         azst_cart_dsc_amount: parseFloat(amount),
+//       });
+//       await updateProductDaiscountIncart(p.azst_cart_id, amount, code, '');
+//       discountAmount += amount;
+//     }
+//   } else {
+//     for (let p of inCartProducts) {
+//       const total = calculateCartTotalValue([p]);
+//       const amount = flatCalculator(total, value);
+//       updatedNewCartProducts.push({
+//         ...p,
+//         azst_cart_product_type: 'dsc',
+//         azst_cart_dsc_amount: parseFloat(amount),
+//       });
+//       await updateProductDaiscountIncart(
+//         p.azst_cart_id,
+//         amount,
+//         code,
+//         buyProdutIds
+//       );
+//       discountAmount += amount;
+//     }
+//   }
+
+//   return {
+//     discountAmount,
+//     message,
+//     newCart: [...updatedNewCartProducts, ...remainProducts],
+//   };
+// };
 
 const calculateProductAmountDiscount = async (discount, cart) => {
   const { code, type, value, max_get_y_qty } = discount;
-
   const { inCartProducts } = await getXDiscountProducts(discount, cart);
 
-  let discountAmount = 0;
-  let message = '';
-
   if (inCartProducts.length === 0) {
-    return { discountAmount, message: 'No discount products' };
+    return { discountAmount: 0, message: 'No discount products' };
   }
 
+  let discountAmount = 0;
   const updatedNewCartProducts = [];
-
   const remainProducts = cart.filter(
     (cp) =>
       !inCartProducts.some(
@@ -283,50 +560,39 @@ const calculateProductAmountDiscount = async (discount, cart) => {
       )
   );
 
-  if (type === 'percentage') {
-    for (let p of inCartProducts) {
-      const total = calculateCartTotalValue([
-        {
-          ...p,
-          azst_cart_quantity: Math.min(
-            max_get_y_qty,
-            parseInt(p.azst_cart_quantity)
-          ),
-        },
-      ]);
+  // Helper function to apply discount and update cart
+  const applyDiscount = async (product, amount) => {
+    updatedNewCartProducts.push({
+      ...product,
+      azst_cart_product_type: 'dsc',
+      azst_cart_dsc_amount: parseFloat(amount),
+    });
+    await updateProductDaiscountIncart(product.azst_cart_id, amount, code, '');
+    discountAmount += amount;
+  };
 
-      const amount = percentageCalculator(total, value);
+  // Iterate and calculate discount for each product in inCartProducts
+  for (const product of inCartProducts) {
+    const quantityLimitedProduct = {
+      ...product,
+      azst_cart_quantity:
+        type === 'percentage'
+          ? Math.min(max_get_y_qty, parseInt(product.azst_cart_quantity))
+          : parseInt(product.azst_cart_quantity),
+    };
 
-      updatedNewCartProducts.push({
-        ...p,
-        azst_cart_product_type: 'dsc',
-        azst_cart_dsc_amount: parseFloat(amount),
-      });
-      await updateProductDaiscountIncart(p.azst_cart_id, amount, code, '');
-      discountAmount += amount;
-    }
-  } else {
-    for (let p of inCartProducts) {
-      const total = calculateCartTotalValue([p]);
-      const amount = flatCalculator(total, value);
-      updatedNewCartProducts.push({
-        ...p,
-        azst_cart_product_type: 'dsc',
-        azst_cart_dsc_amount: parseFloat(amount),
-      });
-      await updateProductDaiscountIncart(
-        p.azst_cart_id,
-        amount,
-        code,
-        buyProdutIds
-      );
-      discountAmount += amount;
-    }
+    const total = calculateCartTotalValue([quantityLimitedProduct]);
+    const amount =
+      type === 'percentage'
+        ? percentageCalculator(total, value)
+        : flatCalculator(total, value);
+
+    await applyDiscount(product, amount);
   }
 
   return {
     discountAmount,
-    message,
+    message: '',
     newCart: [...updatedNewCartProducts, ...remainProducts],
   };
 };
@@ -460,6 +726,7 @@ exports.myDiscounts = catchAsync(async (req, res, next) => {
                             type,
                             value,
                             scope,
+                            method,
                             min_cart_value,
                             x_product_type,
                             buy_x_product_id,
@@ -484,7 +751,7 @@ exports.myDiscounts = catchAsync(async (req, res, next) => {
                           HAVING
                             discount_used < ds.usage_count
                           ;`;
-  // ds.id
+
   const values = [customerId, discountType, customerId, today];
   if (discountCode) values.push(discountCode);
 
@@ -508,7 +775,12 @@ exports.myDiscounts = catchAsync(async (req, res, next) => {
 
     switch (discount.scope) {
       case 'cart':
-        result = calculateCartAmountDiscount(discount, cart);
+        result = await calculateCartAmountDiscount(
+          discount,
+          cart,
+          customerId,
+          sessionId
+        );
         break;
 
       case 'product':
@@ -539,6 +811,7 @@ exports.myDiscounts = catchAsync(async (req, res, next) => {
   const cartTotal = calculateCartTotalValue(newCart);
 
   const discountAmount = Math.min(cartTotal, totalDiscountAmount).toFixed(2);
+
   res.status(200).json({
     cart_products: newCart,
     cart_total: cartTotal,

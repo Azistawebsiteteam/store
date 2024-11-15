@@ -45,6 +45,8 @@ const getCartData = catchAsync(async (req, res, next) => {
                     ac.azst_cart_quantity,
                     ac.azst_cart_product_type,
                     ac.azst_cart_dsc_amount,
+                    ac.azst_cart_dsc_by_ids,
+                    ac.azst_cart_dsc_code,
                     p.product_main_title,
                     p.product_url_title,
                     p.min_cart_quantity,
@@ -68,6 +70,8 @@ const getCartData = catchAsync(async (req, res, next) => {
                         azst_cart_variant_id,
                         azst_cart_product_type,
                         azst_cart_dsc_amount,
+                        azst_cart_dsc_code,
+                        azst_cart_dsc_by_ids,
                         SUM(azst_cart_quantity) AS azst_cart_quantity,
                         MAX(azst_cart_created_on) AS max_created_on
                     FROM

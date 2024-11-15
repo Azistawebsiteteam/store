@@ -10,6 +10,7 @@ const {
 
 exports.createDiscount = catchAsync(async (req, res, next) => {
   const { discount, conditions } = req.body;
+  console.log({ discount, conditions });
   let discountId = null;
 
   const {
@@ -22,6 +23,7 @@ exports.createDiscount = catchAsync(async (req, res, next) => {
     usageCount,
     startTime,
     endTime,
+    productDscType = '',
   } = discount;
 
   const { error } = discountSchema.validate(discount);
@@ -34,12 +36,14 @@ exports.createDiscount = catchAsync(async (req, res, next) => {
     discountId,
   });
 
+  console.log(conditionError);
+
   if (conditionError) throw new AppError(conditionError.message, 400);
 
   // Insert discount details
   const queryDiscount = `INSERT INTO azst_discounts_tbl (title, code, method, type, value, usage_count,
-                            start_time, end_time, eligible_customers,created_by)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?,?,?)`;
+                            start_time, end_time, product_dsc_type, eligible_customers,created_by)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?,?,?,?)`;
 
   const values = [
     title,
@@ -50,6 +54,7 @@ exports.createDiscount = catchAsync(async (req, res, next) => {
     usageCount,
     startTime,
     endTime,
+    productDscType,
     customers,
     req.empId,
   ];
@@ -137,6 +142,7 @@ exports.UpdateDiscount = catchAsync(async (req, res, next) => {
     value,
     customers,
     usageCount,
+    productDscType = '',
     startTime,
     endTime,
   } = discount;
@@ -156,7 +162,7 @@ exports.UpdateDiscount = catchAsync(async (req, res, next) => {
   const queryDiscount = `
     UPDATE azst_discounts_tbl 
     SET title = ?, code = ?, method = ?, type = ?, value = ?, usage_count = ?,
-        start_time = ?, end_time = ?, eligible_customers = ?, updated_by = ?
+        start_time = ?, end_time = ?, product_dsc_type, eligible_customers = ?, updated_by = ?
     WHERE id = ?`;
 
   const discountValues = [
@@ -169,6 +175,7 @@ exports.UpdateDiscount = catchAsync(async (req, res, next) => {
     startTime,
     endTime,
     customers,
+    productDscType,
     req.empId, // Assuming req.empId is the employee updating the record
     discountId,
   ];

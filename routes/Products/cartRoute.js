@@ -11,13 +11,12 @@ const {
 
 const addToCartCtrl = require('../../controllers/Cart/addProducts');
 
-const dscCtrl = require('../../controllers/DiscountCtrl/EligibleCrtl');
 const dscApplyCtrl = require('../../controllers/DiscountCtrl/dscApplyCtrl');
 
 router.use(multer().any());
 
 // Customer Routes & Methods
-router.get('/discount', dscCtrl.myDiscounts);
+router.get('/discount', dscApplyCtrl.myDiscounts);
 router
   .route('/')
   .post(addToCartCtrl.addProductToCart)
