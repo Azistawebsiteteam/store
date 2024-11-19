@@ -43,9 +43,10 @@ router.post('/check-order', createOrderCtrl.getCartDetails);
 
 router.post('/order-summary', orderDetails.getOrderSummary);
 router.get('/payment/:paymentId', razorpayCtrl.rezorpayPayment);
-
+router.post('/payment/refund', razorpayCtrl.rezorpaymentRefund);
 router.post('/cancel-order', cancelCtrl.cancelOrder);
 router.get('/refund-requests', returnAndReplaceCrl.getMyRefunRequestList);
+router.post('/refund-status', returnAndReplaceCrl.getRefundStatus);
 router.get('/all', ordersCtrl.getCustomerOrders);
 router.post('/order/details', ordersCtrl.getOrderDetails);
 

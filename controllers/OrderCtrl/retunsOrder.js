@@ -44,14 +44,17 @@ exports.initiateRefund = async (paymentId, amount) => {
   }
 };
 
-exports.getRefundStatus = async (refundId) => {
+exports.getRefundStatus = catchAsync(async (req, res, next) => {
+  const { refundId } = req.body;
   try {
     const refundStatus = await razorpayInstance.refunds.fetch(refundId);
-    return refundStatus;
+    res.status(200).json({ refundStatus });
   } catch (err) {
-    throw new Error(err?.error?.description || 'Failed to fetch refund status');
+    res.status(400).json({
+      message: err?.error?.description || 'Failed to fetch refund status',
+    });
   }
-};
+});
 
 exports.uploadImage = multerInstance.single('bankFile');
 
@@ -249,112 +252,3 @@ exports.initiateRefundAdmin = catchAsync(async (req, res, next) => {
 
   res.status(400).json({ message: 'Oops! Something went wrong' });
 });
-
-// exports.updateRefundStatus = catchAsync(async (req, res, next) => {
-//   const { retunId, returnStatus, comments } = req.body;
-
-//   let processing_query = '';
-//   const today = moment().format('YYYY-MM-DD HH:mm:ss');
-
-//   const values = [returnStatus, comments, req.empId, today];
-
-//   if (returnStatus === 'Approved') {
-//     processing_query = ', processing_status = ?';
-//     values.push('Processing');
-//   }
-
-//   values.push(retunId);
-
-//   const query = `UPDATE azst_order_returns SET admin_approval = ? ,
-//                         admin_comments = ? ,admin_id = ? ,approval_action_on = ?  ${processing_query}
-//                   WHERE return_id = ?`;
-
-//   const result = await db(query, values);
-
-//   if (result.affectedRows > 0) {
-//     sendSmsToCustomer(retunId, returnStatus);
-//     res.status(200).json({ message: `Refund ${returnStatus} successfully` });
-//     return;
-//   }
-
-//   res.status(400).json({ message: 'opps! something went wrong' });
-// });
-
-// exports.initiateRefundAdmin = catchAsync(async (req, res, next) => {
-//   const { retunId } = req.body;
-//   if (!retunId) return next(new AppError('Refund Id  is required', 400));
-
-//   const getRefundQuery = ` SELECT payment_id, refund_amount
-//                             FROM azst_order_returns
-//                             WHERE return_id = ? AND admin_approval = 'Approved' AND Status = 1 `;
-
-//   const [refundData] = await db(getRefundQuery, [retunId]);
-
-//   if (!refundData) return next(new AppError('no Refund request found', 404));
-
-//   const { payment_id, refund_amount } = refundData;
-//   let trackId = null;
-//   try {
-//     const refundDetails = await exports.initiateRefund(
-//       payment_id,
-//       refund_amount
-//     );
-//     trackId = refundDetails.id;
-//   } catch (error) {
-//     return next(new AppError(error.message, 400));
-//   }
-
-//   const query = `UPDATE azst_order_returns
-//                   SET refund_initiate_by = ? ,refund_initiate_on = ? refund_track_id = ? ,processing_status = ?
-//                   WHERE return_id = ?`;
-
-//   const today = moment().format('YYYY-MM-DD HH:mm:ss');
-//   const values = [req.empId, today, trackId, 'Refunded', retunId];
-
-//   const result = await db(query, values);
-
-//   if (result.affectedRows > 0) {
-//     sendSmsToCustomer(retunId, 'Refunded');
-//     res.status(200).json({ message: `Payment Refunded  successfully` });
-//     return;
-//   }
-
-//   res.status(400).json({ message: 'opps! something went wrong' });
-// });
-
-//'Approved', 'Rejected''Pending', 'Processing', 'Refunded'
-
-// Initiate refund if using the same payment method (not Bank Transfer)
-// if (refundMethod === 'Same Payment Method') {
-//   try {
-//     refundTrackId = await initiateRefund(
-//       azst_orders_payment_id,
-//       azst_orders_total
-//     );
-//   } catch (error) {
-//     return next(new AppError('Refund initiation failed', 400));
-//   }
-// }
-// return_id,
-// order_id,
-// customer_id,
-// return_reason,
-// return_date,
-// refund_method,
-// bank_account_num,
-// ifsc_code,
-// bank_branch,
-// bank_name,
-// ac_holder_name,
-// bank_file,
-// payment_id,
-// refund_amount,
-//   refund_track_id,
-//   admin_approval,
-//   admin_id,
-//   approval_action_on,
-// refund_initiate_by,
-// refund_initiate_on,
-// processing_status,
-// admin_comments,
-//   last_updated;

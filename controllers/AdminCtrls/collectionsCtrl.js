@@ -29,8 +29,7 @@ exports.uploadImage = multerInstance.single('collectionImg');
 exports.storeImage = catchAsync(async (req, res, next) => {
   if (!req.file) {
     req.body.collectionImg = '';
-    return next();
-    //next(new AppError('Upload collection image is required', 400));
+    return next(new AppError('collection image is required', 400));
   }
   const imageName = `${Date.now()}-${req.file.originalname.replace(/ /g, '-')}`;
   await sharp(req.file.buffer).toFile(`Uploads/CollectionImages/${imageName}`);

@@ -251,6 +251,7 @@ exports.getCustomerOrders = catchAsync(async (req, res, next) => {
                       azst_orders_created_on,azst_orders_confirm_status,
                       azst_orders_delivery_status,azst_orders_total,
                       azst_orders_tbl.azst_orders_id as azst_order_id,
+                      IFNULL(azst_order_returns.return_id , 0) AS return_id,
                       ${productDetailsQuery}                   
                     FROM azst_orders_tbl
                     LEFT JOIN azst_ordersummary_tbl 
@@ -259,6 +260,8 @@ exports.getCustomerOrders = catchAsync(async (req, res, next) => {
                       ON azst_ordersummary_tbl.azst_order_product_id = azst_products.id
                     LEFT JOIN azst_sku_variant_info
                       ON azst_ordersummary_tbl.azst_order_variant_id = azst_sku_variant_info.id
+                    LEFT JOIN azst_order_returns
+                      ON azst_orders_tbl.azst_orders_id = azst_order_returns.order_id
                     WHERE azst_orders_tbl.azst_orders_customer_id = ?
                     GROUP BY azst_orders_tbl.azst_orders_id
                     ORDER BY azst_orders_tbl.azst_orders_created_on DESC ;

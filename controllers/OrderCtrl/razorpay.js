@@ -79,6 +79,26 @@ exports.razorPayValidatePayment = catchAsync(async (req, res, next) => {
   });
 });
 
+exports.rezorpaymentRefund = catchAsync(async (req, res, next) => {
+  const { paymentId, amount, receipt, reason } = req.body;
+  try {
+    const refundData = await razorpayInstance.payments.refund(paymentId, {
+      amount: parseInt(amount) * 100, // Convert amount to paise (1 INR = 100 paise)
+      receipt,
+      notes: {
+        reason,
+      },
+    });
+    res.status(200).json({ refundData });
+  } catch (err) {
+    console.log(err);
+    res.status(400).json({
+      status: 'error',
+      message: err?.error?.description || 'Refund initiation failed',
+    });
+  }
+});
+
 exports.rezorpayPayment = catchAsync(async (req, res, next) => {
   const { paymentId } = req.params;
 
