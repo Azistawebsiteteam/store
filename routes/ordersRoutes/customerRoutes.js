@@ -24,18 +24,22 @@ router.post(
   returnAndReplaceCrl.uploadImage,
   returnAndReplaceCrl.isOrderDelivered,
   returnValidation,
-
   returnAndReplaceCrl.returnOrder
 );
-
-//  returnAndReplaceCrl.storeImage,
 
 router.use(multer().any());
 
 router.post('/creat-payment', razorpayCtrl.razorPayCreateOrder);
+
 router.post('/validate-payment', razorpayCtrl.razorPayValidatePayment);
 
-router.post('/place-order', orderModel, createOrderCtrl.placeOrder);
+router.post(
+  '/place-order',
+  orderModel,
+  createOrderCtrl.getCartDetails,
+  createOrderCtrl.placeOrder
+);
+router.post('/check-order', createOrderCtrl.getCartDetails);
 
 router.post('/order-summary', orderDetails.getOrderSummary);
 router.get('/payment/:paymentId', razorpayCtrl.rezorpayPayment);

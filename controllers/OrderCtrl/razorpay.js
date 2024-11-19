@@ -10,11 +10,11 @@ const Sms = require('../../Utils/sms');
 const createOrderSchema = Joi.object({
   amount: Joi.number().min(1).required(),
   currency: Joi.string().min(1).max(5).required().valid('USD', 'EUR', 'INR'),
-  receiptId: Joi.number().min(1).required(),
 });
 
 exports.razorPayCreateOrder = catchAsync(async (req, res, next) => {
-  const { amount, currency, receiptId } = req.body;
+  const { amount, currency } = req.body;
+  const receiptId = req.empId;
 
   const { error } = createOrderSchema.validate(req.body);
   if (error) return next(new AppError(error.message, 400));
@@ -25,20 +25,19 @@ exports.razorPayCreateOrder = catchAsync(async (req, res, next) => {
     receipt: `${receiptId}`,
     payment_capture: 1,
   };
-  let response;
+
   try {
     response = await razorpayInstance.orders.create(options);
+    return res.status(200).json({
+      order_id: response.id,
+      currency: response.currency,
+      amount: response.amount,
+    });
   } catch (err) {
     return next(
       new AppError(`RazorPay ${err.error.description}`, err.statusCode)
     );
   }
-
-  res.status(200).json({
-    order_id: response.id,
-    currency: response.currency,
-    amount: response.amount,
-  });
 });
 
 const validatePaymentSchema = Joi.object({
@@ -51,6 +50,7 @@ exports.razorPayValidatePayment = catchAsync(async (req, res, next) => {
   const { razorpay_order_id, razorpay_payment_id, razorpay_signature } =
     req.body;
   const { user_mobile } = req.userDetails;
+
   // Validate the input data
   const { error } = validatePaymentSchema.validate(req.body);
   if (error) return next(new AppError(error.message, 400));
@@ -72,6 +72,7 @@ exports.razorPayValidatePayment = catchAsync(async (req, res, next) => {
   await smsSevices.paymentConfirm(
     `${razorpay_order_id} And PaymentId ${razorpay_payment_id}`
   );
+
   res.status(200).json({
     orderId: razorpay_order_id,
     paymentId: razorpay_payment_id,

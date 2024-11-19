@@ -45,6 +45,7 @@ const getCartTotal = (cartProducts) => {
       p.is_varaints_aval === 1
         ? parseFloat(p.offer_price)
         : parseFloat(p.price);
+
     const productPrice = parseInt(p.azst_cart_quantity) * itemPrice;
     const taxPercentage = 10;
     const taxAmount = (productPrice / 100) * taxPercentage;
@@ -63,6 +64,50 @@ const initiateRefund = async (paymentId, amount) => {
     throw new Error(err?.error?.description);
   }
 };
+
+// Fetch Cart Details
+exports.getCartDetails = catchAsync(async (req, res, next) => {
+  const { cartList } = req.body;
+
+  const parsedCartList = Array.isArray(cartList)
+    ? cartList
+    : JSON.parse(cartList);
+
+  if (!parsedCartList || !parsedCartList.length) {
+    throw new AppError('Cart list is empty or invalid', 400);
+  }
+
+  // Construct the query with placeholders
+  const placeholders = parsedCartList.map(() => '?').join(',');
+
+  const query = `SELECT ac.azst_cart_id,
+        ac.azst_cart_product_id,
+        ac.azst_cart_variant_id,
+        ac.azst_cart_quantity,    
+        ac.azst_cart_collection_id,
+        ac.azst_cart_product_type,
+        ac.azst_cart_dsc_amount,
+        ac.azst_cart_dsc_code,
+        ac.azst_cart_dsc_by_ids,
+        ap.price,
+        ap.compare_at_price as  product_compare_at_price,
+        ap.is_taxable,
+        ap.is_varaints_aval,
+        ap.product_return_accept,
+        IFNULL(ap.product_return_days , 0) AS product_return_days,
+        av.compare_at_price,
+        av.offer_price
+    FROM azst_cart_tbl AS ac
+    LEFT JOIN azst_products AS ap ON ac.azst_cart_product_id = ap.id
+    LEFT JOIN azst_sku_variant_info AS av ON ac.azst_cart_variant_id = av.id
+    WHERE ac.azst_cart_status = 1 AND ac.azst_cart_id IN (${placeholders})`;
+
+  // Execute query with parsed cart list
+  const [result] = await dbPool.query(query, parsedCartList);
+  req.cartProducts = result;
+
+  next(); // Move to the next middleware/controller function
+});
 
 // Place order
 exports.placeOrder = catchAsync(async (req, res, next) => {
@@ -84,6 +129,10 @@ exports.placeOrder = catchAsync(async (req, res, next) => {
   try {
     await startTransaction(); // Start transaction
 
+    if (!req.cartProducts || req.cartProducts.length === 0) {
+      throw new AppError('No products found in the cart', 400);
+    }
+
     const { user_id, user_email, user_mobile } = req.userDetails;
 
     if (
@@ -104,14 +153,14 @@ exports.placeOrder = catchAsync(async (req, res, next) => {
     orderId = generateOrderId();
 
     // Calculate order totals
-    const { subTotal, taxAmount } = getCartTotal(cartList);
+    const { subTotal, taxAmount } = getCartTotal(req.cartProducts);
     const orderTotalAmount =
       subTotal + taxAmount + shippingCharge - discountAmount;
 
     // Determine financial status
     const financialStatus =
       amount === orderTotalAmount ? 'paid' : 'partially paid';
-    const paidOn = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    const paidOn = moment().format('YYYY-MM-DD HH:mm:ss');
 
     // Fulfillment status
     const fulfillmentStatus =
@@ -180,7 +229,6 @@ exports.placeOrder = catchAsync(async (req, res, next) => {
         return next(new AppError(refundError.message, 400));
       }
     }
-
     return next(new AppError(error.message || 'Something went wrong', 400));
   }
 });
@@ -267,27 +315,57 @@ exports.orderSummary = async (req, res, next) => {
       azst_order_variant_id,
       azst_order_qty,
       azst_order_delivery_method,
-      azst_product_price
-    ) VALUES (?, ?, ?, ?, ?, ?)
+      azst_product_price,
+      azst_product_compareat_price,
+      azst_product_taxtype,
+      azst_product_taxname,
+      azst_product_taxvalue,
+      azst_product_type,
+      azst_dsc_amount,
+      azst_dsc_code,
+      azst_dsc_by_ids,
+      product_return_accept,
+      product_return_days
+    ) VALUES (?, ?, ?, ?, ?, ?,?, ?, ?, ?, ?, ?,?,? ,?,?)
   `;
 
   const removeQuery = `DELETE FROM azst_cart_tbl WHERE azst_cart_id = ?`;
 
-  for (let product of cartList) {
+  for (let product of req.cartProducts) {
     const {
+      azst_cart_id,
       azst_cart_product_id,
       azst_cart_variant_id,
       azst_cart_quantity,
-      is_varaints_aval,
-      azst_cart_id,
+      azst_cart_collection_id,
+      azst_cart_product_type,
+      azst_cart_dsc_amount,
+      azst_cart_dsc_code,
+      azst_cart_dsc_by_ids,
       price,
       product_compare_at_price,
+      is_taxable,
+      is_varaints_aval,
+      product_return_accept,
+      product_return_days,
       compare_at_price,
       offer_price,
     } = product;
 
     const amount = parseInt(is_varaints_aval) === 0 ? price : offer_price;
-    
+    const compareamount =
+      parseInt(is_varaints_aval) === 0
+        ? product_compare_at_price
+        : compare_at_price;
+    let azst_product_taxtype = '';
+    let azst_product_taxname = '';
+    let azst_product_taxvalue = '';
+    if (is_taxable) {
+      azst_product_taxtype = 'IGST';
+      azst_product_taxname = 'GST';
+      azst_product_taxvalue = '18';
+    }
+
     const values = [
       orderId,
       azst_cart_product_id,
@@ -295,6 +373,16 @@ exports.orderSummary = async (req, res, next) => {
       azst_cart_quantity,
       'POSTAL',
       amount,
+      compareamount,
+      azst_product_taxtype,
+      azst_product_taxname,
+      azst_product_taxvalue,
+      azst_cart_product_type,
+      azst_cart_dsc_amount,
+      azst_cart_dsc_code,
+      azst_cart_dsc_by_ids,
+      product_return_accept,
+      product_return_days,
     ];
 
     const result = await dbPool.query(insertQuery, values);
@@ -329,3 +417,21 @@ exports.updateDiscountUsageOfCustomer = async (req, res, next) => {
     await dbPool.query(query, values);
   }
 };
+
+// azst_ordersummary_id,
+//   azst_orders_id,
+//   azst_order_product_id,
+//   azst_order_variant_id,
+//   azst_order_qty,
+//   azst_order_delivery_method,
+//   azst_product_price,
+// azst_product_compareat_price,
+// azst_product_taxtype,
+// azst_product_taxname,
+// azst_product_taxvalue,
+// azst_product_type,
+// azst_dsc_amount,
+// azst_dsc_code,
+// azst_dsc_by_ids,
+//   azst_product_is_returned,
+//   azst_product_return_date;

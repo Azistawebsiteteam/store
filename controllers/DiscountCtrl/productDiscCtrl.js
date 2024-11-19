@@ -10,7 +10,7 @@ const {
 
 exports.createDiscount = catchAsync(async (req, res, next) => {
   const { discount, conditions } = req.body;
-  console.log({ discount, conditions });
+
   let discountId = null;
 
   const {
@@ -35,8 +35,6 @@ exports.createDiscount = catchAsync(async (req, res, next) => {
     ...conditions,
     discountId,
   });
-
-  console.log(conditionError);
 
   if (conditionError) throw new AppError(conditionError.message, 400);
 
@@ -162,7 +160,7 @@ exports.UpdateDiscount = catchAsync(async (req, res, next) => {
   const queryDiscount = `
     UPDATE azst_discounts_tbl 
     SET title = ?, code = ?, method = ?, type = ?, value = ?, usage_count = ?,
-        start_time = ?, end_time = ?, product_dsc_type, eligible_customers = ?, updated_by = ?
+        start_time = ?, end_time = ?, product_dsc_type = ?, eligible_customers = ?, updated_by = ?
     WHERE id = ?`;
 
   const discountValues = [
@@ -174,9 +172,9 @@ exports.UpdateDiscount = catchAsync(async (req, res, next) => {
     usageCount,
     startTime,
     endTime,
-    customers,
     productDscType,
-    req.empId, // Assuming req.empId is the employee updating the record
+    customers,
+    req.empId,
     discountId,
   ];
 
