@@ -52,11 +52,10 @@ exports.getOrderStatics = catchAsync(async (req, res, next) => {
   const deliveryOrdersQuery = `
     SELECT COUNT(*) AS deliveryOrders
     FROM azst_orders_tbl O
-    WHERE O.azst_orders_delivery_status = 1
+    WHERE O.azst_orders_delivery_status = 2
     AND O.azst_orders_delivery_on >= ?
   `;
 
-  // Use Promise.all to execute the database queries concurrently
   const [results, returnOrders, fulfillmentOrders, deliveryOrders] =
     await Promise.all([
       db(ordersQuery, [formDate]),
@@ -172,17 +171,9 @@ const shippingFromAddressQuery = `JSON_OBJECT(
     'inventory_phone', ilt.inventory_phone
   ) AS order_shipping_from`;
 
-exports.getOrderDetails = catchAsync(async (req, res, next) => {
-  const { orderId } = req.body;
-
-  const schema = Joi.object({
-    orderId: Joi.string().min(1).required(),
-  });
-
-  const { error } = schema.validate({ orderId });
-  if (error) return next(new AppError(error.message, 400));
-  //      azst_orderinfo_tbl.*,
-  const orderQuery = `
+const getOrderInformation = async (orderId) => {
+  try {
+    const orderQuery = `
     SELECT
       azst_orders_tbl.*,
       azst_orderinfo_tbl.*,
@@ -210,31 +201,57 @@ exports.getOrderDetails = catchAsync(async (req, res, next) => {
     GROUP BY azst_orders_tbl.azst_orders_id;
   `;
 
-  // Set SQL mode for session (if needed)
-  await db("SET SESSION sql_mode = ''");
+    await db("SET SESSION sql_mode = ''");
 
-  // Execute the query with the provided orderId
-  const result = await db(orderQuery, [orderId]);
+    // Execute the query with the provided orderId
+    const [order] = await db(orderQuery, [orderId]);
+    return order;
+  } catch (error) {
+    throw new AppError('Failed to fetch order information', 500);
+  }
+};
 
-  // If no result, return empty response
-  if (result.length === 0) return res.status(200).json({});
+exports.getOrderDetails = catchAsync(async (req, res, next) => {
+  const { orderId } = req.body;
 
-  let orderDetails = result[0];
+  // Validate input
+  const schema = Joi.object({
+    orderId: Joi.alternatives().try(Joi.string(), Joi.number()).required(),
+  });
 
-  // Ensure products_details is not null before mapping
-  const Order = {
-    ...orderDetails,
-    products_details: orderDetails.products_details
-      ? orderDetails.products_details.map((order) => ({
-          ...order,
-          product_image: `${req.protocol}://${req.get(
-            'host'
-          )}/api/images/product/${order.product_image}`,
+  const { error } = schema.validate({ orderId });
+  if (error) {
+    return next(new AppError(`Validation error: ${error.message}`, 400));
+  }
+
+  let order;
+  try {
+    order = await getOrderInformation(orderId);
+  } catch (error) {
+    return next(error); // Pass database errors to global error handler
+  }
+
+  // If no result, return not found response
+  if (!order) {
+    return res.status(200).json({});
+  }
+
+  // Format order data
+  const formattedOrder = {
+    ...order,
+    products_details: order.products_details
+      ? order.products_details.map((p) => ({
+          ...p,
+          product_image: p.product_image
+            ? `${req.protocol}://${req.get('host')}/api/images/product/${
+                p.product_image
+              }`
+            : null,
         }))
       : [],
   };
 
-  res.status(200).json(Order);
+  res.status(200).json(formattedOrder);
 });
 
 exports.getCustomerOrders = catchAsync(async (req, res, next) => {
@@ -300,6 +317,11 @@ const confirmSchema = Joi.object({
     then: Joi.required(), // inventoryId is required
     otherwise: Joi.optional().allow('', null), // Otherwise, it's optional
   }),
+  shippingMethod: Joi.string().when('orderStatus', {
+    is: 1, // When orderStatus is 1
+    then: Joi.required(), // inventoryId is required
+    otherwise: Joi.optional().allow('', null), // Otherwise, it's optional
+  }),
 });
 
 exports.confirmOrder = catchAsync(async (req, res, next) => {
@@ -307,7 +329,9 @@ exports.confirmOrder = catchAsync(async (req, res, next) => {
   const { error } = confirmSchema.validate(req.body);
   if (error) return next(new AppError(error.message, 400));
 
-  const { orderId, orderStatus, reason, inventoryId } = req.body;
+  const { orderId, orderStatus, reason, inventoryId, shippingMethod } =
+    req.body;
+
   const time = moment().format('YYYY-MM-DD HH:mm:ss');
   const isOrderConfirmed = orderStatus === 1;
 
@@ -346,16 +370,79 @@ exports.confirmOrder = catchAsync(async (req, res, next) => {
     // Step 3: Update the shipping inventory in the order info table
     const updateOrderInfoQuery = `
     UPDATE azst_orderinfo_tbl 
-    SET azst_order_ship_from = ? 
+    SET azst_order_ship_method = ? ,azst_order_ship_from = ? 
     WHERE azst_orders_id = ?`;
 
-    await db(updateOrderInfoQuery, [inventoryId, orderId]);
+    await db(updateOrderInfoQuery, [shippingMethod, inventoryId, orderId]);
     req.body.orderAction = 'Confirm';
+    exports.shipOrderTrack(req, res, next);
     return next();
   } else {
     await smsService.orderRected(orderId);
     return res.status(200).json({ message: 'Order status updated' });
   }
+});
+
+exports.shipOrderTrack = catchAsync(async (req, res, next) => {
+  const { orderId, shippingMethod } = req.body;
+  console.log(`shipOrderTrack`, orderId);
+  const body = {
+    order_id: '224-447',
+    order_date: '2019-07-24 11:11',
+    pickup_location: 'Jammu',
+    channel_id: '',
+    comment: 'Reseller: M/s Goku',
+    billing_customer_name: 'Naruto',
+    billing_last_name: 'Uzumaki',
+    billing_address: 'House 221B, Leaf Village',
+    billing_address_2: 'Near Hokage House',
+    billing_city: 'New Delhi',
+    billing_pincode: '110002',
+    billing_state: 'Delhi',
+    billing_country: 'India',
+    billing_email: 'naruto@uzumaki.com',
+    billing_phone: '9876543210',
+    shipping_is_billing: true,
+    shipping_customer_name: '',
+    shipping_last_name: '',
+    shipping_address: '',
+    shipping_address_2: '',
+    shipping_city: '',
+    shipping_pincode: '',
+    shipping_country: '',
+    shipping_state: '',
+    shipping_email: '',
+    shipping_phone: '',
+    order_items: [
+      {
+        name: 'TestingKunai',
+        sku: 'Testingchakra123',
+        units: 1,
+        selling_price: '1',
+        discount: '',
+        tax: '',
+        hsn: 441122677,
+      },
+    ],
+    payment_method: 'COD',
+    shipping_charges: 0,
+    giftwrap_charges: 0,
+    transaction_charges: 0,
+    total_discount: 0,
+    sub_total: 1,
+    length: 10,
+    breadth: 15,
+    height: 20,
+    weight: 2.5,
+  };
+
+  let orderDetials;
+  try {
+    orderDetials = await getOrderInformation(orderId);
+  } catch (error) {
+    return next(error); // Pass database errors to global error handler
+  }
+  res.status(200).json(orderDetials);
 });
 
 exports.updateInventory = catchAsync(async (req, res, next) => {

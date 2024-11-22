@@ -8,6 +8,10 @@ const getEstimateDates = require('../../Utils/estimateDate');
 const Email = require('../../Utils/email');
 const razorpayInstance = require('../../Utils/razorpay');
 const Sms = require('../../Utils/sms');
+const {
+  calculateCartTotalValue,
+  getCartTaxTotal,
+} = require('../../Utils/cartCalculations');
 
 // Transaction Management
 async function startTransaction() {
@@ -29,30 +33,6 @@ function generateOrderId() {
   const orderId = (timestamp + randomPart).substring(0, 12);
   return 'AZS-' + orderId;
 }
-
-const getCartTotal = (cartProducts) => {
-  const subTotal = cartProducts.reduce((total, item) => {
-    const itemPrice =
-      item.is_varaints_aval === 1
-        ? parseFloat(item.offer_price)
-        : parseFloat(item.price);
-    const itemQuantity = parseInt(item.azst_cart_quantity);
-    return total + itemPrice * itemQuantity;
-  }, 0);
-
-  const taxAmount = cartProducts.reduce((acc, p) => {
-    const itemPrice =
-      p.is_varaints_aval === 1
-        ? parseFloat(p.offer_price)
-        : parseFloat(p.price);
-
-    const productPrice = parseInt(p.azst_cart_quantity) * itemPrice;
-    const taxPercentage = 10;
-    const taxAmount = (productPrice / 100) * taxPercentage;
-    return (acc += taxAmount);
-  }, 0);
-  return { subTotal, taxAmount };
-};
 
 // Refund initiation
 const initiateRefund = async (paymentId, amount) => {
@@ -100,7 +80,7 @@ exports.getCartDetails = catchAsync(async (req, res, next) => {
     FROM azst_cart_tbl AS ac
     LEFT JOIN azst_products AS ap ON ac.azst_cart_product_id = ap.id
     LEFT JOIN azst_sku_variant_info AS av ON ac.azst_cart_variant_id = av.id
-    WHERE ac.azst_cart_status = 1 AND ac.azst_cart_id IN (${placeholders})`;
+    WHERE ac.azst_cart_status = 1 AND ac.azst_customer_id = '${req.empId}' AND ac.azst_cart_id IN (${placeholders})`;
 
   // Execute query with parsed cart list
   const [result] = await dbPool.query(query, parsedCartList);
@@ -153,7 +133,9 @@ exports.placeOrder = catchAsync(async (req, res, next) => {
     orderId = generateOrderId();
 
     // Calculate order totals
-    const { subTotal, taxAmount } = getCartTotal(req.cartProducts);
+    const subTotal = calculateCartTotalValue(req.cartProducts);
+    const taxAmount = getCartTaxTotal(req.cartProducts);
+
     const orderTotalAmount =
       subTotal + taxAmount + shippingCharge - discountAmount;
 
@@ -314,7 +296,6 @@ exports.orderSummary = async (req, res, next) => {
       azst_order_product_id,
       azst_order_variant_id,
       azst_order_qty,
-      azst_order_delivery_method,
       azst_product_price,
       azst_product_compareat_price,
       azst_product_taxtype,
@@ -326,7 +307,7 @@ exports.orderSummary = async (req, res, next) => {
       azst_dsc_by_ids,
       product_return_accept,
       product_return_days
-    ) VALUES (?, ?, ?, ?, ?, ?,?, ?, ?, ?, ?, ?,?,? ,?,?)
+    ) VALUES (?, ?, ?, ?, ?, ?,?, ?, ?, ?, ?, ?,?,? ,?)
   `;
 
   const removeQuery = `DELETE FROM azst_cart_tbl WHERE azst_cart_id = ?`;
@@ -371,7 +352,6 @@ exports.orderSummary = async (req, res, next) => {
       azst_cart_product_id,
       azst_cart_variant_id,
       azst_cart_quantity,
-      'POSTAL',
       amount,
       compareamount,
       azst_product_taxtype,

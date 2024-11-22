@@ -6,7 +6,7 @@ const catchAsync = require('../../Utils/catchAsync');
 const {
   getofferPercentage,
   getPricess,
-} = require('../../Utils/offerperecentageCal');
+} = require('../../Utils/cartCalculations');
 
 exports.uploadImage = multerInstance.fields([
   { name: 'productImages', maxCount: 20 },
@@ -141,7 +141,7 @@ exports.addProduct = catchAsync(async (req, res, next) => {
     comparePrice = compareAtPrice === 'Rs. 0' ? price : compareAtPrice;
   }
 
-  const urlTitle = productTitle.replace(/ /g, '-');
+  const urlTitle = urlHandle.substring(urlHandle.lastIndexOf('/') + 1);
   const productImage = productImages[0];
 
   const productQuery = `INSERT INTO azst_products (product_main_title,

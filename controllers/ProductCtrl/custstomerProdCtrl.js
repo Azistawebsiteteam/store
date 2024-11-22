@@ -402,8 +402,8 @@ exports.getProductVariant = catchAsync(async (req, res, next) => {
 
   const query = `SELECT vi.*, IFNULL(pi.azst_ipm_total_quantity, 0) AS product_qty, COALESCE(wl.azst_wishlist_id, 0) AS in_wishlist
                 FROM azst_sku_variant_info vi
-                 LEFT JOIN azst_wishlist_tbl AS wl ON vi.product_id = wl.azst_product_id AND vi.id = wl.azst_variant_id
-                              AND wl.status = 1 AND wl.azst_customer_id = '${customerId}'
+                LEFT JOIN azst_wishlist_tbl AS wl ON vi.product_id = wl.azst_product_id AND vi.id = wl.azst_variant_id
+                  AND wl.status = 1 AND wl.azst_customer_id = '${customerId}'
                 LEFT JOIN azst_central_inventory_tbl pi
                   ON vi.id = pi.azst_ipm_variant_id
                 WHERE vi.id = ? AND vi.status = 1`;

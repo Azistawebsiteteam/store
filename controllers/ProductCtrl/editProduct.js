@@ -8,7 +8,7 @@ const AppError = require('../../Utils/appError');
 const {
   getofferPercentage,
   getPricess,
-} = require('../../Utils/offerperecentageCal');
+} = require('../../Utils/cartCalculations');
 
 exports.updateVariantImage = multerInstance.single('variantImage');
 
@@ -29,14 +29,15 @@ exports.isVariantExist = catchAsync(async (req, res, next) => {
 
 exports.updateImage = catchAsync(async (req, res, next) => {
   if (!req.file) {
-    req.body.variantImage = '';
+    req.body.variantImage = req.variantData.variant_image;
     return next();
   }
 
-  const variantImg = JSON.parse(req.variantData.variant_image)[1];
-
-  const imagePath = `uploads/variantImage/${variantImg}`;
-  fs.unlink(imagePath, (err) => {});
+  const [productImg, variantImg] = JSON.parse(req.variantData.variant_image);
+  if (variantImg) {
+    const imagePath = `uploads/variantImage/${variantImg}`;
+    fs.unlink(imagePath, (err) => {});
+  }
 
   const imageName = `${Date.now()}-${req.file.originalname.replace(/ /g, '-')}`;
 
@@ -45,7 +46,48 @@ exports.updateImage = catchAsync(async (req, res, next) => {
     .jpeg({ quality: 100 })
     .toFile(`uploads/variantImage/${imageName}`);
 
-  req.body.variantImage = imageName;
+  req.body.variantImage = JSON.parse([productImg, imageName]);
+  next();
+});
+
+exports.updateImage = catchAsync(async (req, res, next) => {
+  // If no file is uploaded, retain the existing variant image
+  if (!req.file) {
+    req.body.variantImage = req.variantData.variant_image;
+    return next();
+  }
+
+  // Parse existing image data
+  let [productImg, variantImg] = [];
+  try {
+    [productImg, variantImg] = JSON.parse(
+      req.variantData.variant_image || '[]'
+    );
+  } catch (error) {
+    return next(new Error('Invalid variant image data.'));
+  }
+
+  // Remove the old variant image if it exists
+  if (variantImg) {
+    const oldImagePath = `uploads/variantImage/${variantImg}`;
+    fs.unlink(oldImagePath, (err) => {});
+  }
+
+  // Generate new image name
+  const imageName = `${Date.now()}-${req.file.originalname.replace(
+    /\s+/g,
+    '-'
+  )}`;
+
+  // Process and save the new image
+  const imagePath = `uploads/variantImage/${imageName}`;
+  await sharp(req.file.buffer)
+    .toFormat('jpeg')
+    .jpeg({ quality: 100 })
+    .toFile(imagePath);
+
+  // Update the request body with the new variant image path
+  req.body.variantImage = JSON.stringify([productImg, imageName]);
   next();
 });
 
@@ -334,7 +376,7 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
     comparePrice = compareAtPrice === 'Rs. 0' ? price : compareAtPrice;
   }
 
-  const urlTitle = productTitle.replace(/ /g, '-');
+  const urlTitle = urlHandle.substring(urlHandle.lastIndexOf('/') + 1);
   const inventory = !variantsThere ? JSON.parse(inventoryInfo) : [];
 
   const productImage = newProductImages[0];
@@ -600,7 +642,7 @@ exports.skuvarientsUpdate = catchAsync(async (req, res, next) => {
   }
   res.status(200).json({ message: 'Product & variants inserted successfully' });
 });
-// offer_price, effectiveComparePrice;
+
 const updateProductPrices = async (variantId) => {
   try {
     const query = `
@@ -626,7 +668,7 @@ exports.variantUpdate = catchAsync(async (req, res, next) => {
     offer_price,
     quantity,
     hsCode,
-    barCode,
+    barcode,
     skuCode,
     isTaxable,
     shippingRequired,
@@ -634,6 +676,7 @@ exports.variantUpdate = catchAsync(async (req, res, next) => {
     inventoryPolicy,
     variantService,
     variantImage,
+    Costperitem,
   } = req.body;
 
   const effectiveComparePrice = Math.max(
@@ -646,16 +689,11 @@ exports.variantUpdate = catchAsync(async (req, res, next) => {
     offer_price
   );
 
-  let variantImgQuery = 'variant_image =? ,';
-
-  const variantImg = JSON.parse(req.variantData.variant_image)[0];
-  const variantImages = JSON.stringify([variantImg, variantImage]);
-
   const values = [
-    variantImages,
+    variantImage,
     variantWeightUnit,
     hsCode,
-    barCode,
+    barcode,
     skuCode,
     variantWeight,
     inventoryId,
@@ -667,19 +705,15 @@ exports.variantUpdate = catchAsync(async (req, res, next) => {
     offer_price,
     offerPercentage,
     quantity,
+    Costperitem,
     variantId,
   ];
 
-  if (variantImage === '') {
-    variantImgQuery = '';
-    values.shift();
-  }
-
   const query = `UPDATE azst_sku_variant_info 
-                 SET ${variantImgQuery} variant_weight_unit =?, variant_HS_code =?, variant_barcode =?,
+                 SET variant_image =?, variant_weight_unit =?, variant_HS_code =?, variant_barcode =?,
                   variant_sku =?, variant_weight=?, variant_inventory_tracker=?, variant_inventory_policy=?,
                   variant_fulfillment_service=?, variant_requires_shipping=?, variant_taxable=?,
-                  compare_at_price=?, offer_price=?, offer_percentage=?, variant_quantity=?
+                  compare_at_price=?, offer_price=?, offer_percentage=?, variant_quantity=?, cost_per_item =?
                  WHERE id = ? `;
 
   await db(query, values);

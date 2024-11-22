@@ -59,4 +59,24 @@ const calculateCartTotalValue = (cartList) => {
   return cartTotal;
 };
 
-module.exports = { getofferPercentage, getPricess, calculateCartTotalValue };
+const getCartTaxTotal = (cartProducts) => {
+  const taxAmount = cartProducts.reduce((acc, p) => {
+    const itemPrice =
+      p.is_varaints_aval === 1
+        ? parseFloat(p.offer_price)
+        : parseFloat(p.price);
+
+    const productPrice = parseInt(p.azst_cart_quantity) * itemPrice;
+    const taxPercentage = 10;
+    const taxAmount = (productPrice / 100) * taxPercentage;
+    return (acc += taxAmount);
+  }, 0);
+  return taxAmount;
+};
+
+module.exports = {
+  getofferPercentage,
+  getPricess,
+  calculateCartTotalValue,
+  getCartTaxTotal,
+};
