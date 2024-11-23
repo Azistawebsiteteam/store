@@ -278,7 +278,13 @@ const updateInventory = async (
 const updateTheInventory = async (inventory, productId, empId) => {
   try {
     const inventoryPromises = inventory.map(({ inventoryId, qty }) => {
-      return updateInventory(inventoryId, productId, 0, qty, empId);
+      return updateInventory(
+        inventoryId,
+        productId,
+        0,
+        qty / inventory.length,
+        empId
+      );
     });
     await Promise.all(inventoryPromises);
   } catch (error) {
@@ -294,7 +300,13 @@ const updateVariantInventory = async (
   empId
 ) => {
   const inventoryPromises = inventory.map((inv) => {
-    return updateInventory(inv, productId, variantId, quantity, empId);
+    return updateInventory(
+      inv,
+      productId,
+      variantId,
+      quantity / inventory.length,
+      empId
+    );
   });
   await Promise.all(inventoryPromises);
 };
@@ -311,9 +323,10 @@ const insertVariantInventory = async (
       azst_ipm_variant_id, azst_ipm_onhand_quantity, azst_ipm_avbl_quantity, azst_ipm_created_by) 
     VALUES (?, ?, ?, ?, ?, ?);
   `;
-
-  const inventoryPromises = JSON.parse(vInventoryInfo).map((inv) => {
-    const invValues = [inv, productId, variantId, quantity, quantity, empId];
+  const inventories = JSON.parse(vInventoryInfo);
+  const invQty = quantity / inventories.length;
+  const inventoryPromises = inventories.map((inv) => {
+    const invValues = [inv, productId, variantId, invQty, invQty, empId];
 
     return db(inventoryQuery, invValues);
   });

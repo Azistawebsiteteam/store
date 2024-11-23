@@ -224,14 +224,15 @@ exports.skuVariantsProduct = catchAsync(async (req, res, next) => {
 
   const insertVariant = async (values, quantity) => {
     const variant = await db(insertVariantQuery, values);
-
-    const inventoryPromises = JSON.parse(vInventoryInfo).map((inventoryId) => {
+    const inventries = JSON.parse(vInventoryInfo);
+    const invQty = quantity / inventries.length;
+    const inventoryPromises = inventries.map((inventoryId) => {
       const invValues = [
         inventoryId,
         productId,
         variant.insertId,
-        quantity,
-        quantity,
+        invQty,
+        invQty,
         req.empId,
       ];
       return db(inventoryQuery, invValues);

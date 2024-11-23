@@ -1,10 +1,18 @@
 const db = require('../../Database/dbconfig');
+const { dbPool } = require('../../Database/dbPool');
 const Joi = require('joi');
 const moment = require('moment');
+const axios = require('axios');
 
 const catchAsync = require('../../Utils/catchAsync');
 const AppError = require('../../Utils/appError');
 const Sms = require('../../Utils/sms');
+const { getShipToken } = require('../../shipRocket/shipInstance');
+const {
+  commitTransaction,
+  rollbackTransaction,
+  startTransaction,
+} = require('../../Utils/transctions');
 
 exports.getOrderStatics = catchAsync(async (req, res, next) => {
   const { formDays } = req.body;
@@ -116,13 +124,22 @@ const productDetailsQuery = `JSON_ARRAYAGG(
     JSON_OBJECT(
       'azst_order_product_id', azst_ordersummary_tbl.azst_order_product_id,
       'azst_order_variant_id', azst_ordersummary_tbl.azst_order_variant_id,
+      'azst_product_taxvalue' , azst_ordersummary_tbl.azst_product_taxvalue,
+      'azst_dsc_amount' , azst_ordersummary_tbl.azst_dsc_amount,
+      'azst_product_price', azst_ordersummary_tbl.azst_product_price,
       'product_title', azst_products.product_title,
       'product_image', azst_products.image_src,
-      'azst_product_price', azst_ordersummary_tbl.azst_product_price,
+      'product_weight', azst_products.product_weight,
       'option1', azst_sku_variant_info.option1,
       'option2', azst_sku_variant_info.option2,
       'option3', azst_sku_variant_info.option3,
-      'azst_order_qty', azst_ordersummary_tbl.azst_order_qty
+      'azst_order_qty', azst_ordersummary_tbl.azst_order_qty,
+      'sku_code', azst_products.sku_code,
+      'variant_sku_code', azst_sku_variant_info.variant_sku,
+      'variant_weight', azst_sku_variant_info.variant_weight,
+      'variant_weight_unit', azst_sku_variant_info.variant_weight_unit,
+      'hsn' , azst_sku_variant_info.variant_HS_code
+    
     )
   ) AS products_details`;
 
@@ -304,199 +321,8 @@ exports.getCustomerOrders = catchAsync(async (req, res, next) => {
   res.status(200).json(ordersData);
 });
 
-const confirmSchema = Joi.object({
-  orderId: Joi.string().min(1).max(20).required(),
-  orderStatus: Joi.number().required().valid(1, 2), // 1 means confirm , 2 means Recject
-  inventoryId: Joi.string().when('orderStatus', {
-    is: 1, // When orderStatus is 1
-    then: Joi.required(), // inventoryId is required
-    otherwise: Joi.optional().allow('', null), // Otherwise, it's optional
-  }),
-  reason: Joi.string().when('orderStatus', {
-    is: 2, // When orderStatus is 2
-    then: Joi.required(), // inventoryId is required
-    otherwise: Joi.optional().allow('', null), // Otherwise, it's optional
-  }),
-  shippingMethod: Joi.string().when('orderStatus', {
-    is: 1, // When orderStatus is 1
-    then: Joi.required(), // inventoryId is required
-    otherwise: Joi.optional().allow('', null), // Otherwise, it's optional
-  }),
-});
-
-exports.confirmOrder = catchAsync(async (req, res, next) => {
-  // Validate request body
-  const { error } = confirmSchema.validate(req.body);
-  if (error) return next(new AppError(error.message, 400));
-
-  const { orderId, orderStatus, reason, inventoryId, shippingMethod } =
-    req.body;
-
-  const time = moment().format('YYYY-MM-DD HH:mm:ss');
-  const isOrderConfirmed = orderStatus === 1;
-
-  // Define SQL fields and values based on order status
-  const orderFields = isOrderConfirmed
-    ? 'azst_orders_confirm_status = ?, azst_orders_confirm_by = ?, azst_orders_confirm_on = ?'
-    : 'azst_orders_confirm_status = ?, azst_orders_cancelled_by = ?, azst_orders_cancelled_on = ?, azst_orders_cancelled_reason = ?';
-
-  const values = isOrderConfirmed
-    ? [orderStatus, req.empId, time, orderId]
-    : [orderStatus, req.empId, time, reason, orderId];
-
-  // Construct and execute the update query
-  const updateQuery = `UPDATE azst_orders_tbl SET ${orderFields} WHERE azst_orders_id = ?`;
-  const updateResult = await db(updateQuery, values);
-
-  if (updateResult.affectedRows === 0) {
-    return next(new AppError('Order update failed', 400));
-  }
-
-  // Fetch customer ID after successful order update
-  const [customerResult] = await db(
-    `SELECT azst_orders_customer_id FROM azst_orders_tbl WHERE azst_orders_id = ?`,
-    [orderId]
-  );
-  const customerId = customerResult?.azst_orders_customer_id;
-  if (!customerId) return next(new AppError('Customer not found', 404));
-
-  // Initialize SMS service
-  const smsService = new Sms(customerId, null);
-  await smsService.getUserDetails();
-
-  // Send SMS based on order status and proceed accordingly
-  if (isOrderConfirmed) {
-    await smsService.orderConfirm(orderId);
-    // Step 3: Update the shipping inventory in the order info table
-    const updateOrderInfoQuery = `
-    UPDATE azst_orderinfo_tbl 
-    SET azst_order_ship_method = ? ,azst_order_ship_from = ? 
-    WHERE azst_orders_id = ?`;
-
-    await db(updateOrderInfoQuery, [shippingMethod, inventoryId, orderId]);
-    req.body.orderAction = 'Confirm';
-    exports.shipOrderTrack(req, res, next);
-    return next();
-  } else {
-    await smsService.orderRected(orderId);
-    return res.status(200).json({ message: 'Order status updated' });
-  }
-});
-
-exports.shipOrderTrack = catchAsync(async (req, res, next) => {
-  const { orderId, shippingMethod } = req.body;
-  console.log(`shipOrderTrack`, orderId);
-  const body = {
-    order_id: '224-447',
-    order_date: '2019-07-24 11:11',
-    pickup_location: 'Jammu',
-    channel_id: '',
-    comment: 'Reseller: M/s Goku',
-    billing_customer_name: 'Naruto',
-    billing_last_name: 'Uzumaki',
-    billing_address: 'House 221B, Leaf Village',
-    billing_address_2: 'Near Hokage House',
-    billing_city: 'New Delhi',
-    billing_pincode: '110002',
-    billing_state: 'Delhi',
-    billing_country: 'India',
-    billing_email: 'naruto@uzumaki.com',
-    billing_phone: '9876543210',
-    shipping_is_billing: true,
-    shipping_customer_name: '',
-    shipping_last_name: '',
-    shipping_address: '',
-    shipping_address_2: '',
-    shipping_city: '',
-    shipping_pincode: '',
-    shipping_country: '',
-    shipping_state: '',
-    shipping_email: '',
-    shipping_phone: '',
-    order_items: [
-      {
-        name: 'TestingKunai',
-        sku: 'Testingchakra123',
-        units: 1,
-        selling_price: '1',
-        discount: '',
-        tax: '',
-        hsn: 441122677,
-      },
-    ],
-    payment_method: 'COD',
-    shipping_charges: 0,
-    giftwrap_charges: 0,
-    transaction_charges: 0,
-    total_discount: 0,
-    sub_total: 1,
-    length: 10,
-    breadth: 15,
-    height: 20,
-    weight: 2.5,
-  };
-
-  let orderDetials;
-  try {
-    orderDetials = await getOrderInformation(orderId);
-  } catch (error) {
-    return next(error); // Pass database errors to global error handler
-  }
-  res.status(200).json(orderDetials);
-});
-
-exports.updateInventory = catchAsync(async (req, res, next) => {
-  const { orderId, inventoryId, orderAction } = req.body;
-
-  // Step 1: Get the products related to the order
-  const getQtyQuery = `
-    SELECT azst_order_product_id, azst_order_variant_id, azst_order_qty
-    FROM azst_ordersummary_tbl
-    WHERE azst_orders_id = ?`;
-
-  const products = await db(getQtyQuery, [orderId]);
-  if (products.length === 0)
-    return next(new AppError('No products found for this order', 404));
-
-  // Determine the column to update based on order action
-  const updateColumn =
-    orderAction === 'Confirm'
-      ? 'azst_ipm_onhand_quantity = azst_ipm_onhand_quantity - ?, azst_ipm_commit_quantity = azst_ipm_commit_quantity + ?'
-      : 'azst_ipm_avbl_quantity = azst_ipm_avbl_quantity - ?, azst_ipm_commit_quantity = azst_ipm_commit_quantity - ?';
-
-  // Step 2: Construct and execute inventory update queries for each product
-  const updateInventoryPromises = products.map(
-    ({ azst_order_product_id, azst_order_variant_id, azst_order_qty }) => {
-      const updateInventoryQuery = `
-      UPDATE azst_inventory_product_mapping 
-      SET ${updateColumn}
-      WHERE azst_ipm_inventory_id = ? 
-        AND azst_ipm_product_id = ? 
-        AND azst_ipm_variant_id = ?`;
-
-      return db(updateInventoryQuery, [
-        azst_order_qty,
-        azst_order_qty,
-        inventoryId,
-        azst_order_product_id,
-        azst_order_variant_id,
-      ]);
-    }
-  );
-
-  // Await all inventory update promises
-  await Promise.all(updateInventoryPromises);
-  const message =
-    orderAction === 'Confirm'
-      ? 'Order Confirm and Inventory updated successfully'
-      : 'Order delivered and inventory updated successfully';
-  // Step 3: Send a response back after successful inventory update
-  res.status(200).json({ message });
-});
-
 exports.deliveryOrder = catchAsync(async (req, res, next) => {
   const { orderId, deliveryStatus } = req.body;
-  const deliveryId = req.empId;
 
   if (!orderId) return next(new AppError('Order ID is required', 400));
 
@@ -563,3 +389,270 @@ exports.deliveryOrder = catchAsync(async (req, res, next) => {
   req.body.inventoryId = azst_order_ship_from;
   exports.updateInventory(req, res, next);
 });
+
+const executeQuery = async (query, params = []) => {
+  try {
+    const [result] = await dbPool.query(query, params);
+    return result;
+  } catch (error) {
+    throw new AppError(error.message || 'Database query failed', 500);
+  }
+};
+
+const updateOrderStatus = async (orderId, statusData) => {
+  const { fields, values } = statusData;
+  const query = `UPDATE azst_orders_tbl SET ${fields} WHERE azst_orders_id = ?`;
+  
+  const result = await executeQuery(query, [...values, orderId]);
+  if (result.affectedRows === 0) {
+    throw new AppError('Order update failed', 400);
+  }
+  return result;
+};
+
+const confirmSchema = Joi.object({
+  orderId: Joi.string().min(1).max(20).required(),
+  orderStatus: Joi.number().required().valid(1, 2), // 1 means confirm , 2 means Recject
+  inventoryId: Joi.string().when('orderStatus', {
+    is: 1, // When orderStatus is 1
+    then: Joi.required(), // inventoryId is required
+    otherwise: Joi.optional().allow('', null), // Otherwise, it's optional
+  }),
+  reason: Joi.string().when('orderStatus', {
+    is: 2, // When orderStatus is 2
+    then: Joi.required(), // inventoryId is required
+    otherwise: Joi.optional().allow('', null), // Otherwise, it's optional
+  }),
+  shippingMethod: Joi.string().when('orderStatus', {
+    is: 1, // When orderStatus is 1
+    then: Joi.required(), // inventoryId is required
+    otherwise: Joi.optional().allow('', null), // Otherwise, it's optional
+  }),
+});
+
+exports.confirmOrder = catchAsync(async (req, res, next) => {
+  const { error } = confirmSchema.validate(req.body);
+  if (error) return next(new AppError(error.message, 400));
+
+  const { orderId, orderStatus, reason, inventoryId, shippingMethod } =
+    req.body;
+
+  const isOrderConfirmed = orderStatus === '1';
+  const time = moment().format('YYYY-MM-DD HH:mm:ss');
+
+  try {
+    await startTransaction();
+
+    // Update order status
+    const statusData = isOrderConfirmed
+      ? {
+          fields:
+            'azst_orders_confirm_status = ?, azst_orders_confirm_by = ?, azst_orders_confirm_on = ?',
+          values: [orderStatus, req.empId, time],
+        }
+      : {
+          fields:
+            'azst_orders_confirm_status = ?, azst_orders_cancelled_by = ?, azst_orders_cancelled_on = ?, azst_orders_cancelled_reason = ?',
+          values: [orderStatus, req.empId, time, reason],
+        };
+
+    await updateOrderStatus(orderId, statusData);
+
+    // Get customer ID
+    const customerQuery = `SELECT azst_orders_customer_id FROM azst_orders_tbl WHERE azst_orders_id = ?`;
+    const [customer] = await executeQuery(customerQuery, [orderId]);
+    const customerId = customer?.azst_orders_customer_id;
+    if (!customerId) throw new AppError('Customer not found', 404);
+
+    const smsService = new Sms(customerId, null);
+    await smsService.getUserDetails();
+
+    if (isOrderConfirmed) {
+      // Update shipping details
+      const shippingQuery = `
+        UPDATE azst_orderinfo_tbl
+        SET azst_order_ship_method = ?, azst_order_ship_from = ?
+        WHERE azst_orders_id = ?`;
+      await executeQuery(shippingQuery, [shippingMethod, inventoryId, orderId]);
+
+      await exports.shipOrderTrack(req, res, next);
+      req.body.orderAction = 'Confirm';
+      const message = await exports.updateInventory(req, res, next);
+
+      // Commit transaction
+      await commitTransaction();
+      await smsService.orderConfirm(orderId);
+      res.status(200).json({ message });
+    } else {
+      await commitTransaction();
+      await smsService.orderRected(orderId);
+      return res.status(200).json({
+        message: 'Order Rejected Successfully',
+      });
+    }
+  } catch (error) {
+    await rollbackTransaction();
+    return next(new AppError(error.message || 'Something went wrong', 500));
+  }
+});
+
+exports.updateInventory = async (req, res, next) => {
+  const { orderId, inventoryId, orderAction } = req.body;
+
+  const getQtyQuery = `
+    SELECT azst_order_product_id, azst_order_variant_id, azst_order_qty
+    FROM azst_ordersummary_tbl
+    WHERE azst_orders_id = ?`;
+
+  const products = await executeQuery(getQtyQuery, [orderId]);
+  if (!products.length)
+    throw new AppError('No products found for this order', 404);
+
+  const updateColumn =
+    orderAction === 'Confirm'
+      ? 'azst_ipm_onhand_quantity = azst_ipm_onhand_quantity - ?, azst_ipm_commit_quantity = azst_ipm_commit_quantity + ?'
+      : 'azst_ipm_avbl_quantity = azst_ipm_avbl_quantity - ?, azst_ipm_commit_quantity = azst_ipm_commit_quantity - ?';
+
+  const updatePromises = products.map(
+    ({ azst_order_product_id, azst_order_variant_id, azst_order_qty }) =>
+      executeQuery(
+        `UPDATE azst_inventory_product_mapping
+       SET ${updateColumn}
+       WHERE azst_ipm_inventory_id = ? AND azst_ipm_product_id = ? AND azst_ipm_variant_id = ?`,
+        [
+          azst_order_qty,
+          azst_order_qty,
+          inventoryId,
+          azst_order_product_id,
+          azst_order_variant_id,
+        ]
+      )
+  );
+
+  await Promise.all(updatePromises);
+
+  return orderAction === 'Confirm'
+    ? 'Order Confirmed and Inventory Updated Successfully'
+    : 'Order Delivered and Inventory Updated Successfully';
+};
+
+const calculateTax = (productPrice, qty, tax) => {
+  const price = parseFloat(productPrice ?? 0);
+  const percentage = parseFloat(tax || 10);
+  const taxAmount = ((price * qty) / 100) * percentage;
+  return taxAmount;
+};
+
+// Map Order Details to ShipRocket Body
+const mapOrderDetailsToBody = (orderDetails) => {
+  return {
+    order_id: orderDetails.azst_orders_id.replace(/[^a-zA-Z0-9]/g, ''), // Ensure order_id is alphanumeric
+    order_date: moment(orderDetails.azst_orders_created_on).format(
+      'YYYY-MM-DD HH:mm:ss'
+    ),
+    pickup_location:
+      orderDetails.order_shipping_from?.inventory_location || 'Azista-Chintal',
+    comment: `Reseller: ${orderDetails.azst_orders_vendor || 'Azista'}`,
+    billing_customer_name: orderDetails.billing_address.billing_name,
+    billing_last_name: '', // Can be derived if necessary
+    billing_address: orderDetails.billing_address.billing_address1,
+    billing_address_2: orderDetails.billing_address.billing_address2 || '',
+    billing_city: orderDetails.billing_address.billing_city,
+    billing_pincode: parseInt(orderDetails.billing_address.billing_zip, 10),
+    billing_state: orderDetails.billing_address.billing_state,
+    billing_country: orderDetails.billing_address.billing_country,
+    billing_email: orderDetails.azst_orders_email,
+    billing_phone: parseInt(orderDetails.billing_address.billing_mobile, 10),
+    shipping_is_billing: false, // Always false as per the example
+    shipping_customer_name: orderDetails.shipping_address.address_fname,
+    shipping_last_name: orderDetails.shipping_address.address_lname || '',
+    shipping_address: orderDetails.shipping_address.address_address1,
+    shipping_address_2: orderDetails.shipping_address.address_address2 || '',
+    shipping_city: orderDetails.shipping_address.address_district,
+    shipping_pincode: parseInt(orderDetails.shipping_address.address_zip, 10),
+    shipping_country: orderDetails.shipping_address.address_country,
+    shipping_state: orderDetails.shipping_address.address_state,
+    shipping_email: orderDetails.shipping_address.address_email || '',
+    shipping_phone: parseInt(orderDetails.shipping_address.address_mobile, 10),
+    order_items: orderDetails.products_details.map((product) => ({
+      name: product.product_title,
+      sku: product.sku_code || product.variant_sku_code || '',
+      units: parseInt(product.azst_order_qty, 10),
+      selling_price: parseFloat(product.azst_product_price),
+      discount: parseFloat(product.azst_dsc_amount || 0),
+      tax: calculateTax(
+        product.azst_product_price,
+        product.azst_order_qty,
+        product.azst_product_taxvalue
+      ),
+      hsn: product.hsn || '', // HSN may not always be provided
+    })),
+    payment_method:
+      orderDetails.azst_orders_payment_method === 'RazorPay'
+        ? 'Prepaid'
+        : 'COD',
+    shipping_charges: parseFloat(
+      orderDetails.azst_orderinfo_shpping_amount || 0
+    ),
+    giftwrap_charges: 0,
+    transaction_charges: 0,
+    total_discount: parseFloat(orderDetails.azst_orders_discount_amount || 0),
+    sub_total: parseFloat(orderDetails.azst_orders_subtotal || 0),
+    length: 1.0,
+    breadth: 1.0,
+    height: 1.0,
+    weight: 1.0,
+  };
+};
+
+exports.shipOrderTrack = async (req, res, next) => {
+  const { orderId } = req.body;
+
+  if (!orderId) {
+    throw new AppError('Order ID is required', 400);
+  }
+
+  try {
+    // Fetch order details
+    const orderDetails = await getOrderInformation(orderId);
+    if (!orderDetails) {
+      throw new AppError('Order details not found', 404);
+    }
+
+    // Map order details to ShipRocket API format
+    const body = mapOrderDetailsToBody(orderDetails);
+
+    // Get ShipRocket API token
+    const token = await getShipToken();
+    if (!token) {
+      throw new AppError('Failed to retrieve ShipRocket token', 500);
+    }
+
+    // ShipRocket API request headers
+    const headers = {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    };
+
+    // Call ShipRocket API
+
+    const url = `https://apiv2.shiprocket.in/v1/external/orders/create/adhoc`;
+    const { data } = await axios.post(url, body, { headers });
+    // Update shipment ID in the database
+    if (data?.order_id) {
+      const updateShipmentQuery = `
+        UPDATE azst_orderinfo_tbl 
+        SET azst_order_shipment_id = ? 
+        WHERE azst_orders_id = ?`;
+
+      await executeQuery(updateShipmentQuery, [data.order_id, orderId]);
+    } else {
+      throw new AppError('Failed to create shipment in ShipRocket', 400);
+    }
+  } catch (error) {
+    const errorMessage =
+      error?.response?.data?.message || error.message || 'Something went wrong';
+    throw new AppError(errorMessage, 500);
+  }
+};
+

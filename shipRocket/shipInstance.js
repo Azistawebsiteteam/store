@@ -9,7 +9,6 @@ const getShipToken = async () => {
         password: process.env.SHIPROCKET_PASSWORD,
       }
     );
-    console.log(response);
     return response.data.token; // Return the access token
   } catch (error) {
     console.error('Error fetching token:', error.response.data);

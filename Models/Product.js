@@ -130,7 +130,7 @@ const variantsSchema = Joi.object({
   skuCode: Joi.string().required().allow(''),
   isTaxable: Joi.boolean().required(),
   shippingRequired: Joi.boolean().required(),
-  inventoryId: Joi.number(),
+  inventoryId: Joi.any().optional().allow(''),
   inventoryPolicy: Joi.string().required().allow(''),
   variantService: Joi.string().required().allow(''),
   Costperitem: Joi.number(),

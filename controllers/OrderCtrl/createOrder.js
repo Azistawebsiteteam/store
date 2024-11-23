@@ -12,26 +12,20 @@ const {
   calculateCartTotalValue,
   getCartTaxTotal,
 } = require('../../Utils/cartCalculations');
+const {
+  startTransaction,
+  commitTransaction,
+  rollbackTransaction,
+} = require('../../Utils/transctions');
 
 // Transaction Management
-async function startTransaction() {
-  return dbPool.query('START TRANSACTION');
-}
-
-async function commitTransaction() {
-  return dbPool.query('COMMIT');
-}
-
-async function rollbackTransaction() {
-  return dbPool.query('ROLLBACK');
-}
 
 // Helper functions for generating order ID and calculating cart totals
 function generateOrderId() {
   const timestamp = Date.now().toString(36).toUpperCase();
   const randomPart = Math.random().toString(36).toUpperCase().substring(2, 8);
   const orderId = (timestamp + randomPart).substring(0, 12);
-  return 'AZS-' + orderId;
+  return 'AZS' + orderId;
 }
 
 // Refund initiation
@@ -365,8 +359,8 @@ exports.orderSummary = async (req, res, next) => {
       product_return_days,
     ];
 
-    const result = await dbPool.query(insertQuery, values);
-    if (result[0].affectedRows > 0) {
+    const [result] = await dbPool.query(insertQuery, values);
+    if (result.affectedRows > 0) {
       await dbPool.query(removeQuery, [azst_cart_id]);
     } else {
       throw new AppError(

@@ -13,12 +13,12 @@ exports.uploadbanner = multerInstance.fields([
 ]);
 
 const bannerSchema = Joi.object({
-  title: Joi.string().min(3).allow(''),
+  title: Joi.string().min(3).required(),
   description: Joi.string().min(3).allow(''),
   altText: Joi.string().min(3).allow(''),
   webBanner: Joi.string().min(3).allow(''),
   mobileBanner: Joi.string().min(3).allow(''),
-  backgroundUrl: Joi.string().min(3).allow(''),
+  backgroundUrl: Joi.string().min(3).required(),
   startTime: Joi.string().allow(''),
   endTime: Joi.string().allow(''),
   isDefault: Joi.string().required().valid('0', '1'),
