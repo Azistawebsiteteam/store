@@ -3,6 +3,7 @@ const moment = require('moment');
 
 const AppError = require('../../Utils/appError');
 const catchAsync = require('../../Utils/catchAsync');
+const { isValidPincode } = require('../../Utils/estimateDate');
 
 exports.isAddressExisit = catchAsync(async (req, res, next) => {
   const { addressId } = req.body;
@@ -88,8 +89,11 @@ exports.createNewAddress = catchAsync(async (req, res, next) => {
     address1,
     address2,
     isDefault,
-    avalableTime,
+    availableFromTime,
+    availableToTime,
   } = req.body;
+
+  await isValidPincode(zipCode);
 
   const customerId = req.empId;
   let defaultStatus = isDefault ? 1 : 0;
@@ -99,7 +103,7 @@ exports.createNewAddress = catchAsync(async (req, res, next) => {
   if (defaultAddress === 0) {
     defaultStatus = 1;
   }
-
+  const avalableTime = `${availableFromTime}-${availableToTime} `;
   const insertAddress = `INSERT INTO azst_customer_adressbook (azst_customer_adressbook_customer_id,azst_customer_adressbook_fname,azst_customer_adressbook_lname,
                            azst_customer_adressbook_mobile, azst_customer_adressbook_email,azst_customer_adressbook_hno,azst_customer_adressbook_district,
                            azst_customer_adressbook_state,azst_customer_adressbook_country,
@@ -161,10 +165,14 @@ exports.updateAddress = catchAsync(async (req, res, next) => {
     homeOrCompany,
     address1,
     address2,
-    avalableTime,
+    availableFromTime,
+    availableToTime,
   } = req.body;
 
+  await isValidPincode(zipCode);
+
   const customerId = req.empId;
+  const avalableTime = `${availableFromTime}-${availableToTime} `;
 
   const updateAddressQ = `UPDATE azst_customer_adressbook 
                           SET azst_customer_adressbook_customer_id = ?, azst_customer_adressbook_fname = ?,

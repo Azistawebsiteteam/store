@@ -3,7 +3,7 @@ const { dbPool } = require('../../Database/dbPool');
 
 const AppError = require('../../Utils/appError');
 const catchAsync = require('../../Utils/catchAsync');
-const getEstimateDates = require('../../Utils/estimateDate');
+const { getEstimateDates } = require('../../Utils/estimateDate');
 
 const Email = require('../../Utils/email');
 const razorpayInstance = require('../../Utils/razorpay');
@@ -226,25 +226,27 @@ const getExpectedDate = async (req, res, next) => {
     // Returning the expected date
     return dates.expectedDateto;
   } catch (error) {
-    next(error);
+    throw new AppError(error.message, 400);
   }
 };
 
 // Insert order info
 exports.orderInfo = async (req, res, next) => {
-  const { paymentData, addressId, isBillingAdsame, shippingCharge } = req.body;
-  const orderId = req.orderId;
-  const customerId = req.empId;
+  try {
+    const { paymentData, addressId, isBillingAdsame, shippingCharge } =
+      req.body;
+    const orderId = req.orderId;
+    const customerId = req.empId;
 
-  if (!paymentData || !addressId || !orderId || !customerId) {
-    throw new AppError('Missing required order information', 400);
-  }
+    if (!paymentData || !addressId || !orderId || !customerId) {
+      throw new AppError('Missing required order information', 400);
+    }
 
-  const { notes = '', noteAttributes = '' } = paymentData;
+    const { notes = '', noteAttributes = '' } = paymentData;
 
-  const expectedDate = await getExpectedDate(req, res, next);
-  const expected = moment(expectedDate).format('YYYY-MM-DD');
-  const query = `
+    const expectedDate = await getExpectedDate(req, res, next);
+    const expected = moment(expectedDate).format('YYYY-MM-DD');
+    const query = `
     INSERT INTO azst_orderinfo_tbl (
       azst_orders_id,
       azst_orders_customer_id,
@@ -258,20 +260,23 @@ exports.orderInfo = async (req, res, next) => {
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?,?)
   `;
 
-  const shippingType = shippingCharge > 0 ? 'paid shipping' : 'free shipping';
-  const values = [
-    orderId,
-    customerId,
-    addressId,
-    notes,
-    noteAttributes,
-    shippingType,
-    shippingCharge,
-    isBillingAdsame,
-    expected,
-  ];
+    const shippingType = shippingCharge > 0 ? 'paid shipping' : 'free shipping';
+    const values = [
+      orderId,
+      customerId,
+      addressId,
+      notes,
+      noteAttributes,
+      shippingType,
+      shippingCharge,
+      isBillingAdsame,
+      expected,
+    ];
 
-  await dbPool.query(query, values);
+    await dbPool.query(query, values);
+  } catch (error) {
+    throw new AppError(error.message, 400);
+  }
 };
 
 // Insert order summary

@@ -3,7 +3,7 @@ const moment = require('moment');
 const db = require('../Database/dbconfig');
 const AppError = require('./appError');
 
-const getEstimateDates = async (pincode) => {
+const isValidPincode = async (pincode) => {
   const response = await axios.get(
     `https://api.postalpincode.in/pincode/${pincode}`
   );
@@ -12,10 +12,15 @@ const getEstimateDates = async (pincode) => {
   const apiData = data[0];
   const { Status, Message, PostOffice } = apiData;
 
-  if (Status !== 'Success')
-    throw new AppError(`Invalid Pincode (or) ${Message}`, 400);
+  if (Status !== 'Success') throw new AppError(`Invalid Pincode`, 400);
 
-  if (!PostOffice) throw new AppError(`Invalid Pincode (or) ${Message}`, 400);
+  if (!PostOffice) throw new AppError(`Invalid Pincode`, 400);
+
+  return PostOffice;
+};
+
+const getEstimateDates = async (pincode) => {
+  const PostOffice = await isValidPincode(pincode);
 
   const { State } = PostOffice[0];
 
@@ -38,4 +43,4 @@ const getEstimateDates = async (pincode) => {
   return { expectedDateFrom, expectedDateto };
 };
 
-module.exports = getEstimateDates;
+module.exports = { getEstimateDates, isValidPincode };
