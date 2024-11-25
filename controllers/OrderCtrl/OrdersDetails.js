@@ -4,6 +4,7 @@ const db = require('../../Database/dbconfig');
 const getEstimateDates = require('../../Utils/estimateDate');
 const catchAsync = require('../../Utils/catchAsync');
 const AppError = require('../../Utils/appError');
+const { getShipToken } = require('../../shipRocket/shipInstance');
 
 const pinocdeSchema = Joi.object({
   pincode: Joi.number().integer().min(100000).max(999999).messages({
@@ -86,4 +87,21 @@ exports.getOrderSummary = catchAsync(async (req, res, next) => {
 
   const orderSummary = ordersData[0];
   res.status(200).json(orderSummary);
+});
+
+exports.orderShipmentTrack = catchAsync(async (req, res, next) => {
+  const { shipmentId } = req.body;
+  const token = await getShipToken();
+  if (!token) {
+    throw new AppError('Failed to retrieve ShipRocket token', 500);
+  }
+
+  const headers = {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${token}`,
+  };
+  const url = `https://apiv2.shiprocket.in/v1/external/orders/show/${shipmentId}`;
+  const response = await axios.get(url, { headers });
+  const { status, status_code, shipments } = response.data;
+  res.status(200).json({ status, status_code, shipments });
 });

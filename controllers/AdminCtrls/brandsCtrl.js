@@ -56,8 +56,17 @@ const modifyBrandData = (req, brand) => ({
 });
 
 exports.getbrands = catchAsync(async (req, res, next) => {
-  const brandsQuery = `SELECT azst_brands_id,azst_brand_name,azst_brand_logo
-                        FROM azst_brands_tbl WHERE status = 1`;
+  const brandsQuery = `SELECT azst_brands_id,azst_brand_name,azst_brand_logo,COUNT(p.id) AS no_products
+                        FROM azst_brands_tbl b
+                        LEFT JOIN azst_products p 
+                        ON b.azst_brands_id = p.brand_id AND p.status = 1
+                        WHERE b.status = 1
+                        GROUP BY 
+                          b.azst_brands_id,
+                          b.azst_brand_name,
+                          b.azst_brand_logo
+                        ORDER BY 
+                          b.azst_brand_name;`;
 
   const result = await db(brandsQuery);
   const brands = result.map((brand) => modifyBrandData(req, brand));

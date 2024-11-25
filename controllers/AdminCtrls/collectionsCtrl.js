@@ -53,30 +53,29 @@ exports.updateImage = catchAsync(async (req, res, next) => {
   next();
 });
 
-// azst_collection_img: `${req.protocol}://${req.get('host')}/collection/${
 exports.collections = catchAsync(async (req, res, next) => {
-  const collectiosrQuery = `SELECT 
-                              azst_collections_tbl.azst_collection_id,
-                              azst_collections_tbl.azst_collection_name,
-                              azst_collections_tbl.collection_url_title,
-                              azst_collections_tbl.azst_collection_img,
-                              COUNT(azst_products.id) AS no_products
-                            FROM 
-                                azst_collections_tbl
-                            LEFT JOIN 
-                                azst_products 
-                            ON 
-                                JSON_CONTAINS(azst_products.collections, CONCAT('"', azst_collections_tbl.azst_collection_id, '"')) AND azst_products.status = 1
-                            WHERE 
-                                azst_collections_tbl.azst_collection_status = 1
-                            GROUP BY 
-                                azst_collections_tbl.azst_collection_id,
-                                azst_collections_tbl.azst_collection_name,
-                                azst_collections_tbl.collection_url_title,
-                                azst_collections_tbl.azst_collection_img
-                            ORDER BY 
-                                azst_collections_tbl.azst_collection_name;
-                          `;
+  const collectiosrQuery = ` SELECT 
+                                  azst_collections_tbl.azst_collection_id,
+                                  azst_collections_tbl.azst_collection_name,
+                                  azst_collections_tbl.collection_url_title,
+                                  azst_collections_tbl.azst_collection_img,
+                                  COUNT(azst_products.id) AS no_products
+                              FROM 
+                                  azst_collections_tbl
+                              LEFT JOIN 
+                                  azst_products 
+                              ON 
+                                  JSON_CONTAINS(azst_products.collections, CAST(azst_collections_tbl.azst_collection_id AS JSON)) 
+                                  AND azst_products.status = 1
+                              WHERE 
+                                  azst_collections_tbl.azst_collection_status = 1
+                              GROUP BY 
+                                  azst_collections_tbl.azst_collection_id,
+                                  azst_collections_tbl.azst_collection_name,
+                                  azst_collections_tbl.collection_url_title,
+                                  azst_collections_tbl.azst_collection_img
+                              ORDER BY 
+                                  azst_collections_tbl.azst_collection_name;`;
 
   let collections = await db(collectiosrQuery);
   collections = collections.map((cl) => ({

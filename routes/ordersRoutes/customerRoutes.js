@@ -49,5 +49,6 @@ router.get('/refund-requests', returnAndReplaceCrl.getMyRefunRequestList);
 router.post('/refund-status', returnAndReplaceCrl.getRefundStatus);
 router.get('/all', ordersCtrl.getCustomerOrders);
 router.post('/order/details', ordersCtrl.getOrderDetails);
+router.post('/order/shpiing-track', orderDetails.orderShipmentTrack);
 
 module.exports = router;

@@ -27,7 +27,6 @@ const customerDiscountRoute = require('./CustomerRoutes/discountRoutes');
 const blogRoute = require('./blogsRoutes');
 const faqRoute = require('./faqRoute');
 const callBackRoute = require('./callBackRoutes');
-const shipRocketRoute = require('./shipRocketRoutes');
 
 router.use('/auth', authRoute);
 router.use('/address', adderessRoute);
@@ -57,6 +56,5 @@ router.use('/customer/discount', customerDiscountRoute);
 router.use('/blogs', blogRoute);
 router.use('/faqs', faqRoute);
 router.use('/cb', callBackRoute);
-router.use('/ship-rocket', shipRocketRoute);
 
 module.exports = router;
