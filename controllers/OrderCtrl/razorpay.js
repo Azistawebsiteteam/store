@@ -10,14 +10,24 @@ const Sms = require('../../Utils/sms');
 const createOrderSchema = Joi.object({
   amount: Joi.number().min(1).required(),
   currency: Joi.string().min(1).max(5).required().valid('USD', 'EUR', 'INR'),
+  cartList: Joi.array()
+    .items(Joi.number().min(1).required())
+    .min(1)
+    .required()
+    .messages({
+      'array.min': 'Add at least one product to cart', // Custom message for the array minimum length validation
+      'array.includesRequiredUnknowns': 'Add at least one product to cart', // Custom message when required items are missing
+      'any.required': 'cartList is Reuired', // Custom message if the field is entirely missing
+    }),
+  addressId: Joi.number().min(0).required(),
 });
 
 exports.razorPayCreateOrder = catchAsync(async (req, res, next) => {
-  const { amount, currency } = req.body;
-  const receiptId = req.empId;
-
   const { error } = createOrderSchema.validate(req.body);
   if (error) return next(new AppError(error.message, 400));
+
+  const { amount, currency } = req.body;
+  const receiptId = req.empId;
 
   const options = {
     amount: amount * 100,

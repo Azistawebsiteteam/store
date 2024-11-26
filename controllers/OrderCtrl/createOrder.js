@@ -414,3 +414,18 @@ exports.updateDiscountUsageOfCustomer = async (req, res, next) => {
 // azst_dsc_by_ids,
 //   azst_product_is_returned,
 //   azst_product_return_date;
+
+// azst_orderinfo_id,
+//   azst_orders_id,
+//   azst_orders_customer_id,
+//   azst_addressbook_id,
+//   azst_orderinfo_notes,
+//   azst_orderinfo_note_attributes,
+//   azst_orderinfo_created_on,
+//   azst_orderinfo_shippingtype,
+//   azst_orderinfo_shpping_amount,
+//   azst_orderinfo_billing_adrs_issame,
+//   azst_order_exptd_delivery_on,
+//   azst_order_ship_from,
+//   azst_order_ship_method,
+//   azst_order_shipment_id;

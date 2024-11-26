@@ -103,12 +103,14 @@ exports.getAllOrdrs = catchAsync(async (req, res, next) => {
 
   await db("SET SESSION sql_mode = ''");
 
-  const ordersQuery = `SELECT azst_orders_tbl.*,azst_ordersummary_tbl.azst_order_delivery_method,
+  const ordersQuery = `SELECT azst_orders_tbl.*,azst_orderinfo_tbl.azst_orderinfo_shippingtype,
                             IFNULL(SUM(azst_ordersummary_tbl.azst_order_qty), 0) AS items , 
                            CONCAT(azst_customer_fname , ' ' , azst_customer_lname) AS customer_name
                        FROM azst_orders_tbl
                         LEFT JOIN azst_ordersummary_tbl
                         ON azst_orders_tbl.azst_orders_id = azst_ordersummary_tbl.azst_orders_id
+                        LEFT JOIN azst_orderinfo_tbl
+                        ON azst_orders_tbl.azst_orders_id = azst_orderinfo_tbl.azst_orders_id
                         LEFT JOIN azst_customers_tbl
                         ON azst_customers_tbl.azst_customer_id = azst_orders_tbl.azst_orders_customer_id 
                        ${filterQuery}
@@ -402,8 +404,9 @@ const executeQuery = async (query, params = []) => {
 const updateOrderStatus = async (orderId, statusData) => {
   const { fields, values } = statusData;
   const query = `UPDATE azst_orders_tbl SET ${fields} WHERE azst_orders_id = ?`;
-  
+
   const result = await executeQuery(query, [...values, orderId]);
+
   if (result.affectedRows === 0) {
     throw new AppError('Order update failed', 400);
   }
@@ -436,6 +439,14 @@ exports.confirmOrder = catchAsync(async (req, res, next) => {
 
   const { orderId, orderStatus, reason, inventoryId, shippingMethod } =
     req.body;
+
+  const query = `SELECT azst_orders_confirm_status FROM  azst_orders_tbl WHERE azst_orders_id = ? AND azst_orders_status = 1`;
+  const [order] = await db(query, [orderId]);
+  if (!order) return res.status(404).json({ message: 'Order not found ' });
+  if (order.azst_orders_confirm_status === 1)
+    return res.status(400).json({ message: 'order already Processed ' });
+  if (order.azst_orders_confirm_status === 2)
+    return res.status(400).json({ message: 'order already Rejected ' });
 
   const isOrderConfirmed = orderStatus === '1';
   const time = moment().format('YYYY-MM-DD HH:mm:ss');
@@ -575,8 +586,16 @@ const mapOrderDetailsToBody = (orderDetails) => {
     shipping_email: orderDetails.shipping_address.address_email || '',
     shipping_phone: parseInt(orderDetails.shipping_address.address_mobile, 10),
     order_items: orderDetails.products_details.map((product) => ({
-      name: product.product_title,
-      sku: product.sku_code || product.variant_sku_code || '',
+      name:
+        `${product.product_title}` +
+        ([product.option1, product.option2, product.option3].filter(Boolean)
+          .length > 0
+          ? ' -' +
+            `${[product.option1, product.option2, product.option3]
+              .filter(Boolean)
+              .join('-')}`
+          : ''),
+      sku: product.sku_code || product.variant_sku_code || 'sku-code',
       units: parseInt(product.azst_order_qty, 10),
       selling_price: parseFloat(product.azst_product_price),
       discount: parseFloat(product.azst_dsc_amount || 0),
@@ -585,7 +604,7 @@ const mapOrderDetailsToBody = (orderDetails) => {
         product.azst_order_qty,
         product.azst_product_taxvalue
       ),
-      hsn: product.hsn || '', // HSN may not always be provided
+      hsn: product.hsn || '',
     })),
     payment_method:
       orderDetails.azst_orders_payment_method === 'RazorPay'
@@ -598,10 +617,10 @@ const mapOrderDetailsToBody = (orderDetails) => {
     transaction_charges: 0,
     total_discount: parseFloat(orderDetails.azst_orders_discount_amount || 0),
     sub_total: parseFloat(orderDetails.azst_orders_subtotal || 0),
-    length: 1.0,
-    breadth: 1.0,
-    height: 1.0,
-    weight: 1.0,
+    length: 0.6,
+    breadth: 0.6,
+    height: 0.6,
+    weight: 0.1,
   };
 };
 
@@ -655,4 +674,3 @@ exports.shipOrderTrack = async (req, res, next) => {
     throw new AppError(errorMessage, 500);
   }
 };
-
