@@ -5,6 +5,7 @@ const catchAsync = require('../../Utils/catchAsync');
 const {
   calculateCartTotalValue,
   getCartTaxTotal,
+  calculateShippingCharge,
 } = require('../../Utils/cartCalculations');
 
 exports.applyDiscountByCode = catchAsync(async (req, res, next) => {
@@ -618,13 +619,17 @@ exports.myDiscounts = catchAsync(async (req, res, next) => {
   const taxAmount = getCartTaxTotal(newCart);
 
   const discountAmount = Math.min(cartTotal, totalDiscountAmount).toFixed(2);
-
+  const { shippingCharges, freeShipMsg } = await calculateShippingCharge(
+    cartTotal - discountAmount
+  );
   res.status(200).json({
     cart_products: newCart,
     cart_total: cartTotal,
     discountCodes,
     discountAmount,
     taxAmount,
+    shippingCharges,
+    freeShipMsg,
     message: discountMessage,
     similarProducts,
   });

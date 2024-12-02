@@ -110,7 +110,6 @@ exports.updateInventory = catchAsync(async (req, res, next) => {
 
 exports.addInventory = catchAsync(async (req, res, next) => {
   const { invId, productId, variantId, quantity } = req.body;
-  console.log(invId, productId, variantId, quantity);
   const query = `INSERT INTO azst_inventory_product_mapping (  azst_ipm_inventory_id, azst_ipm_product_id,
                     azst_ipm_variant_id, azst_ipm_onhand_quantity,
                     azst_ipm_avbl_quantity,azst_ipm_created_by)

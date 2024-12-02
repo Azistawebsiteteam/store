@@ -12,8 +12,6 @@ const connectToDatabase = () => {
     }
 
     console.log('Connected to the MYsql database');
-    // You can perform additional operations here
-
     // Release the connection when finished
     connection.release();
   });

@@ -1,64 +1,66 @@
-const nodemailer = require('nodemailer');
-//const sendgridTransport = require('nodemailer-sendgrid-transport');
+const axios = require('axios');
+const util = require('util');
+const fs = require('fs');
+const path = require('path');
+const handlebars = require('handlebars');
+const User = require('./User');
 
-// new Emial(user, url).sendWelcome();
-
-module.exports = class Email {
-  constructor(user, url) {
-    this.to = user.user_email;
-    this.userName = user.user_name;
+module.exports = class Email extends User {
+  constructor(userId, mail, url) {
+    super(userId); // Automatically initializes `userDetails`
+    this.to = mail;
     this.url = url;
-    this.from = process.env.EMIAL_FROM;
-  }
-
-  newTransport() {
-    if (process.env.NODE_ENV === 'production') {
-      return nodemailer.createTransport({
-        host: process.env.EMIAL_HOST,
-        port: process.env.EMIAL_PORT,
-        secure: false,
-        auth: {
-          user: process.env.EMIAL_USERNAME,
-          pass: process.env.EMIAL_PASSWORD,
-        },
-        tls: {
-          ciphers: process.env.EMIAL_HOST_VERSION, // Specify the TLS version here
-        },
-      });
-    }
+    this.currentYear = new Date().getFullYear();
   }
 
   async send(subject, htmlContent) {
-    const mailOptions = {
-      to: process.env.EMAL_TO,
-      from: this.from,
-      subject,
-      html: htmlContent,
-    };
+    console.log(this.userDetails, 'email sent user details');
+    if (this.userDetails.azst_customer_acceptemail_marketing === 'No') {
+      return;
+    }
 
-    // 3) create a transporter and send emial
-    await this.newTransport().sendMail(mailOptions);
+    const emailHost = process.env.EMAIL_HOST;
+    const formdata = new FormData();
+    console.log(this.to, 'user Email');
+    formdata.append('TO_EMAIL', process.env.EMAIL_TO);
+    formdata.append('SUBJECT', subject);
+    formdata.append('TO_NAME', this.userDetails.user_name ?? 'Customer');
+    formdata.append('MESSAGE_BODY', htmlContent);
+    try {
+      await axios.post(emailHost, formdata);
+    } catch (error) {
+      console.log(error);
+    }
   }
 
-  async sendWelcome() {
-    await this.send('Welcome', 'wecome to the natours family');
-  }
-
-  async sendPasswordReset() {
-    await this.send(
-      'PasswordReset',
-      `<h3>Password Reset</h3>
-      <p>Click the button below to reset your password:</p>
-      <a href="${this.url}" target="_blank" style="display: inline-block; background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none;">Reset Password</a>
-      <p>Please note that the reset link will expire in 10 minutes.</p>
-    `
+  async sendRegistrationOtp(otp) {
+    console.log('Sending registration OTP', otp);
+    const readFile = util.promisify(fs.readFile);
+    const emailTemplatePath = path.join(
+      __dirname,
+      '../view/Emails/AZISTA-Reg-OTP.html'
     );
+    const emailTemplate = await readFile(emailTemplatePath, 'utf8');
+    const compiledTemplate = handlebars.compile(emailTemplate);
+    const emailContent = compiledTemplate({
+      otp,
+      currentYear: this.currentYear,
+    });
+    await this.send('Registration OTP', emailContent);
   }
 
-  async sendOrderStatus(orderId) {
-    await this.send(
-      'orderStatus',
-      `Your order palced successfully , you can check order status by ${orderId}`
+  async sendLoginOtp(otp) {
+    const readFile = util.promisify(fs.readFile);
+    const emailTemplatePath = path.join(
+      __dirname,
+      '../view/Emails/AZISTA-Login-OTP.html'
     );
+    const emailTemplate = await readFile(emailTemplatePath, 'utf8');
+    const compiledTemplate = handlebars.compile(emailTemplate);
+    const emailContent = compiledTemplate({
+      otp,
+      currentYear: this.currentYear,
+    });
+    await this.send('Login OTP', emailContent);
   }
 };

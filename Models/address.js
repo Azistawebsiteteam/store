@@ -19,7 +19,7 @@ const addressSchema = Joi.object({
   housenumber: Joi.string().allow('').optional(),
   district: Joi.string().min(2).max(20).required(),
   state: Joi.string().min(2).max(20).required(),
-  country: Joi.string().min(2).max(20).optional(),
+  country: Joi.string().min(2).max(10).valid('India'),
   zipCode: Joi.number().integer().min(100000).max(999999), // Zip code as number and length as 6
   landmark: Joi.string().min(3).optional().allow(''),
   homeOrCompany: Joi.string().valid('Home', 'Company'),

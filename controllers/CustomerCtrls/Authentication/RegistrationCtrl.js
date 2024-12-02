@@ -14,14 +14,11 @@ exports.checkExistingUser = catchAsync(async (req, res, next) => {
 
   const mobileNum = customerMobileNum || mailOrMobile;
   const email = customerEmail || mailOrMobile;
-
-  console.log(mobileNum, email);
   const checkQuery = `SELECT azst_customer_id 
                       FROM  azst_customers_tbl
                       WHERE (azst_customer_mobile = ? OR azst_customer_email = ?) AND azst_customer_status = 1`;
 
   const result = await db(checkQuery, [mobileNum, email]);
-  console.log(result);
   if (result.length > 0)
     return next(new AppError('You have already an account', 400));
 

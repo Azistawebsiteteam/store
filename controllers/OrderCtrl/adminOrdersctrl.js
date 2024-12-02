@@ -132,6 +132,7 @@ const productDetailsQuery = `JSON_ARRAYAGG(
       'product_title', azst_products.product_title,
       'product_image', azst_products.image_src,
       'product_weight', azst_products.product_weight,
+      'is_varaints_aval', azst_products.is_varaints_aval,
       'option1', azst_sku_variant_info.option1,
       'option2', azst_sku_variant_info.option2,
       'option3', azst_sku_variant_info.option3,
@@ -196,6 +197,7 @@ const getOrderInformation = async (orderId) => {
     SELECT
       azst_orders_tbl.*,
       azst_orderinfo_tbl.*,
+      azst_orderinfo_tbl.azst_orderinfo_billing_adrs_issame as billing_issame,
       azst_orders_tbl.azst_orders_id as azst_order_id,
       ${productDetailsQuery},
       ${shippingAddressQuery},
@@ -554,75 +556,144 @@ const calculateTax = (productPrice, qty, tax) => {
   return taxAmount;
 };
 
-// Map Order Details to ShipRocket Body
-const mapOrderDetailsToBody = (orderDetails) => {
+const convertWeightInKgs = (weight, units) => {
+  switch (units) {
+    case 'g': // grams to kilograms
+      return weight / 1000;
+    case 'lb': // pounds to kilograms
+      return weight * 0.453592;
+    case 'oz': // ounces to kilograms
+      return weight * 0.0283495;
+    default: // already in kilograms or unrecognized units
+      return weight;
+  }
+};
+
+const parseWeightAndUnit = (weightString) => {
+  // Remove everything after the first `-` if it exists
+  const cleanedString = weightString.split('-')[0].trim();
+
+  // Regex to capture numbers (weight) and characters (unit), allowing space between them
+  const match = cleanedString.match(/^(\d+(\.\d+)?)(\s?)([a-zA-Z]+)$/);
+
+  if (!match)
+    return {
+      weight: 0.1, // The numeric part as weight
+      unit: 'kg', // The unit part in lowercase
+    };
+
+  // Return the numeric weight and unit separately
   return {
-    order_id: orderDetails.azst_orders_id.replace(/[^a-zA-Z0-9]/g, ''), // Ensure order_id is alphanumeric
-    order_date: moment(orderDetails.azst_orders_created_on).format(
-      'YYYY-MM-DD HH:mm:ss'
-    ),
-    pickup_location:
-      orderDetails.order_shipping_from?.inventory_location || 'Azista-Chintal',
-    comment: `Reseller: ${orderDetails.azst_orders_vendor || 'Azista'}`,
-    billing_customer_name: orderDetails.billing_address.billing_name,
-    billing_last_name: '', // Can be derived if necessary
-    billing_address: orderDetails.billing_address.billing_address1,
-    billing_address_2: orderDetails.billing_address.billing_address2 || '',
-    billing_city: orderDetails.billing_address.billing_city,
-    billing_pincode: parseInt(orderDetails.billing_address.billing_zip, 10),
-    billing_state: orderDetails.billing_address.billing_state,
-    billing_country: orderDetails.billing_address.billing_country,
-    billing_email: orderDetails.azst_orders_email,
-    billing_phone: parseInt(orderDetails.billing_address.billing_mobile, 10),
-    shipping_is_billing: false, // Always false as per the example
-    shipping_customer_name: orderDetails.shipping_address.address_fname,
-    shipping_last_name: orderDetails.shipping_address.address_lname || '',
-    shipping_address: orderDetails.shipping_address.address_address1,
-    shipping_address_2: orderDetails.shipping_address.address_address2 || '',
-    shipping_city: orderDetails.shipping_address.address_district,
-    shipping_pincode: parseInt(orderDetails.shipping_address.address_zip, 10),
-    shipping_country: orderDetails.shipping_address.address_country,
-    shipping_state: orderDetails.shipping_address.address_state,
-    shipping_email: orderDetails.shipping_address.address_email || '',
-    shipping_phone: parseInt(orderDetails.shipping_address.address_mobile, 10),
-    order_items: orderDetails.products_details.map((product) => ({
-      name:
-        `${product.product_title}` +
-        ([product.option1, product.option2, product.option3].filter(Boolean)
-          .length > 0
-          ? ' -' +
-            `${[product.option1, product.option2, product.option3]
-              .filter(Boolean)
-              .join('-')}`
-          : ''),
-      sku: product.sku_code || product.variant_sku_code || 'sku-code',
-      units: parseInt(product.azst_order_qty, 10),
-      selling_price: parseFloat(product.azst_product_price),
-      discount: parseFloat(product.azst_dsc_amount || 0),
-      tax: calculateTax(
-        product.azst_product_price,
-        product.azst_order_qty,
-        product.azst_product_taxvalue
-      ),
-      hsn: product.hsn || '',
-    })),
-    payment_method:
-      orderDetails.azst_orders_payment_method === 'RazorPay'
-        ? 'Prepaid'
-        : 'COD',
-    shipping_charges: parseFloat(
-      orderDetails.azst_orderinfo_shpping_amount || 0
-    ),
-    giftwrap_charges: 0,
-    transaction_charges: 0,
-    total_discount: parseFloat(orderDetails.azst_orders_discount_amount || 0),
-    sub_total: parseFloat(orderDetails.azst_orders_subtotal || 0),
-    length: 0.6,
-    breadth: 0.6,
-    height: 0.6,
-    weight: 0.1,
+    weight: parseFloat(match[1]), // The numeric part as weight
+    unit: match[4].toLowerCase(), // The unit part in lowercase
   };
 };
+
+const getShippingPackageWeight = (products) => {
+  let totalWeight = 0.0; // Base package weight in kg
+  products.forEach((product) => {
+    let weight, unit;
+
+    if (product.is_varaints_aval === 1) {
+      // Handle variant weight
+      weight = product.variant_weight;
+      unit = product.variant_weight_unit;
+    } else {
+      // Handle product weight
+      ({ weight, unit } = parseWeightAndUnit(product.product_weight));
+    }
+
+    // Convert the weight to kilograms and add to the total
+    totalWeight += convertWeightInKgs(weight, unit);
+  });
+  const finalWeight =
+    totalWeight >= 0.1 ? parseFloat(totalWeight.toFixed(2)) : 0.1;
+  return finalWeight;
+};
+
+const billingAddress = (isSame, billing, shipping) => ({
+  billing_customer_name: isSame ? shipping.address_fname : billing.billing_name,
+  billing_last_name: isSame
+    ? shipping.address_lname
+    : billing.billing_last_name || '',
+  billing_address: isSame
+    ? shipping.address_address1
+    : billing.billing_address1,
+  billing_address_2: isSame
+    ? shipping.address_address2 || ''
+    : billing.billing_address2 || '',
+  billing_city: isSame ? shipping.address_district : billing.billing_city,
+  billing_pincode: parseInt(
+    isSame ? shipping.address_zip : billing.billing_zip,
+    10
+  ),
+  billing_state: isSame ? shipping.address_state : billing.billing_state,
+  billing_country: isSame ? shipping.address_country : billing.billing_country,
+  billing_email: isSame ? shipping.address_email : billing.billing_email,
+  billing_phone: parseInt(
+    isSame ? shipping.address_mobile : billing.billing_mobile,
+    10
+  ),
+});
+
+// Map Order Details to ShipRocket Body
+const mapOrderDetailsToBody = (orderDetails) => ({
+  order_id: orderDetails.azst_orders_id.replace(/[^a-zA-Z0-9]/g, ''), // Ensure order_id is alphanumeric
+  order_date: moment(orderDetails.azst_orders_created_on).format(
+    'YYYY-MM-DD HH:mm:ss'
+  ),
+  pickup_location:
+    orderDetails.order_shipping_from?.inventory_location || 'Azista-Chintal',
+  comment: `Reseller: ${orderDetails.azst_orders_vendor ?? 'Azista'}`,
+  ...billingAddress(
+    orderDetails.billing_issame === 1,
+    orderDetails.billing_address,
+    orderDetails.shipping_address
+  ),
+  shipping_is_billing: orderDetails.billing_issame === 1,
+  shipping_customer_name: orderDetails.shipping_address.address_fname,
+  shipping_last_name: orderDetails.shipping_address.address_lname || '',
+  shipping_address: orderDetails.shipping_address.address_address1,
+  shipping_address_2: orderDetails.shipping_address.address_address2 || '',
+  shipping_city: orderDetails.shipping_address.address_district,
+  shipping_pincode: parseInt(orderDetails.shipping_address.address_zip, 10),
+  shipping_country: orderDetails.shipping_address.address_country,
+  shipping_state: orderDetails.shipping_address.address_state,
+  shipping_email: orderDetails.shipping_address.address_email || '',
+  shipping_phone: parseInt(orderDetails.shipping_address.address_mobile, 10),
+  order_items: orderDetails.products_details.map((product) => ({
+    name:
+      `${product.product_title}` +
+      ([product.option1, product.option2, product.option3].filter(Boolean)
+        .length > 0
+        ? ' -' +
+          `${[product.option1, product.option2, product.option3]
+            .filter(Boolean)
+            .join('-')}`
+        : ''),
+    sku: product.sku_code || product.variant_sku_code || 'sku-code',
+    units: parseInt(product.azst_order_qty, 10),
+    selling_price: parseFloat(product.azst_product_price),
+    discount: parseFloat(product.azst_dsc_amount || 0),
+    tax: calculateTax(
+      product.azst_product_price,
+      product.azst_order_qty,
+      product.azst_product_taxvalue
+    ),
+    hsn: product.hsn || 0,
+  })),
+  payment_method:
+    orderDetails.azst_orders_payment_method === 'RazorPay' ? 'Prepaid' : 'COD',
+  shipping_charges: parseFloat(orderDetails.azst_orderinfo_shpping_amount || 0),
+  giftwrap_charges: 0,
+  transaction_charges: 0,
+  total_discount: parseFloat(orderDetails.azst_orders_discount_amount || 0),
+  sub_total: parseFloat(orderDetails.azst_orders_subtotal || 0),
+  length: 0.6,
+  breadth: 0.6,
+  height: 0.6,
+  weight: getShippingPackageWeight(orderDetails.products_details),
+});
 
 exports.shipOrderTrack = async (req, res, next) => {
   const { orderId } = req.body;
@@ -640,7 +711,6 @@ exports.shipOrderTrack = async (req, res, next) => {
 
     // Map order details to ShipRocket API format
     const body = mapOrderDetailsToBody(orderDetails);
-
     // Get ShipRocket API token
     const token = await getShipToken();
     if (!token) {

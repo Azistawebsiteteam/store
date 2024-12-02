@@ -101,7 +101,6 @@ exports.rezorpaymentRefund = catchAsync(async (req, res, next) => {
     });
     res.status(200).json({ refundData });
   } catch (err) {
-    console.log(err);
     res.status(400).json({
       status: 'error',
       message: err?.error?.description || 'Refund initiation failed',

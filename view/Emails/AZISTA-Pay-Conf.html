@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Confirmation - Azista Store</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            width: 100%;
+            max-width: 600px;
+            margin: auto;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .header {
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .header img {
+            max-width: 150px;
+            height: auto;
+        }
+        .header h1 {
+            font-size: 26px;
+            color: #333333;
+            margin-top: 20px;
+            margin-bottom: 5px;
+        }
+        .header p {
+            font-size: 18px;
+            color: #777777;
+            margin: 0;
+        }
+        .content {
+            padding: 20px;
+            color: #333333;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+        .content p {
+            margin: 15px 0;
+        }
+        .cta-button {
+            display: inline-block;
+            margin: 20px 0;
+            padding: 12px 30px;
+            background-color: #333333;
+            color: #ffffff;
+            font-size: 16px;
+            font-weight: bold;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+        .cta-button:hover {
+            background-color: #555555;
+        }
+        .footer {
+            padding: 20px;
+            text-align: center;
+            font-size: 14px;
+            color: #888888;
+        }
+        .footer p {
+            margin: 5px 0;
+        }
+        .footer a {
+            color: #333333;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .social-icons {
+            margin-top: 10px;
+        }
+        .social-icons a {
+            text-decoration: none;
+            color: #333333;
+            font-size: 18px;
+            margin: 0 8px;
+            font-weight: bold;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        td {
+            background-color: #fafafa;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header Section with Logo -->
+        <div class="header">
+            <img src="Azista_logo_Final_330x150.avif" alt="Azista Logo">
+            <h1>Payment Confirmation</h1>
+        </div>
+
+        <!-- Content Section -->
+        <div class="content">
+            <!-- Top Text (Above Table) -->
+            <p>Dear Customer,</p>
+            <p>We are pleased to inform you that your payment for Order <strong>{#var#}</strong> at Azista Store has been successfully processed.</p>
+            <p>Thank you for your purchase! Your order will be processed and shipped soon. You will receive further updates on your order status shortly.</p>
+
+            <!-- Product Table -->
+            <h3>Order Details:</h3>
+            <table>
+                <tr>
+                    <th>Product Name</th>
+                    <th>Quantity</th>
+                    <th>Price</th>
+                    <th>Total</th>
+                </tr>
+                <tr>
+                    <td>Product Name 1</td>
+                    <td>1</td>
+                    <td>$100.00</td>
+                    <td>$100.00</td>
+                </tr>
+                <tr>
+                    <td>Product Name 2</td>
+                    <td>2</td>
+                    <td>$50.00</td>
+                    <td>$100.00</td>
+                </tr>
+                <tr>
+                    <td colspan="3" style="text-align: right; font-weight: bold;">Total</td>
+                    <td style="font-weight: bold;">$200.00</td>
+                </tr>
+            </table>
+
+            <a href="https://azista-store.com" class="cta-button">Continue Shopping</a>
+        </div>
+
+        <!-- Footer Section -->
+        <div class="footer">
+            <p>Need assistance? <a href="mailto:ecommerce@azistaindustries.com">ecommerce@azistaindustries.com</a> | Call us: <a href="tel:18001020576">1800 102 0576</a></p>
+            <p>&copy; 2024 Azista Store. All rights reserved.</p>
+            <div class="social-icons">
+                <a href="https://facebook.com/azista" target="_blank">Facebook</a> |
+                <a href="https://instagram.com/azista" target="_blank">Instagram</a> |
+                <a href="https://youtube.com/azista" target="_blank">YouTube</a> |
+                <a href="https://twitter.com/azista" target="_blank">X</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

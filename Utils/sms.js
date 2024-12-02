@@ -1,42 +1,29 @@
 const axios = require('axios');
-const AppError = require('./appError');
-const db = require('../Database/dbconfig');
+const User = require('./User');
 
-// Utility function to check required environment variables
-const checkEnvVariables = () => {
-  const requiredEnvVars = [
-    'SMS_API_KEY',
-    'SMS_SENDER_ID',
-    'SMS_API_URL',
-    'SMS_CHANNEL',
-    'SMS_DCS',
-    'SMS_FLASH_KEY',
-  ];
-
-  requiredEnvVars.forEach((variable) => {
-    if (!process.env[variable]) {
-      throw new Error(`Missing environment variable: ${variable}`);
-    }
-  });
-};
-
-const getCustomerDetails = async (customerId) => {
-  const query = ` SELECT * FROM azst_customers_tbl WHERE azst_customer_id = ? `;
-  const [customer] = await db(query, [customerId]);
-  return customer ?? {};
-};
-
-module.exports = class Sms {
+module.exports = class SMS extends User {
   constructor(userId, mobileNum) {
-    this.userId = userId;
+    super(userId); // Automatically initializes `userDetails`
     this.mobileNum = mobileNum;
-    this.userDetails = {};
-    this.env = this.loadEnvVariables(); // Load all environment variables once
+    this.env = this.loadEnvVariables(); // Load environment variables
   }
 
-  // Load environment variables
   loadEnvVariables() {
-    checkEnvVariables();
+    const requiredEnvVars = [
+      'SMS_API_KEY',
+      'SMS_SENDER_ID',
+      'SMS_API_URL',
+      'SMS_CHANNEL',
+      'SMS_DCS',
+      'SMS_FLASH_KEY',
+    ];
+
+    requiredEnvVars.forEach((variable) => {
+      if (!process.env[variable]) {
+        throw new Error(`Missing environment variable: ${variable}`);
+      }
+    });
+
     const {
       SMS_API_KEY: apiKey,
       SMS_SENDER_ID: senderId,
@@ -49,48 +36,34 @@ module.exports = class Sms {
     return { apiKey, senderId, apiUrl, channel, dcs, flashKey };
   }
 
-  // Fetch user details based on userId if available
-  async getUserDetails() {
-    if (this.userId) {
-      const user = await getCustomerDetails(this.userId);
-      this.userDetails = user;
-      this.mobileNum = user.azst_customer_mobile;
-    }
-  }
-
-  // Construct the SMS API URL
   constructUrl(templateContent) {
     const { apiKey, senderId, apiUrl, channel, dcs, flashKey } = this.env;
-
     const encodedText = encodeURIComponent(templateContent);
     return `${apiUrl}?APIkey=${apiKey}&senderid=${senderId}&channel=${channel}&DCS=${dcs}&flashsms=${flashKey}&number=91${this.mobileNum}&text=${encodedText}`;
   }
 
-  // Send SMS using the given template content
   async send(templateContent) {
-    // try {
-    const url = this.constructUrl(templateContent);
-    const response = await axios.post(url);
-    return Promise.resolve();
+    // Ensure userDetails are loaded
+    if (
+      this.userId &&
+      (!this.userDetails || Object.keys(this.userDetails).length === 0)
+    ) {
+      await this.autoInitialize(); // Wait for userDetails to load
+    }
 
-    //   if (response.status === 200 && response.data.ErrorMessage === 'Success') {
-    //     return Promise.resolve();
-    //   } else {
-    //     throw new AppError(
-    //       'Failed to send SMS: ' +
-    //         (response.data.ErrorMessage || 'Unknown error'),
-    //       400
-    //     );
-    //   }
-    // } catch (error) {
-    //   return Promise.reject(error);
-    // }
+    console.log(this.userDetails, 'sms user details'); //  {} sms user details
+    const url = this.constructUrl(templateContent);
+    await axios.post(url);
   }
 
-  // Send a welcome SMS
+  async loginOTP(otp) {
+    const templateContent = `Your OTP for Azista Store login is ${otp}. Do not share this code with anyone. Azista`;
+    await this.send(templateContent);
+  }
+
   async registrationRquest(otp) {
     //implementated
-    const smsContent = `Hello, We have Successfully Generated OTP ${otp} on login and registration request. Azista`;
+    const smsContent = `Greetings from Azista! Use this OTP ${otp} to finalize your registration and start exploring. Welcome to the community! Azista`;
     await this.send(smsContent);
   }
 
@@ -101,14 +74,8 @@ module.exports = class Sms {
     await this.send(templateContent);
   }
 
-  async loginOTP(otp) {
-    //implementated
-    const templateContent = `Your OTP for Azista Store login is ${otp}. Do not share this code with anyone. Azista`;
-    await this.send(templateContent);
-  }
-
   async cartCheckout() {
-    //need to discuss requirement very day 12 pm night
+    //need to discuss requirement, very day 12 pm night , implemented
     const templateContent = `Hi! Your cart at Azista Store is ready for checkout. Don't miss out. Complete your purchase today! Azista`;
     await this.send(templateContent);
   }
@@ -127,7 +94,7 @@ module.exports = class Sms {
 
   async orderConfirm(orderId) {
     //implementated
-    const templateContent = `Thank you for your order! Order ${orderId} with Azista Store has been successfully placed. We will send you updates soon. Azista`;
+    const templateContent = `Dear Customer, Your order ${orderId} with Azista Store has been successfully confirmed. We will send you updates shortly. Azista`;
     await this.send(templateContent);
   }
 

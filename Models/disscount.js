@@ -26,7 +26,6 @@ const validateProductIds = (products, schema) => {
   const parsedProducts = Array.isArray(products)
     ? products
     : JSON.parse(products);
-  console.log(parsedProducts);
   const validationResults = parsedProducts.map((subCat) =>
     schema.validate(subCat)
   );

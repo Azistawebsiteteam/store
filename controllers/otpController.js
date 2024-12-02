@@ -1,4 +1,3 @@
-const axios = require('axios');
 const db = require('../Database/dbconfig');
 const moment = require('moment');
 
@@ -6,7 +5,8 @@ const catchAsync = require('../Utils/catchAsync');
 const AppError = require('../Utils/appError');
 const createSendToken = require('../Utils/jwtToken');
 const enterLoginLogs = require('./CustomerCtrls/Authentication/logsCtrl');
-const Sms = require('../Utils/sms');
+const SMS = require('../Utils/sms');
+const Email = require('../Utils/email');
 
 const generateOTP = () => {
   // Generate a random 6-digit number
@@ -22,16 +22,22 @@ const varifyInput = (mailOrMobile) => {
 };
 
 const sendingOTPMobile = async (mobileNum, otp, reason) => {
+  const sms = new SMS('', mobileNum);
   if (reason === 'Login') {
-    await new Sms('', mobileNum).loginOTP(otp);
+    await sms.loginOTP(otp);
   } else {
-    await new Sms('', mobileNum).registrationRquest(otp);
+    await sms.registrationRquest(otp);
   }
 };
 
-const sendingOTPEmail = (mail, otp) => {
-  // Emial Logic for sending otpmail
-  return 0;
+const sendingOTPEmail = async (mail, otp, reason) => {
+  const email = new Email('', mail, '');
+  if (reason === 'Login') {
+    await email.sendLoginOtp(otp);
+  } else {
+    console.log('register');
+    await email.sendRegistrationOtp(otp);
+  }
 };
 
 exports.sendOtp = catchAsync(async (req, res, next) => {
@@ -53,6 +59,7 @@ exports.sendOtp = catchAsync(async (req, res, next) => {
       sendingOTPEmail(mailOrMobile, otp);
     }
   } catch (error) {
+    console.log(error.message);
     return next(
       new AppError('Unable to send OTP. Please use your credentials.', 400)
     );
