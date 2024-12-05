@@ -25,18 +25,25 @@ const sendingOTPMobile = async (mobileNum, otp, reason) => {
   const sms = new SMS('', mobileNum);
   if (reason === 'Login') {
     await sms.loginOTP(otp);
-  } else {
+  } else if (reason === 'Registration') {
     await sms.registrationRquest(otp);
+  } else if (reason === 'Registration confirmed') {
+    await sms.sendWelcome();
+  } else {
+    await sms.forgotPasswordOTP(otp);
   }
 };
 
-const sendingOTPEmail = async (mail, otp, reason) => {
-  const email = new Email('', mail, '');
+const sendingOTPEmail = async (mail, otp, reason, userId = '') => {
+  const email = new Email(userId, mail, '');
   if (reason === 'Login') {
     await email.sendLoginOtp(otp);
-  } else {
-    console.log('register');
+  } else if (reason === 'Registration') {
     await email.sendRegistrationOtp(otp);
+  } else if (reason === 'Registration confirmed') {
+    await email.sendRegistrationConfirmed();
+  } else {
+    await email.forgotPasswordOtp(otp);
   }
 };
 
@@ -56,10 +63,9 @@ exports.sendOtp = catchAsync(async (req, res, next) => {
     if (isMobileNumber) {
       await sendingOTPMobile(mailOrMobile, otp, otpReason);
     } else {
-      sendingOTPEmail(mailOrMobile, otp);
+      await sendingOTPEmail(mailOrMobile, otp, otpReason);
     }
   } catch (error) {
-    console.log(error.message);
     return next(
       new AppError('Unable to send OTP. Please use your credentials.', 400)
     );
@@ -162,7 +168,17 @@ exports.updateOtpDetails = catchAsync(async (req, res, next) => {
     const query = `UPDATE azst_customers_tbl SET azst_customer_status = 1 
                     WHERE azst_customer_id =  ? `;
     await db(query, [azst_customer_id]);
-    new Sms(azst_customer_id, '').sendWelcome(mailOrMobile);
+    const isMobileNumber = /^[6-9]\d{9}$/.test(mailOrMobile);
+    if (isMobileNumber) {
+      await sendingOTPMobile(mailOrMobile, '', 'Registration confirmed');
+    } else {
+      sendingOTPEmail(
+        mailOrMobile,
+        '',
+        'Registration confirmed',
+        azst_customer_id
+      );
+    }
   }
 
   const jwtToken = createSendToken(azst_customer_id, key);

@@ -13,6 +13,7 @@ const {
 } = require('../../Utils/transctions');
 
 const { getShipToken } = require('../../shipRocket/shipInstance');
+const Email = require('../../Utils/email');
 
 exports.cancelOrder = catchAsync(async (req, res, next) => {
   const { orderId, reason } = req.body;
@@ -112,11 +113,24 @@ exports.cancelOrder = catchAsync(async (req, res, next) => {
 
       // Commit transaction
       await commitTransaction();
+      const {
+        user_id,
+        user_mobile,
+        user_email,
+        user_acceptsms,
+        user_acceptemail,
+      } = req.userDetails;
 
-      // Send SMS notification
-      const smsService = new Sms(cancelledBy, null);
-      await smsService.getUserDetails();
-      await smsService.orderCancel(orderId);
+      if (user_acceptemail !== 'No') {
+        // Send Email notification
+        const emailService = new Email('', user_email);
+        await emailService.sendorderCancel(orderId);
+      }
+      if (user_acceptsms !== 'No') {
+        // Send SMS notification
+        const smsService = new Sms('', user_mobile);
+        await smsService.orderCancel(orderId);
+      }
 
       res.status(200).json({
         message,
@@ -145,8 +159,8 @@ exports.updateOrderQuantity = async (req, res, next) => {
   try {
     // Fetch products associated with the order
     const query = `
-      SELECT azst_order_product_id, azst_order_variant_id, azst_order_qty 
-      FROM azst_ordersummary_tbl 
+      SELECT azst_order_product_id, azst_order_variant_id, azst_order_qty
+      FROM azst_ordersummary_tbl
       WHERE azst_orders_id = ?`;
     const [products] = await dbPool.query(query, [orderId]);
 
@@ -155,34 +169,53 @@ exports.updateOrderQuantity = async (req, res, next) => {
       throw new AppError('No products found for the specified order ID', 404);
     }
 
-    // Prepare bulk update queries
-    const updates = products.map(
-      ({ azst_order_product_id, azst_order_variant_id, azst_order_qty }) => {
-        const qty = parseInt(azst_order_qty, 10);
-        const values = [
-          qty,
-          qty,
-          inventoryId,
-          azst_order_product_id,
-          azst_order_variant_id,
-        ];
+    for (let product of products) {
+      const { azst_order_product_id, azst_order_variant_id, azst_order_qty } =
+        product;
 
-        return {
-          query: `
-          UPDATE azst_inventory_product_mapping 
+      const qty = parseInt(azst_order_qty, 10);
+      const values = [
+        qty,
+        qty,
+        inventoryId,
+        azst_order_product_id,
+        azst_order_variant_id,
+      ];
+      const query = `
+          UPDATE azst_inventory_product_mapping
           SET azst_ipm_onhand_quantity = azst_ipm_onhand_quantity + ?,
               azst_ipm_commit_quantity = azst_ipm_commit_quantity - ?
-          WHERE azst_ipm_inventory_id = ? AND azst_ipm_product_id = ? AND azst_ipm_variant_id = ?`,
-          values,
-        };
-      }
-    );
+          WHERE azst_ipm_inventory_id = ? AND azst_ipm_product_id = ? AND azst_ipm_variant_id = ?`;
+      await dbPool.query(query, values);
+    }
+    // Prepare bulk update queries
+    // const updates = products.map(
+    //   ({ azst_order_product_id, azst_order_variant_id, azst_order_qty }) => {
+    //     const qty = parseInt(azst_order_qty, 10);
+    //     const values = [
+    //       qty,
+    //       qty,
+    //       inventoryId,
+    //       azst_order_product_id,
+    //       azst_order_variant_id,
+    //     ];
 
-    // Execute updates in parallel
-    const updatePromises = updates.map(({ query, values }) =>
-      dbPool.query(query, values)
-    );
-    await Promise.all(updatePromises);
+    //     return {
+    //       query: `
+    //       UPDATE azst_inventory_product_mapping
+    //       SET azst_ipm_onhand_quantity = azst_ipm_onhand_quantity + ?,
+    //           azst_ipm_commit_quantity = azst_ipm_commit_quantity - ?
+    //       WHERE azst_ipm_inventory_id = ? AND azst_ipm_product_id = ? AND azst_ipm_variant_id = ?`,
+    //       values,
+    //     };
+    //   }
+    // );
+
+    // // Execute updates in parallel
+    // const updatePromises = updates.map(({ query, values }) =>
+    //   dbPool.query(query, values)
+    // );
+    // await Promise.all(updatePromises);
   } catch (error) {
     throw new AppError(
       error.message || 'Failed to update order quantities',

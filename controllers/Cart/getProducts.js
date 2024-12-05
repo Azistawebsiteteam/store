@@ -4,6 +4,7 @@ const db = require('../../Database/dbconfig');
 const catchAsync = require('../../Utils/catchAsync');
 const AppError = require('../../Utils/appError');
 const Sms = require('../../Utils/sms');
+const Email = require('../../Utils/email');
 
 const getImageName = (images) => {
   const parsedImages = JSON.parse(images);
@@ -269,8 +270,18 @@ const removeFromCart = catchAsync(async (req, res, next) => {
   res.status(200).json({ message: 'Cart updated successfully' });
 });
 
-const abandonmentCart = catchAsync(async (req, res, next) => {
-  const query = `SELECT
+const getabandonmentCartList = async (req, res, next) => {
+  let subQuery = req.userId ? `WHERE c.azst_customer_id = ${req.userId}` : '';
+  try {
+    const variantImageBaseUrl = `${req.protocol}://${req.get(
+      'host'
+    )}/api/images/product/variantimage/`;
+
+    const productImageBaseUrl = `${req.protocol}://${req.get(
+      'host'
+    )}/api/images/product/`;
+
+    const query = `SELECT
                   c.azst_cart_id,
                   c.azst_cart_product_id,
                   c.azst_cart_variant_id,
@@ -283,37 +294,37 @@ const abandonmentCart = catchAsync(async (req, res, next) => {
                   cu.azst_customer_mobile,
                   cu.azst_customer_email,
                   p.product_url_title,
-                  CONCAT(?, v.variant_image) AS variant_image,
+                  p.product_main_title,
+                  CONCAT('${variantImageBaseUrl}', v.variant_image) AS variant_image,
                   p.compare_at_price AS product_compare_at_price,
                   p.price,
                   v.compare_at_price AS variant_compare_at_price,
                   v.offer_price,
                   v.offer_percentage,
-                  CONCAT(?, p.image_src) AS product_image,
+                  CONCAT('${productImageBaseUrl}', p.image_src) AS product_image,
                   p.is_varaints_aval
                 FROM azst_cart_tbl c
                 LEFT JOIN azst_customers_tbl cu ON c.azst_customer_id = cu.azst_customer_id
                 LEFT JOIN azst_sku_variant_info v ON c.azst_cart_variant_id = v.id
                 LEFT JOIN azst_products p ON c.azst_cart_product_id = p.id
-                ORDER BY azst_cart_added_on DESC
-              `;
+                ${subQuery}
+                ORDER BY azst_cart_added_on DESC`;
 
-  const variantImageBaseUrl = `${req.protocol}://${req.get(
-    'host'
-  )}/api/images/product/variantimage/`;
+    const result = await db(query);
+    return result;
+  } catch (error) {
+    throw new AppError(error.message, 400);
+  }
+};
 
-  const productImageBaseUrl = `${req.protocol}://${req.get(
-    'host'
-  )}/api/images/product/`;
-
-  const result = await db(query, [variantImageBaseUrl, productImageBaseUrl]);
-
-  res.status(200).json(result);
+const abandonmentCart = catchAsync(async (req, res, next) => {
+  const products = await getabandonmentCartList(req, res, next);
+  res.status(200).json(products);
 });
 
-const abandonmentCartUsers = async () => {
+const abandonmentCartUsers = async (req, res, next) => {
   const query = `SELECT DISTINCT c.azst_customer_id, cu.azst_customer_mobile,
-                   cu.azst_customer_email
+                   cu.azst_customer_email,cu.azst_customer_acceptemail_marketing,cu.azst_customer_acceptsms_marketing
                    FROM azst_cart_tbl c
                    LEFT JOIN azst_customers_tbl cu ON c.azst_customer_id = cu.azst_customer_id
                    WHERE 
@@ -324,10 +335,23 @@ const abandonmentCartUsers = async () => {
   const result = await db(query);
 
   for (const cu of result) {
-    const { azst_customer_id, azst_customer_mobile, azst_customer_email } = cu;
+    const {
+      azst_customer_id,
+      azst_customer_mobile,
+      azst_customer_acceptsms_marketing,
+      azst_customer_email,
+      azst_customer_acceptemail_marketing,
+    } = cu;
 
     // Send SMS for each customer, waiting for each one to complete before the next
-    await new Sms(azst_customer_id, azst_customer_mobile).cartCheckout();
+    if (azst_customer_acceptsms_marketing !== 'No') {
+      await new Sms(azst_customer_id, azst_customer_mobile).cartCheckout();
+    }
+    if (azst_customer_acceptemail_marketing !== 'No') {
+      req.userId = azst_customer_id;
+      const products = await getabandonmentCartList(req, res, next);
+      await new Email('', azst_customer_email, '').cartReminder(products);
+    }
   }
 };
 

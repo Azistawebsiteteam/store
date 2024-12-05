@@ -16,6 +16,7 @@ router.post('/all', ordersCtrl.getAllOrdrs);
 router.post('/stats', ordersCtrl.getOrderStatics);
 router.post('/confirm', ordersCtrl.confirmOrder);
 router.post('/delivery', ordersCtrl.deliveryOrder);
+router.post('/delivery/delay', ordersCtrl.delayDelivery);
 router.post('/order/details', ordersCtrl.getOrderDetails);
 router.get('/refund-request', returnAndReplaceCrl.getRefunRequestList);
 router.post(

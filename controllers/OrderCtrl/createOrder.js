@@ -63,6 +63,7 @@ exports.getCartDetails = catchAsync(async (req, res, next) => {
         ac.azst_cart_dsc_amount,
         ac.azst_cart_dsc_code,
         ac.azst_cart_dsc_by_ids,
+        ap.product_main_title,
         ap.price,
         ap.compare_at_price as  product_compare_at_price,
         ap.is_taxable,
@@ -107,7 +108,13 @@ exports.placeOrder = catchAsync(async (req, res, next) => {
       throw new AppError('No products found in the cart', 400);
     }
 
-    const { user_id, user_email, user_mobile } = req.userDetails;
+    const {
+      user_id,
+      user_email,
+      user_mobile,
+      user_acceptsms,
+      user_acceptemail,
+    } = req.userDetails;
 
     if (
       paymentMethod === 'RazorPay' &&
@@ -193,7 +200,17 @@ exports.placeOrder = catchAsync(async (req, res, next) => {
 
     //await new Email(req.userDetails).sendOrderStatus(orderId);
     await commitTransaction(); // Commit transaction
-    await new Sms(null, user_mobile).orderPlaced(orderId);
+    if (user_acceptsms !== 'No') {
+      await new Sms(null, user_mobile).orderPlaced(orderId);
+    }
+    if (user_acceptemail !== 'No') {
+      await new Email(null, user_email).orderPlaced(
+        orderId,
+        orderTotalAmount,
+        req.cartProducts
+      );
+    }
+
     res.status(200).json({ orderId, message: 'Order placed successfully' });
   } catch (error) {
     await rollbackTransaction(); // Rollback transaction on error
@@ -388,7 +405,7 @@ exports.updateDiscountUsageOfCustomer = async (req, res, next) => {
   if (typeof discountCode === 'string') {
     codes = JSON.parse(discountCode); // Ensure valid JSON array
   } else {
-    codes = discountCode; // Assume it's an array
+    codes = discountCode;
   }
 
   for (let code of codes) {
@@ -396,36 +413,3 @@ exports.updateDiscountUsageOfCustomer = async (req, res, next) => {
     await dbPool.query(query, values);
   }
 };
-
-// azst_ordersummary_id,
-//   azst_orders_id,
-//   azst_order_product_id,
-//   azst_order_variant_id,
-//   azst_order_qty,
-//   azst_order_delivery_method,
-//   azst_product_price,
-// azst_product_compareat_price,
-// azst_product_taxtype,
-// azst_product_taxname,
-// azst_product_taxvalue,
-// azst_product_type,
-// azst_dsc_amount,
-// azst_dsc_code,
-// azst_dsc_by_ids,
-//   azst_product_is_returned,
-//   azst_product_return_date;
-
-// azst_orderinfo_id,
-//   azst_orders_id,
-//   azst_orders_customer_id,
-//   azst_addressbook_id,
-//   azst_orderinfo_notes,
-//   azst_orderinfo_note_attributes,
-//   azst_orderinfo_created_on,
-//   azst_orderinfo_shippingtype,
-//   azst_orderinfo_shpping_amount,
-//   azst_orderinfo_billing_adrs_issame,
-//   azst_order_exptd_delivery_on,
-//   azst_order_ship_from,
-//   azst_order_ship_method,
-//   azst_order_shipment_id;

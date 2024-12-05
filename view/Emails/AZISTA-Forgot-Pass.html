@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Return Request Rejected - Azista Store</title>
+    <title>Password Recovery - Azista</title>
     <style>
       body {
         font-family: Arial, sans-serif;
@@ -28,7 +28,7 @@
       }
       .header h1 {
         font-size: 26px;
-        color: #e74c3c;
+        color: #333333;
         margin-top: 20px;
         margin-bottom: 5px;
       }
@@ -85,27 +85,6 @@
         margin: 0 8px;
         font-weight: bold;
       }
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 20px;
-      }
-      table,
-      th,
-      td {
-        border: 1px solid #ddd;
-      }
-      th,
-      td {
-        padding: 12px;
-        text-align: left;
-      }
-      th {
-        background-color: #f2f2f2;
-      }
-      td {
-        background-color: #fafafa;
-      }
     </style>
   </head>
   <body>
@@ -113,52 +92,21 @@
       <!-- Header Section with Logo -->
       <div class="header">
         <img
-          ssrc="https://www.azistaindustries.com/assets/img/azista_logo.svg"
+          src="https://www.azistaindustries.com/assets/img/azista_logo.svg"
           alt="Azista Logo" />
-        <h1>Return Request Rejected</h1>
+        <h1>Password Recovery Request</h1>
       </div>
 
       <!-- Content Section -->
       <div class="content">
-        <p>Hello,</p>
+        <p>Dear User,</p>
         <p>
-          We regret to inform you that your product return request for Order
-          <strong>{{orderId}}</strong> has been rejected.
+          We received a request to reset your forgotten password. Please use
+          this OTP below to proceed with resetting your password:
         </p>
-
-        <!-- Product Table -->
-        <!-- The return request was declined for the following products: -->
-        <!-- <table>
-                <tr>
-                    <th>Product Name</th>
-                    <th>Quantity</th>
-                    <th>Price</th>
-                    <th>Total</th>
-                </tr>
-                <tr>
-                    <td>Product Name 1</td>
-                    <td>1</td>
-                    <td>$100.00</td>
-                    <td>$100.00</td>
-                </tr>
-                <tr>
-                    <td>Product Name 2</td>
-                    <td>2</td>
-                    <td>$50.00</td>
-                    <td>$100.00</td>
-                </tr>
-                <tr>
-                    <td colspan="3" style="text-align: right; font-weight: bold;">Total</td>
-                    <td style="font-weight: bold;">$200.00</td>
-                </tr>
-            </table> -->
-
-        <p>
-          We understand this may be disappointing, and we apologize for the
-          inconvenience. If you need any assistance or have questions regarding
-          your order, please do not hesitate to contact our support team at
-          <strong>18001020576</strong>.
-        </p>
+        <p><strong>OTP: {{otp}}</strong></p>
+        <p>If you did not make this request, kindly disregard this message.</p>
+        <p>Thank you for being a part of Azista!</p>
       </div>
 
       <!-- Footer Section -->

@@ -1,105 +1,114 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Azista Store OTP</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-        }
-        .container {
-            width: 100%;
-            max-width: 600px;
-            margin: auto;
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-        .header {
-            padding: 30px 20px;
-            text-align: center;
-        }
-        .header img {
-            max-width: 150px;
-            height: auto;
-        }
-        .header h1 {
-            font-size: 26px;
-            color: #333333;
-            margin-top: 20px;
-            margin-bottom: 5px;
-        }
-        .header p {
-            font-size: 18px;
-            color: #777777;
-            margin: 0;
-        }
-        .content {
-            padding: 20px;
-            color: #333333;
-            font-size: 16px;
-            line-height: 1.6;
-        }
-        .content p {
-            margin: 15px 0;
-        }
-        .footer {
-            padding: 20px;
-            text-align: center;
-            font-size: 14px;
-            color: #888888;
-        }
-        .footer p {
-            margin: 5px 0;
-        }
-        .footer a {
-            color: #333333;
-            text-decoration: none;
-            font-weight: bold;
-        }
-        .social-icons {
-            margin-top: 10px;
-        }
-        .social-icons a {
-            text-decoration: none;
-            color: #333333;
-            font-size: 18px;
-            margin: 0 8px;
-            font-weight: bold;
-        }
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+      }
+      .container {
+        width: 100%;
+        max-width: 600px;
+        margin: auto;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      .header {
+        padding: 30px 20px;
+        text-align: center;
+      }
+      .header img {
+        max-width: 150px;
+        height: auto;
+      }
+      .header h1 {
+        font-size: 26px;
+        color: #333333;
+        margin-top: 20px;
+        margin-bottom: 5px;
+      }
+      .header p {
+        font-size: 18px;
+        color: #777777;
+        margin: 0;
+      }
+      .content {
+        padding: 20px;
+        color: #333333;
+        font-size: 16px;
+        line-height: 1.6;
+      }
+      .content p {
+        margin: 15px 0;
+      }
+      .footer {
+        padding: 20px;
+        text-align: center;
+        font-size: 14px;
+        color: #888888;
+      }
+      .footer p {
+        margin: 5px 0;
+      }
+      .footer a {
+        color: #333333;
+        text-decoration: none;
+        font-weight: bold;
+      }
+      .social-icons {
+        margin-top: 10px;
+      }
+      .social-icons a {
+        text-decoration: none;
+        color: #333333;
+        font-size: 18px;
+        margin: 0 8px;
+        font-weight: bold;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div class="container">
-        <!-- Header Section with Logo -->
-        <div class="header">
-            <img src="Azista_logo_Final_330x150.avif" alt="Azista Logo">
-            <h1>Azista Store OTP</h1>
-        </div>
+      <!-- Header Section with Logo -->
+      <div class="header">
+        <img src="https://www.azistaindustries.com/assets/img/azista_logo.svg" alt="Azista Logo" />
+        <h1>Azista Store OTP</h1>
+      </div>
 
-        <!-- Content Section -->
-        <div class="content">
-            <p>Hello,</p>
-            <p>Your One-Time Password (OTP) for logging into Azista Store is:</p>
-            <h2 style="text-align: center; color: #333;">{#var#}</h2>
-            <p>Please use this code to complete your login. For your security, do not share this OTP with anyone.</p>
-            <p>If you did not request this OTP, please contact Support.</p>
-        </div>
+      <!-- Content Section -->
+      <div class="content">
+        <p>Hello,</p>
+        <p>Your One-Time Password (OTP) for logging into Azista Store is:</p>
+        <h2 style="text-align: center; color: #333">{{otp}}</h2>
+        <p>
+          Please use this code to complete your login. For your security, do not
+          share this OTP with anyone.
+        </p>
+        <p>If you did not request this OTP, please contact Support.</p>
+      </div>
 
-        <!-- Footer Section -->
-        <div class="footer">
-            <p>Need assistance? <a href="mailto:ecommerce@azistaindustries.com">ecommerce@azistaindustries.com</a> | Call us: <a href="tel:18001020576">1800 102 0576</a></p>
-            <p>&copy; 2024 Azista Store. All rights reserved.</p>
-            <div class="social-icons">
-                <a href="https://facebook.com/azista" target="_blank">Facebook</a> |
-                <a href="https://instagram.com/azista" target="_blank">Instagram</a> |
-                <a href="https://youtube.com/azista" target="_blank">YouTube</a> |
-                <a href="https://twitter.com/azista" target="_blank">X</a>
-            </div>
+      <!-- Footer Section -->
+      <div class="footer">
+        <p>
+          Need assistance?
+          <a href="mailto:ecommerce@azistaindustries.com"
+            >ecommerce@azistaindustries.com</a
+          >
+          | Call us: <a href="tel:18001020576">1800 102 0576</a>
+        </p>
+        <p>&copy; {{currentYear}} Azista Store. All rights reserved.</p>
+        <div class="social-icons">
+          <a href="https://facebook.com/azista" target="_blank">Facebook</a> |
+          <a href="https://instagram.com/azista" target="_blank">Instagram</a> |
+          <a href="https://youtube.com/azista" target="_blank">YouTube</a> |
+          <a href="https://twitter.com/azista" target="_blank">X</a>
         </div>
+      </div>
     </div>
-</body>
+  </body>
 </html>

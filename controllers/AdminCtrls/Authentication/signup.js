@@ -1,8 +1,9 @@
-const db = require('../../../Database/dbconfig');
-const multerInstance = require('../../../Utils/multer');
 const sharp = require('sharp');
 const fs = require('fs');
 const Joi = require('joi');
+
+const db = require('../../../Database/dbconfig');
+const multerInstance = require('../../../Utils/multer');
 
 const AppError = require('../../../Utils/appError');
 const catchAsync = require('../../../Utils/catchAsync');
@@ -104,6 +105,35 @@ exports.updateDetails = catchAsync(async (req, res, next) => {
                         WHERE azst_admin_details_admin_id = ?`;
 
   const values = [fullName, mobileNumber, email, profilePic, req.empId];
-  await db(updateQuery, values);
-  res.status(200).json({ message: 'Updated details successfully' });
+  const result = await db(updateQuery, values);
+  if (result.affectedRows === 1) {
+    const adminDetails = {
+      fullName,
+      mobileNumber,
+      email,
+      profilePic: `${req.protocol}://${req.get(
+        'host'
+      )}/api/images/admin/profile/${profilePic}`,
+    };
+    return res.status(200).json({
+      admin_details: adminDetails,
+      message: 'Updated details successfully',
+    });
+  }
+  res.status(400).json({
+    admin_details: {},
+    message: 'Oops! Something went wrong',
+  });
+});
+
+exports.removePic = catchAsync(async (req, res, next) => {
+  const { azst_admin_details_profile_photo } = req.adminDetails;
+  const imagePath = `Uploads/AdminImages/${azst_admin_details_profile_photo}`;
+  if (imagePath !== `Uploads/AdminImages/blank-profile-picture.png`) {
+    fs.unlink(imagePath, (err) => {});
+    const query = `UPDATE azst_admin_details SET  azst_admin_details_profile_photo = 'blank-profile-picture.png' WHERE azst_admin_details_admin_id = ?`;
+    await db(query, [req.empId]);
+  }
+
+  res.status(200).json({ message: 'Profile picture Removed successfully' });
 });

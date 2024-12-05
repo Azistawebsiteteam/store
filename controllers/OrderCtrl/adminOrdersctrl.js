@@ -13,6 +13,7 @@ const {
   rollbackTransaction,
   startTransaction,
 } = require('../../Utils/transctions');
+const Email = require('../../Utils/email');
 
 exports.getOrderStatics = catchAsync(async (req, res, next) => {
   const { formDays } = req.body;
@@ -325,6 +326,30 @@ exports.getCustomerOrders = catchAsync(async (req, res, next) => {
   res.status(200).json(ordersData);
 });
 
+const sendNotifications = async (customerId, orderId, action) => {
+  const smsService = new Sms(customerId, null, true);
+  const emailService = new Email(customerId, null, true);
+  if (action === 'Confirm') {
+    await smsService.orderConfirm(orderId);
+    await emailService.sendOrderConfirmEmail(orderId);
+  } else if (action === 'deliveryStatus') {
+    await smsService.orderTrack(orderId);
+    await emailService.sendOrderTrackEmail(orderId);
+  } else if (action === 'delay delivery') {
+    await smsService.orderDelay(orderId);
+    await emailService.sendOrderDelayedEmail(orderId);
+  } else {
+    await smsService.orderRected(orderId);
+    await emailService.sendOrderRectedEmail(orderId);
+  }
+};
+
+exports.delayDelivery = catchAsync(async (req, res, next) => {
+  const { orderId, customerId } = req.body;
+  sendNotifications(customerId, orderId, 'delay delivery');
+  res.status(200).json({ message: 'Nofitication send ' });
+});
+
 exports.deliveryOrder = catchAsync(async (req, res, next) => {
   const { orderId, deliveryStatus } = req.body;
 
@@ -374,6 +399,7 @@ exports.deliveryOrder = catchAsync(async (req, res, next) => {
 
   // If deliveryStatus is 1, respond immediately and skip further updates
   if (parseInt(deliveryStatus) === 1) {
+    await sendNotifications(azst_orders_customer_id, orderId, 'deliveryStatus');
     return res
       .status(200)
       .json({ message: 'Order delivery status updated successfully' });
@@ -442,12 +468,13 @@ exports.confirmOrder = catchAsync(async (req, res, next) => {
   const { orderId, orderStatus, reason, inventoryId, shippingMethod } =
     req.body;
 
-  const query = `SELECT azst_orders_confirm_status FROM  azst_orders_tbl WHERE azst_orders_id = ? AND azst_orders_status = 1`;
+  const query = `SELECT azst_orders_confirm_status ,azst_orders_customer_id FROM  azst_orders_tbl WHERE azst_orders_id = ? AND azst_orders_status = 1`;
   const [order] = await db(query, [orderId]);
   if (!order) return res.status(404).json({ message: 'Order not found ' });
-  if (order.azst_orders_confirm_status === 1)
+  const { azst_orders_confirm_status, azst_orders_customer_id } = order;
+  if (azst_orders_confirm_status === 1)
     return res.status(400).json({ message: 'order already Processed ' });
-  if (order.azst_orders_confirm_status === 2)
+  if (azst_orders_confirm_status === 2)
     return res.status(400).json({ message: 'order already Rejected ' });
 
   const isOrderConfirmed = orderStatus === '1';
@@ -470,39 +497,23 @@ exports.confirmOrder = catchAsync(async (req, res, next) => {
         };
 
     await updateOrderStatus(orderId, statusData);
-
-    // Get customer ID
-    const customerQuery = `SELECT azst_orders_customer_id FROM azst_orders_tbl WHERE azst_orders_id = ?`;
-    const [customer] = await executeQuery(customerQuery, [orderId]);
-    const customerId = customer?.azst_orders_customer_id;
-    if (!customerId) throw new AppError('Customer not found', 404);
-
-    const smsService = new Sms(customerId, null);
-    await smsService.getUserDetails();
-
+    const customerId = azst_orders_customer_id;
+    let message = 'Order Rejected Successfully';
     if (isOrderConfirmed) {
       // Update shipping details
       const shippingQuery = `
         UPDATE azst_orderinfo_tbl
         SET azst_order_ship_method = ?, azst_order_ship_from = ?
         WHERE azst_orders_id = ?`;
-      await executeQuery(shippingQuery, [shippingMethod, inventoryId, orderId]);
 
+      await executeQuery(shippingQuery, [shippingMethod, inventoryId, orderId]);
       await exports.shipOrderTrack(req, res, next);
       req.body.orderAction = 'Confirm';
-      const message = await exports.updateInventory(req, res, next);
-
-      // Commit transaction
-      await commitTransaction();
-      await smsService.orderConfirm(orderId);
-      res.status(200).json({ message });
-    } else {
-      await commitTransaction();
-      await smsService.orderRected(orderId);
-      return res.status(200).json({
-        message: 'Order Rejected Successfully',
-      });
+      message = await exports.updateInventory(req, res, next);
     }
+    await commitTransaction();
+    sendNotifications(customerId, orderId, req.body.orderAction);
+    res.status(200).json({ message });
   } catch (error) {
     await rollbackTransaction();
     return next(new AppError(error.message || 'Something went wrong', 500));
@@ -526,23 +537,39 @@ exports.updateInventory = async (req, res, next) => {
       ? 'azst_ipm_onhand_quantity = azst_ipm_onhand_quantity - ?, azst_ipm_commit_quantity = azst_ipm_commit_quantity + ?'
       : 'azst_ipm_avbl_quantity = azst_ipm_avbl_quantity - ?, azst_ipm_commit_quantity = azst_ipm_commit_quantity - ?';
 
-  const updatePromises = products.map(
-    ({ azst_order_product_id, azst_order_variant_id, azst_order_qty }) =>
-      executeQuery(
-        `UPDATE azst_inventory_product_mapping
+  for (let product of products) {
+    const { azst_order_product_id, azst_order_variant_id, azst_order_qty } =
+      product;
+    const query = `UPDATE azst_inventory_product_mapping
        SET ${updateColumn}
-       WHERE azst_ipm_inventory_id = ? AND azst_ipm_product_id = ? AND azst_ipm_variant_id = ?`,
-        [
-          azst_order_qty,
-          azst_order_qty,
-          inventoryId,
-          azst_order_product_id,
-          azst_order_variant_id,
-        ]
-      )
-  );
+       WHERE azst_ipm_inventory_id = ? AND azst_ipm_product_id = ? AND azst_ipm_variant_id = ?`;
+    const values = [
+      azst_order_qty,
+      azst_order_qty,
+      inventoryId,
+      azst_order_product_id,
+      azst_order_variant_id,
+    ];
+    const result = await dbPool.query(query, values);
+  }
 
-  await Promise.all(updatePromises);
+  // const updatePromises = products.map(
+  //   ({ azst_order_product_id, azst_order_variant_id, azst_order_qty }) =>
+  //     executeQuery(
+  //       `UPDATE azst_inventory_product_mapping
+  //      SET ${updateColumn}
+  //      WHERE azst_ipm_inventory_id = ? AND azst_ipm_product_id = ? AND azst_ipm_variant_id = ?`,
+  //       [
+  //         azst_order_qty,
+  //         azst_order_qty,
+  //         inventoryId,
+  //         azst_order_product_id,
+  //         azst_order_variant_id,
+  //       ]
+  //     )
+  // );
+
+  // await Promise.all(updatePromises);
 
   return orderAction === 'Confirm'
     ? 'Order Confirmed and Inventory Updated Successfully'

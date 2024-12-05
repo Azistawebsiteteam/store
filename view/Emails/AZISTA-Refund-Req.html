@@ -1,126 +1,136 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Refund Request Received - Azista Store</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-        }
-        .container {
-            width: 100%;
-            max-width: 600px;
-            margin: auto;
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-        .header {
-            padding: 30px 20px;
-            text-align: center;
-        }
-        .header img {
-            max-width: 150px;
-            height: auto;
-        }
-        .header h1 {
-            font-size: 26px;
-            color: #4CAF50;
-            margin-top: 20px;
-            margin-bottom: 5px;
-        }
-        .header p {
-            font-size: 18px;
-            color: #777777;
-            margin: 0;
-        }
-        .content {
-            padding: 20px;
-            color: #333333;
-            font-size: 16px;
-            line-height: 1.6;
-        }
-        .content p {
-            margin: 15px 0;
-        }
-        .cta-button {
-            display: inline-block;
-            margin: 20px 0;
-            padding: 12px 30px;
-            background-color: #333333;
-            color: #ffffff;
-            font-size: 16px;
-            font-weight: bold;
-            text-decoration: none;
-            border-radius: 5px;
-            transition: background-color 0.3s ease;
-        }
-        .cta-button:hover {
-            background-color: #555555;
-        }
-        .footer {
-            padding: 20px;
-            text-align: center;
-            font-size: 14px;
-            color: #888888;
-        }
-        .footer p {
-            margin: 5px 0;
-        }
-        .footer a {
-            color: #333333;
-            text-decoration: none;
-            font-weight: bold;
-        }
-        .social-icons {
-            margin-top: 10px;
-        }
-        .social-icons a {
-            text-decoration: none;
-            color: #333333;
-            font-size: 18px;
-            margin: 0 8px;
-            font-weight: bold;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-        table, th, td {
-            border: 1px solid #ddd;
-        }
-        th, td {
-            padding: 12px;
-            text-align: left;
-        }
-        th {
-            background-color: #f2f2f2;
-        }
-        td {
-            background-color: #fafafa;
-        }
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+      }
+      .container {
+        width: 100%;
+        max-width: 600px;
+        margin: auto;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      .header {
+        padding: 30px 20px;
+        text-align: center;
+      }
+      .header img {
+        max-width: 150px;
+        height: auto;
+      }
+      .header h1 {
+        font-size: 26px;
+        color: #4caf50;
+        margin-top: 20px;
+        margin-bottom: 5px;
+      }
+      .header p {
+        font-size: 18px;
+        color: #777777;
+        margin: 0;
+      }
+      .content {
+        padding: 20px;
+        color: #333333;
+        font-size: 16px;
+        line-height: 1.6;
+      }
+      .content p {
+        margin: 15px 0;
+      }
+      .cta-button {
+        display: inline-block;
+        margin: 20px 0;
+        padding: 12px 30px;
+        background-color: #333333;
+        color: #ffffff;
+        font-size: 16px;
+        font-weight: bold;
+        text-decoration: none;
+        border-radius: 5px;
+        transition: background-color 0.3s ease;
+      }
+      .cta-button:hover {
+        background-color: #555555;
+      }
+      .footer {
+        padding: 20px;
+        text-align: center;
+        font-size: 14px;
+        color: #888888;
+      }
+      .footer p {
+        margin: 5px 0;
+      }
+      .footer a {
+        color: #333333;
+        text-decoration: none;
+        font-weight: bold;
+      }
+      .social-icons {
+        margin-top: 10px;
+      }
+      .social-icons a {
+        text-decoration: none;
+        color: #333333;
+        font-size: 18px;
+        margin: 0 8px;
+        font-weight: bold;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+      }
+      table,
+      th,
+      td {
+        border: 1px solid #ddd;
+      }
+      th,
+      td {
+        padding: 12px;
+        text-align: left;
+      }
+      th {
+        background-color: #f2f2f2;
+      }
+      td {
+        background-color: #fafafa;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div class="container">
-        <!-- Header Section with Logo -->
-        <div class="header">
-            <img src="Azista_logo_Final_330x150.avif" alt="Azista Logo">
-            <h1>Refund Request Received</h1>
-        </div>
+      <!-- Header Section with Logo -->
+      <div class="header">
+        <img
+          src="https://www.azistaindustries.com/assets/img/azista_logo.svg"
+          alt="Azista Logo" />
+        <h1>Return Request Received</h1>
+      </div>
 
-        <!-- Content Section -->
-        <div class="content">
-            <p>Hello,</p>
-            <p>We’ve received your refund request for Order <strong>{#var#}</strong> from Azista Store. Our team will process your refund shortly. You will receive an update once the process is complete.</p>
-            <p>Thank you for your patience and understanding.</p>
+      <!-- Content Section -->
+      <div class="content">
+        <p>Hello,</p>
+        <p>
+          We have received your return request for Order
+          <strong>{{orderId}}</strong> from Azista Store. Our team will process
+          your return shortly. You will receive an update once the process is
+          complete.
+        </p>
+        <p>Thank you for your patience and understanding.</p>
 
-            <!-- Product Table -->
-            <p>Refund requested for the following products:</p>
+        <!-- Product Table -->
+        <!-- <p>Refund requested for the following products:</p>
             <table>
                 <tr>
                     <th>Product Name</th>
@@ -144,21 +154,26 @@
                     <td colspan="3" style="text-align: right; font-weight: bold;">Total</td>
                     <td style="font-weight: bold;">$200.00</td>
                 </tr>
-            </table>
+            </table> -->
+      </div>
 
+      <!-- Footer Section -->
+      <div class="footer">
+        <p>
+          Need assistance?
+          <a href="mailto:ecommerce@azistaindustries.com"
+            >ecommerce@azistaindustries.com</a
+          >
+          | Call us: <a href="tel:18001020576">1800 102 0576</a>
+        </p>
+        <p>&copy; {{currentYear}} Azista Store. All rights reserved.</p>
+        <div class="social-icons">
+          <a href="https://facebook.com/azista" target="_blank">Facebook</a> |
+          <a href="https://instagram.com/azista" target="_blank">Instagram</a> |
+          <a href="https://youtube.com/azista" target="_blank">YouTube</a> |
+          <a href="https://twitter.com/azista" target="_blank">X</a>
         </div>
-
-        <!-- Footer Section -->
-        <div class="footer">
-            <p>Need assistance? <a href="mailto:ecommerce@azistaindustries.com">ecommerce@azistaindustries.com</a> | Call us: <a href="tel:18001020576">1800 102 0576</a></p>
-            <p>&copy; 2024 Azista Store. All rights reserved.</p>
-            <div class="social-icons">
-                <a href="https://facebook.com/azista" target="_blank">Facebook</a> |
-                <a href="https://instagram.com/azista" target="_blank">Instagram</a> |
-                <a href="https://youtube.com/azista" target="_blank">YouTube</a> |
-                <a href="https://twitter.com/azista" target="_blank">X</a>
-            </div>
-        </div>
+      </div>
     </div>
-</body>
+  </body>
 </html>

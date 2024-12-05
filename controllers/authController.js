@@ -25,6 +25,8 @@ const mapUserDetails = (user, token_key) => {
       user_country: user.azst_customer_country,
       user_zip: user.azst_customer_zip,
       user_role: user.azst_admin_details_type,
+      user_acceptsms: user.azst_customer_acceptsms_marketing,
+      user_acceptemail: user.azst_customer_acceptemail_marketing,
     };
   }
   return {

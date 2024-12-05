@@ -29,6 +29,8 @@ router.post(
   signupCtrl.updateDetails
 );
 
+router.post('/remove/pic', loginCtrl.isAdminExisit, signupCtrl.removePic);
+
 router.post('/reset-password', loginCtrl.resetPassword);
 
 module.exports = router;

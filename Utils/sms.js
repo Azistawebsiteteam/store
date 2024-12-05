@@ -2,9 +2,10 @@ const axios = require('axios');
 const User = require('./User');
 
 module.exports = class SMS extends User {
-  constructor(userId, mobileNum) {
+  constructor(userId, mobileNum, check) {
     super(userId); // Automatically initializes `userDetails`
     this.mobileNum = mobileNum;
+    this.subcription = check;
     this.env = this.loadEnvVariables(); // Load environment variables
   }
 
@@ -50,14 +51,26 @@ module.exports = class SMS extends User {
     ) {
       await this.autoInitialize(); // Wait for userDetails to load
     }
-
-    console.log(this.userDetails, 'sms user details'); //  {} sms user details
+    if (
+      this.subcription &&
+      this.userDetails.azst_customer_acceptsms_marketing === 'No'
+    ) {
+      return;
+    }
+    this.mobileNum = this.mobileNum ?? this.userDetails.azst_customer_mobile;
     const url = this.constructUrl(templateContent);
-    await axios.post(url);
+    try {
+      await axios.post(url);
+    } catch (error) {}
   }
 
   async loginOTP(otp) {
     const templateContent = `Your OTP for Azista Store login is ${otp}. Do not share this code with anyone. Azista`;
+    await this.send(templateContent);
+  }
+
+  async forgotPasswordOTP(otp) {
+    const templateContent = `Dear User, We received a request to reset your forgotten password. Please use this OTP ${otp} to proceed with resetting your password. If you didn’t make this request, kindly disregard this message. Azista`;
     await this.send(templateContent);
   }
 
@@ -144,3 +157,38 @@ module.exports = class SMS extends User {
     await this.send(templateContent);
   }
 };
+
+//     {
+//   azst_customer_id: 20,
+//   azst_customer_fname: 'Rajender',
+//   azst_customer_lname: 'cheerneni',
+//   azst_customer_mobile: '7661067348',
+//   azst_customer_email: 'rajsri594@gmail.com',
+//   azst_customer_pwd: '$2b$10$q2KqrtHnkmGmnUpUd0Wf3uuTfOa8BL/4rLuxFGPZyCEgGM4YM3/8W',
+//   azst_customer_hno: '4-54/n',
+//   azst_customer_area: 'pochamma wada',
+//   azst_customer_city: 'jagityal',
+//   azst_customer_district: 'jagital',
+//   azst_customer_state: 'telangana',
+//   azst_customer_country: 'india',
+//   azst_customer_zip: '505454',
+//   azst_customer_landmark: 'cyber tower',
+//   azst_customer_acceptemail_marketing: 'Yes',
+//   azst_customer_company: 'comapny',
+//   azst_customer_address1: 'dcdd',
+//   azst_customer_address2: 'cksdjjekj',
+//   azst_customer_acceptsms_marketing: 'Yes',
+//   azst_customer_totalspent: '18689.00',
+//   azst_customer_totalorders: '7',
+//   azst_customer_note: null,
+//   azst_customer_taxexempts: null,
+//   azst_customer_tags: null,
+//   azst_customer_status: 1,
+//   azst_customer_createdon: 2024-10-03T05:33:03.000Z,
+//   azst_customer_updatedon: 2024-11-09T11:38:13.000Z,
+//   azst_customer_gender: 'Male',
+//   azst_customer_DOB: null,
+//   azst_customer_updatedby: null,
+//   azst_customer_wtsup_num: null,
+//   user_name: 'Rajender cheerneni'
+// } sms user details

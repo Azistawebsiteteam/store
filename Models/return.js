@@ -41,7 +41,7 @@ const refundSchema = Joi.object({
 });
 
 const refundUpdateSchema = Joi.object({
-  retunId: Joi.number().required(),
+  returnId: Joi.number().required(),
   comments: Joi.string().optional().max(250).allow(''),
   returnStatus: Joi.string().required().valid('Approved', 'Rejected'),
 });

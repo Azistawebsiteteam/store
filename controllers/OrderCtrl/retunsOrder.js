@@ -7,6 +7,7 @@ const Sms = require('../../Utils/sms');
 
 const razorpayInstance = require('../../Utils/razorpay');
 const multerInstance = require('../../Utils/multer');
+const Email = require('../../Utils/email');
 
 // Middleware to check if the order has been delivered
 exports.isOrderDelivered = catchAsync(async (req, res, next) => {
@@ -57,6 +58,24 @@ exports.getRefundStatus = catchAsync(async (req, res, next) => {
 });
 
 exports.uploadImage = multerInstance.single('bankFile');
+
+const sendNotifications = async (customerId, orderId, action, trackId) => {
+  const smsService = new Sms(customerId, null, true);
+  const emailService = new Email(customerId, null, true);
+  if (action === 'refundRequest') {
+    await smsService.refundRequest(orderId);
+    await emailService.sendRefundRequestEmail(orderId);
+  } else if (action === 'Approved') {
+    await smsService.refundInitiate(orderId);
+    await emailService.sendRefundInitiateEmail(orderId);
+  } else if (action === 'Refunded') {
+    await smsService.refundInitiate(orderId);
+    await emailService.sendPaymentRefundedEmail(orderId, trackId);
+  } else {
+    await smsService.refundRejected(orderId);
+    await emailService.sendRefundRejectedEmail(orderId);
+  }
+};
 
 // Main controller function to handle order return and refund
 exports.returnOrder = catchAsync(async (req, res, next) => {
@@ -129,11 +148,8 @@ exports.returnOrder = catchAsync(async (req, res, next) => {
       await sharp(req.file.buffer).toFile(`Uploads/AccountFiles/${imageName}`);
     }
 
-    // Send SMS notification to the customer
-
-    const smsService = new Sms(returnBy, user_mobile);
-    await smsService.refundRequest(orderId);
-
+    // Send  notification to the customer
+    sendNotifications(returnBy, orderId, 'refundRequest');
     return res.status(200).json({ message: 'Refund initiated successfully' });
   } else {
     return res.status(400).json({ message: 'Failed to Return try again' });
@@ -147,25 +163,18 @@ exports.getMyRefunRequestList = catchAsync(async (req, res, next) => {
 });
 
 exports.getRefunRequestList = catchAsync(async (req, res, next) => {
-  const query = `SELECT * FROM azst_order_returns WHERE admin_approval = 'Pending'`;
+  const query = `SELECT * FROM azst_order_returns WHERE admin_approval = 'Pending' ORDER BY return_date DESC `;
   const result = await db(query);
   res.status(200).json(result);
 });
 
-const sendSmsToCustomer = async (returnId, returnStatus) => {
+const sendSmsToCustomer = async (returnId, returnStatus, trackId) => {
   const query = `SELECT order_id, customer_id FROM azst_order_returns  WHERE return_id = ? `;
   const [customer] = await db(query, [returnId]);
 
   if (customer) {
-    const smsService = new Sms(customer.customer_id, null);
-    await smsService.getUserDetails();
-    if (returnStatus === 'Approved') {
-      await smsService.refundInitiate(customer.order_id);
-    } else if (returnStatus === 'Refunded') {
-      await smsService.paymentRefunded(customer.order_id);
-    } else {
-      await smsService.refundRejected(customer.order_id);
-    }
+    const { customer_id, order_id } = customer;
+    sendNotifications(customer_id, order_id, returnStatus, trackId);
   }
 };
 
@@ -178,6 +187,7 @@ exports.updateRefundStatus = catchAsync(async (req, res, next) => {
     UPDATE azst_order_returns 
     SET admin_approval = ?, admin_comments = ?, admin_id = ?, approval_action_on = ?
   `;
+
   const values = [returnStatus, comments, req.empId, today];
 
   // Append processing status if approved
@@ -200,7 +210,9 @@ exports.updateRefundStatus = catchAsync(async (req, res, next) => {
       .json({ message: `Refund ${returnStatus} successfully` });
   }
 
-  res.status(400).json({ message: 'Oops! Something went wrong' });
+  res
+    .status(400)
+    .json({ message: 'No Retrun Request Found with this id ' + returnId });
 });
 
 exports.initiateRefundAdmin = catchAsync(async (req, res, next) => {
@@ -218,10 +230,10 @@ exports.initiateRefundAdmin = catchAsync(async (req, res, next) => {
 
   if (!refundData) return next(new AppError('No refund request found', 404));
 
-  const { payment_id, refund_amount } = refundData;
+  const { payment_id, refund_amount, refund_method } = refundData;
 
   // Attempt to initiate the refund through an external function
-  if (refundMethod === 'Same Payment Method') {
+  if (refund_method === 'Same Payment Method') {
     try {
       const refundDetails = await exports.initiateRefund(
         payment_id,
@@ -246,7 +258,7 @@ exports.initiateRefundAdmin = catchAsync(async (req, res, next) => {
   const result = await db(updateQuery, values);
 
   if (result.affectedRows > 0) {
-    await sendSmsToCustomer(returnId, 'Refunded'); // Send SMS notification to the customer
+    await sendSmsToCustomer(returnId, 'Refunded', trackId);
     return res.status(200).json({ message: 'Payment refunded successfully' });
   }
 
