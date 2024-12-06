@@ -301,6 +301,9 @@ const getabandonmentCartList = async (req, res, next) => {
                   v.compare_at_price AS variant_compare_at_price,
                   v.offer_price,
                   v.offer_percentage,
+                  v.option1,
+                  v.option2,
+                  v.option3,
                   CONCAT('${productImageBaseUrl}', p.image_src) AS product_image,
                   p.is_varaints_aval
                 FROM azst_cart_tbl c
@@ -308,7 +311,7 @@ const getabandonmentCartList = async (req, res, next) => {
                 LEFT JOIN azst_sku_variant_info v ON c.azst_cart_variant_id = v.id
                 LEFT JOIN azst_products p ON c.azst_cart_product_id = p.id
                 ${subQuery}
-                ORDER BY azst_cart_added_on DESC`;
+                ORDER BY azst_cart_created_on DESC`;
 
     const result = await db(query);
     return result;
