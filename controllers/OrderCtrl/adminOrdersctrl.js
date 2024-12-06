@@ -98,7 +98,7 @@ exports.getAllOrdrs = catchAsync(async (req, res, next) => {
 
     const { error } = schema.validate({ customerId });
     if (error) return next(new AppError(error.message, 400));
-    filterQuery = 'WHERE azst_orders_customer_id = ?';
+    filterQuery = 'WHERE azst_orders_tbl.azst_orders_customer_id = ?';
     values.push(customerId);
   }
 

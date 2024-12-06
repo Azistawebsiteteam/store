@@ -40,8 +40,9 @@ exports.updateImage = catchAsync(async (req, res, next) => {
     return next();
   }
   const imagePath = `Uploads/AdminImages/${azst_admin_details_profile_photo}`;
-
-  fs.unlink(imagePath, (err) => {});
+  if (imagePath !== `Uploads/AdminImages/blank-profile-picture.png`) {
+    fs.unlink(imagePath, (err) => {});
+  }
 
   const imageName = `${Date.now()}-${req.file.originalname.replace(/ /g, '-')}`;
   await sharp(req.file.buffer).toFile(`Uploads/AdminImages/${imageName}`);
@@ -108,10 +109,11 @@ exports.updateDetails = catchAsync(async (req, res, next) => {
   const result = await db(updateQuery, values);
   if (result.affectedRows === 1) {
     const adminDetails = {
-      fullName,
-      mobileNumber,
-      email,
-      profilePic: `${req.protocol}://${req.get(
+      azst_admin_details_admin_id: req.empId,
+      azst_admin_details_email: email,
+      azst_admin_details_fname: fullName,
+      azst_admin_details_mobile: mobileNumber,
+      azst_admin_details_profile_photo: `${req.protocol}://${req.get(
         'host'
       )}/api/images/admin/profile/${profilePic}`,
     };
