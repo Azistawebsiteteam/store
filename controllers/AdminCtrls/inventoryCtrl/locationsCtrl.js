@@ -13,11 +13,13 @@ exports.addInvetroyLoation = catchAsync(async (req, res, next) => {
     inventoryAddress,
     inventoryEmail,
     inventoryPhone,
+    pinCode,
   } = req.body;
+
   const inveQuery = `INSERT INTO azst_inventory_locations_tbl (inventory_id,inventory_name,
                         inventory_location,inventory_longitude,inventory_latitude,
-                        inventory_address,inventory_mail,inventory_phone,updatedby)
-                    VALUES (?,?,?,?,?,?,?,?,?)`;
+                        inventory_address,inventory_mail,inventory_phone,updatedby,inventory_pin_code)
+                    VALUES (?,?,?,?,?,?,?,?,?,?)`;
   const values = [
     inventoryId,
     inventoryName,
@@ -28,9 +30,16 @@ exports.addInvetroyLoation = catchAsync(async (req, res, next) => {
     inventoryEmail,
     inventoryPhone,
     req.empId,
+    pinCode,
   ];
   await db(inveQuery, values);
   res.status(200).send({ message: 'inventory add successfully' });
+});
+
+exports.getInventoryDetails = catchAsync(async (req, res, next) => {
+  const invQuery = `SELECT * FROM azst_inventory_locations_tbl `; //WHERE inventory_status = 1
+  const result = await db(invQuery);
+  res.status(200).json(result);
 });
 
 exports.getinventories = catchAsync(async (req, res, next) => {
@@ -63,6 +72,7 @@ exports.getInventory = catchAsync(async (req, res, next) => {
     inventory_address: inventory.inventory_address,
     inventory_mail: inventory.inventory_mail,
     inventory_phone: inventory.inventory_phone,
+    inventory_pin_code: inventory.inventory_pin_code,
   };
   res.status(200).json(inventoryDetails);
 });
@@ -77,11 +87,13 @@ exports.updateInventory = catchAsync(async (req, res, next) => {
     inventoryAddress,
     inventoryEmail,
     inventoryPhone,
+    pinCode,
   } = req.body;
 
   const updateQuery = `UPDATE azst_inventory_locations_tbl SET inventory_name =?,
                         inventory_location =?,inventory_longitude =?,inventory_latitude =?,
-                        inventory_address =?,inventory_mail=?,inventory_phone=?,updatedby=?
+                        inventory_address =?,inventory_mail=?,inventory_phone=?,updatedby=?,
+                        inventory_pin_code = ?
                        WHERE inventory_id = ?`;
   const values = [
     inventoryName,
@@ -92,6 +104,7 @@ exports.updateInventory = catchAsync(async (req, res, next) => {
     inventoryEmail,
     inventoryPhone,
     req.empId,
+    pinCode,
     inventoryId,
   ];
   await db(updateQuery, values);
