@@ -167,53 +167,66 @@ exports.getCollectionProducts = catchAsync(async (req, res, next) => {
 exports.shop99Products = catchAsync(async (req, res, next) => {
   const { customerId } = req.body;
 
-  // Fetch the collection ID for collections starting with 'Shop99'
-  const getShopId = `SELECT azst_collection_id 
-                     FROM azst_collections_tbl 
-                     WHERE LOWER(azst_collection_name) LIKE 'shop99%';`;
+  // Fetch collection and category IDs for 'Shop99'
+  const getIdsQuery = `
+    SELECT 
+      (SELECT azst_collection_id 
+       FROM azst_collections_tbl 
+       WHERE LOWER(azst_collection_name) LIKE 'shop99%' 
+       LIMIT 1) AS collection_id,
+      (SELECT azst_category_id 
+       FROM azista_store.azst_category_tbl 
+       WHERE LOWER(azst_category_name) LIKE 'shop99%' 
+       LIMIT 1) AS category_id;
+  `;
 
-  const [collection] = await db(getShopId);
+  const [ids] = await db(getIdsQuery);
+  const collectionId = ids?.collection_id ?? 0;
+  const categoryId = ids?.category_id ?? 0;
 
-  // If no collection is found, return an empty array
-  if (!collection) return res.status(200).json([]);
+  // Fetch products associated with the specific collection/category IDs
+  const getProducts = `
+    SELECT
+      p.id AS product_id,
+      p.product_main_title,
+      p.min_cart_quantity,
+      p.max_cart_quantity,
+      p.product_title,
+      p.image_src,
+      p.image_alt_text,
+      p.price,
+      p.compare_at_price,
+      p.product_url_title,
+      p.is_varaints_aval,
+      COALESCE(wl.azst_wishlist_id, 0) AS in_wishlist, 
+      COALESCE(SUM(pi.azst_ipm_total_quantity), 0) AS product_qty
+    FROM azst_products p
+    LEFT JOIN azst_wishlist_tbl wl
+      ON p.id = wl.azst_product_id
+      AND wl.status = 1
+      AND wl.azst_customer_id = ?
+    LEFT JOIN azst_central_inventory_tbl pi
+      ON p.id = pi.azst_ipm_product_id
+    WHERE p.status = 1 
+      AND (
+        JSON_CONTAINS(p.collections, ?, '$') 
+        OR p.product_category = ? 
+        OR p.type LIKE 'shop99%'   
+        OR JSON_SEARCH(p.tags, 'one', '%shop99%', '$') IS NOT NULL
+      )
+    GROUP BY
+      p.id, p.product_main_title, p.product_title, p.image_src, 
+      p.image_alt_text, p.price, p.compare_at_price, 
+      p.product_url_title, wl.azst_wishlist_id;
+  `;
 
-  const collectionId = collection.azst_collection_id;
+  const results = await db(getProducts, [
+    customerId,
+    collectionId.toString(),
+    categoryId.toString(),
+  ]);
 
-  // Fetch products associated with the specific collection ID
-  const getProducts = `SELECT
-                azst_products.id AS product_id,
-                product_main_title,
-                min_cart_quantity,
-                max_cart_quantity,
-                product_title,
-                image_src,
-                image_alt_text,
-                price,
-                compare_at_price,
-                product_url_title,
-                is_varaints_aval,
-                COALESCE(wl.azst_wishlist_id, 0) AS in_wishlist, 
-                COALESCE(SUM(pi.azst_ipm_total_quantity), 0) AS product_qty
-              FROM azst_products
-              LEFT JOIN azst_wishlist_tbl AS wl
-                  ON azst_products.id = wl.azst_product_id
-                  AND wl.status = 1
-                  AND wl.azst_customer_id = '${customerId}'
-              LEFT JOIN azst_central_inventory_tbl pi
-                  ON azst_products.id = pi.azst_ipm_product_id
-              WHERE azst_products.status = 1 
-              AND JSON_CONTAINS(collections, ?, '$')
-              GROUP BY
-                  azst_products.id,
-                  product_main_title,
-                  product_title,
-                  image_src,
-                  image_alt_text,
-                  price,
-                  compare_at_price,
-                  product_url_title,azst_wishlist_id`;
-
-  const results = await db(getProducts, [collectionId.toString()]);
+  // Transform product data
   const products = results.map((product) => getProductImageLink(req, product));
 
   res.status(200).json(products);
