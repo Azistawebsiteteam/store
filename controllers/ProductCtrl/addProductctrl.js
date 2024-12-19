@@ -126,7 +126,7 @@ exports.addProduct = catchAsync(async (req, res, next) => {
     minCartQty = 1,
     maxCartQty = 10,
     returnAccept,
-    returnDays,
+    returnDays = 0,
   } = req.body;
 
   // Parse variants if available
@@ -200,6 +200,12 @@ exports.addProduct = catchAsync(async (req, res, next) => {
     });
 
     await Promise.all(inventoryPromises);
+
+    // for (let inv of inventory) {
+    //   const { inventoryId, qty } = inv;
+    //   const invValues = [inventoryId, product.insertId, 0, qty, qty, req.empId];
+    //   await db(inventoryQuery, invValues);
+    // }
 
     return res.status(200).json({
       productId: product.insertId,

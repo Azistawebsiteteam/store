@@ -370,7 +370,7 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
     minCartQty,
     maxCartQty,
     returnAccept,
-    returnDays,
+    returnDays = 0,
   } = req.body;
 
   const newProductImages = productImages.map((url) =>
@@ -438,7 +438,7 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
     minCartQty,
     maxCartQty,
     returnAccept,
-    returnDays,
+    returnDays === 'null' ? 0 : returnDays,
     productId,
   ];
 

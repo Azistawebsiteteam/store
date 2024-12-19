@@ -9,6 +9,7 @@ const blogSchema = Joi.object({
   product: Joi.string().optional().allow(''),
   type: Joi.string().min(6).max(20).required(),
   blogImg: Joi.string().optional().allow('', null),
+  blogThumbnailImg: Joi.string().optional().allow('', null),
 });
 
 const blogValidation = async (req, res, next) => {
