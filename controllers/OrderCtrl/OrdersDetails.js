@@ -1,7 +1,7 @@
 const Joi = require('joi');
 const db = require('../../Database/dbconfig');
 
-const getEstimateDates = require('../../Utils/estimateDate');
+const { getEstimateDates } = require('../../Utils/estimateDate');
 const catchAsync = require('../../Utils/catchAsync');
 const AppError = require('../../Utils/appError');
 const { getShipToken } = require('../../shipRocket/shipInstance');
