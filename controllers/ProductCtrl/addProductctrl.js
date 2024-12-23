@@ -379,9 +379,9 @@ exports.storeIngImages = catchAsync(async (req, res, next) => {
   const ingImages = req.files.ingImages || [];
   const feaImages = req.files.feaImages || [];
 
-  if (!parsedIngredients.length && !parsedFeatures.length) {
-    return next(new AppError('Ingredients and Features are Required', 400));
-  }
+  // if (!parsedIngredients.length && !parsedFeatures.length) {
+  //   return next(new AppError('Ingredients and Features are Required', 400));
+  // }
 
   const updateImageData = async (data, images, folder) => {
     const updatedData = [];

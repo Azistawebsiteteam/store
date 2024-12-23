@@ -102,9 +102,9 @@ exports.getcollection = catchAsync(async (req, res, next) => {
 const collectionSchema = Joi.object({
   title: Joi.string().min(1).required(),
   content: Joi.string().optional().allow(''),
-  metaTitle: Joi.string().min(1).required(),
-  metaDescription: Joi.string().min(1).required(),
-  urlHandle: Joi.string().min(1).required(),
+  metaTitle: Joi.string().optional().allow(''),
+  metaDescription: Joi.string().optional().allow(''),
+  urlHandle: Joi.string().optional().allow(''),
 });
 
 exports.Addcollection = catchAsync(async (req, res, next) => {

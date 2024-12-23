@@ -1,5 +1,6 @@
 const Joi = require('joi');
 const AppError = require('../Utils/appError');
+const catchAsync = require('../Utils/catchAsync');
 
 const registerSchema = Joi.object({
   customerFirstName: Joi.string().min(1).max(20).required().messages({
@@ -35,17 +36,17 @@ const registerSchema = Joi.object({
     .messages({
       'string.pattern.base': 'Invalid whatsApp  Number',
     }),
-  notes: Joi.string().optional(),
-  tags: Joi.string().optional(),
+  notes: Joi.string().optional().allow(''),
+  tags: Joi.string().optional().allow(''),
 });
 
-const userValidation = async (req, res, next) => {
-  const { error } = registerSchema.validate(payload);
+const userValidation = catchAsync(async (req, res, next) => {
+  const { error } = registerSchema.validate(req.body);
   if (error) {
     return next(new AppError(error.message, 400));
   } else {
     next();
   }
-};
+});
 
 module.exports = userValidation;

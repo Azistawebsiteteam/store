@@ -165,11 +165,13 @@ const singleFeatureSchema = Joi.object({
 // Validate the ingredients array
 const validateIng = (ings, schema) => {
   const parsedIngs = JSON.parse(ings);
-  const validationResults = parsedIngs.map((ing) => schema.validate(ing));
+  if (parsedIngs.length) {
+    const validationResults = parsedIngs.map((ing) => schema.validate(ing));
 
-  for (let result of validationResults) {
-    if (result.error) {
-      throw new Error(result.error.message);
+    for (let result of validationResults) {
+      if (result.error) {
+        throw new Error(result.error.message);
+      }
     }
   }
   return parsedIngs; // Return parsed and validated ingredients
