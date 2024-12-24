@@ -15,6 +15,7 @@ const inventorySchema = Joi.object({
     .messages({
       'string.pattern.base': 'Invalid Mobile Number',
     }),
+  pinCode: Joi.string().max(6),
 });
 
 const inventoryValidation = async (req, res, next) => {

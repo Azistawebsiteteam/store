@@ -49,7 +49,6 @@ exports.storeImage = catchAsync(async (req, res, next) => {
           / /g,
           '-'
         )}`;
-
         // Resize and save image
         await sharp(file.buffer)
           .resize(500, 500)

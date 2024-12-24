@@ -37,7 +37,7 @@ exports.addInvetroyLoation = catchAsync(async (req, res, next) => {
 });
 
 exports.getInventoryDetails = catchAsync(async (req, res, next) => {
-  const invQuery = `SELECT * FROM azst_inventory_locations_tbl `; //WHERE inventory_status = 1
+  const invQuery = `SELECT * FROM azst_inventory_locations_tbl WHERE inventory_status = 1`;
   const result = await db(invQuery);
   res.status(200).json(result);
 });
@@ -53,11 +53,12 @@ exports.isInventoryExsit = catchAsync(async (req, res, next) => {
   const { inventoryId } = req.body;
   if (!inventoryId) return next(new AppError('Inventory Id is Required', 400));
 
-  const getbrand = `SELECT * FROM azst_inventory_locations_tbl WHERE  inventory_id = ${inventoryId} AND inventory_status = 1`;
-  const inventory = await db(getbrand);
-  if (inventory.length === 0)
-    return next(new AppError('No Inventory found', 404));
-  req.inventory = inventory[0];
+  const getbrand = `SELECT * FROM azst_inventory_locations_tbl WHERE  inventory_id = ? AND inventory_status = 1`;
+  const [inventory] = await db(getbrand, [inventoryId]);
+
+  if (!inventory) return next(new AppError('No Inventory found', 404));
+
+  req.inventory = inventory;
   next();
 });
 

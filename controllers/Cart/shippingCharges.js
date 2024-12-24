@@ -3,14 +3,19 @@ const catchAsync = require('../../Utils/catchAsync');
 const AppError = require('../../Utils/appError');
 
 exports.checkDulicateCharge = catchAsync(async (req, res, next) => {
-  const { cartAmount, chargeAmount } = req.body;
+  const { cartAmount, chargeAmount, chargeId } = req.body;
 
   // Check if there's already a free shipping charge
-  const queryCheckFreeCharge = `
+  let queryCheckFreeCharge = `
     SELECT 1 FROM azst_shipping_charges
     WHERE azst_charge_status = 1 AND (azst_cart_amount = ? OR azst_charge_amount = ?)
   `;
-  const values = [cartAmount, chargeAmount];
+  let values = [cartAmount, chargeAmount];
+  if (chargeId) {
+    queryCheckFreeCharge = queryCheckFreeCharge + ' AND  azst_charge_id <> ?';
+    values.push(chargeId);
+  }
+
   const [existingFreeCharge] = await db(queryCheckFreeCharge, values);
 
   if (existingFreeCharge)
@@ -29,9 +34,13 @@ exports.addCharge = catchAsync(async (req, res, next) => {
   `;
 
   const values = [cartAmount, chargeAmount, req.empId];
-  await db(queryInsert, values);
+  const result = await db(queryInsert, values);
+  console.log(result);
 
-  res.status(200).json({ message: 'Shipping charge added successfully' });
+  res.status(200).json({
+    chargeId: result.insertId,
+    message: 'Shipping charge added successfully',
+  });
 });
 
 exports.updateCharge = catchAsync(async (req, res, next) => {
