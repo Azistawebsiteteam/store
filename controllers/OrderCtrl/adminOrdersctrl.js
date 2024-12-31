@@ -418,6 +418,9 @@ exports.deliveryOrder = catchAsync(async (req, res, next) => {
   req.body.orderAction = 'Delivered';
   req.body.inventoryId = azst_order_ship_from;
   exports.updateInventory(req, res, next);
+  return res
+    .status(200)
+    .json({ message: 'Order delivery status updated successfully' });
 });
 
 const executeQuery = async (query, params = []) => {
