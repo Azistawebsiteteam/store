@@ -35,7 +35,6 @@ exports.addCharge = catchAsync(async (req, res, next) => {
 
   const values = [cartAmount, chargeAmount, req.empId];
   const result = await db(queryInsert, values);
-  console.log(result);
 
   res.status(200).json({
     chargeId: result.insertId,
@@ -90,4 +89,3 @@ exports.freeCharges = catchAsync(async (req, res, next) => {
   }
 });
 
-//azst_charge_id, azst_cart_amount, azst_charge_amount, azst_charge_status, azst_charge_created_on, azst_charge_update_on, azst_charge_created_by, azst_charge_update_by

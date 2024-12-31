@@ -76,28 +76,63 @@ const getCartTaxTotal = (cartProducts) => {
   return taxAmount;
 };
 
+// const calculateShippingCharge = async (amount) => {
+//   // Query to fetch shipping charges data from the database
+//   const query = `SELECT azst_cart_amount, azst_charge_amount FROM azst_shipping_charges WHERE azst_charge_status = 1`;
+//   const result = await db(query); // Assume db(query) is a function that executes the query and returns a result
+
+//   const deafaultChargeQuery = `SELECT MAX(azst_charge_amount)as deafault_charge FROM azst_shipping_charges ;`;
+//   const [charge] = await db(deafaultChargeQuery);
+
+//   let shippingCharges = charge.deafault_charge; // Default shipping charge
+
+//   // Sort the results in descending order of cart amount
+//   result.sort((a, b) => b.azst_cart_amount - a.azst_cart_amount);
+//   const freeShipAmount = result.find(
+//     (ship) => parseFloat(ship.azst_charge_amount) === 0.0
+//   )?.azst_cart_amount;
+//   const freeShipMsg = freeShipAmount
+//     ? `Free shipping for orders over Rs. ${freeShipAmount}!`
+//     : '';
+//   // Find the first match where amount >= azst_cart_amount
+//   for (const price of result) {
+//     if (amount >= price.azst_cart_amount) {
+//       shippingCharges = price.azst_charge_amount;
+//       break;
+//     }
+//   }
+
+//   return { shippingCharges: parseFloat(shippingCharges), freeShipMsg };
+// };
+
 const calculateShippingCharge = async (amount) => {
-  // Query to fetch shipping charges data from the database
-  const query = `SELECT azst_cart_amount, azst_charge_amount FROM azst_shipping_charges WHERE azst_charge_status = 1`;
-  const result = await db(query); // Assume db(query) is a function that executes the query and returns a result
+  // Fetch shipping charges data and default charge from the database
+  const query = `
+    SELECT azst_cart_amount, azst_charge_amount 
+    FROM azst_shipping_charges 
+    WHERE azst_charge_status = 1`;
+  const result = await db(query);
 
-  let shippingCharges = 80; // Default shipping charge
+  const { deafault_charge: defaultCharge } = (
+    await db(
+      `SELECT MAX(azst_charge_amount) AS deafault_charge FROM azst_shipping_charges`
+    )
+  )[0];
 
-  // Sort the results in descending order of cart amount
-  result.sort((a, b) => b.azst_cart_amount - a.azst_cart_amount);
+  // Determine free shipping threshold and message
   const freeShipAmount = result.find(
-    (ship) => parseFloat(ship.azst_charge_amount) === 0.0
+    (ship) => parseFloat(ship.azst_charge_amount) === 0
   )?.azst_cart_amount;
   const freeShipMsg = freeShipAmount
     ? `Free shipping for orders over Rs. ${freeShipAmount}!`
     : '';
-  // Find the first match where amount >= azst_cart_amount
-  for (const price of result) {
-    if (amount >= price.azst_cart_amount) {
-      shippingCharges = price.azst_charge_amount;
-      break;
-    }
-  }
+
+  // Find applicable shipping charge
+  const shippingCharges =
+    result
+      .sort((a, b) => b.azst_cart_amount - a.azst_cart_amount)
+      .find((price) => amount >= price.azst_cart_amount)?.azst_charge_amount ||
+    defaultCharge;
 
   return { shippingCharges: parseFloat(shippingCharges), freeShipMsg };
 };

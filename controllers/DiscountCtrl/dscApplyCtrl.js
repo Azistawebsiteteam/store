@@ -622,6 +622,7 @@ exports.myDiscounts = catchAsync(async (req, res, next) => {
   const { shippingCharges, freeShipMsg } = await calculateShippingCharge(
     cartTotal - discountAmount
   );
+
   res.status(200).json({
     cart_products: newCart,
     cart_total: cartTotal,
